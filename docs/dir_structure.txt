@@ -1,0 +1,40 @@
+（1番最初に、元々作成していたものを公開用にAIに突っ込んで出てきたもの）
+
+/root
+├── src/
+│   ├── core/                        # 基幹ロジック
+│   │   ├── pipeline/                # 処理の連鎖（不変性担保）
+│   │   │   ├── ActionPipeline.ts    # パイプライン制御本体
+│   │   │   └── PipelineStep.ts      # 各ステップのIF
+│   │   ├── IngestionProxy.ts        # 全ログの入り口（Facade）
+│   │   └── Result.ts                # 型安全なエラーハンドリング
+│   ├── intelligence/                # 知的処理レイヤー
+│   │   ├── detector/                # 異常検知・イベント抽出
+│   │   │   ├── IEventDetector.ts    # 検知ロジックのIF
+│   │   │   └── RuleBasedDetector.ts # ルールベース実装
+│   │   ├── task/                    # タスク管理（AI連携の肝）
+│   │   │   ├── ITaskRepository.ts   # 外部DB等からタスク定義を取得するIF
+│   │   │   ├── TaskManager.ts       # 検知結果から実行すべきタスクを組み立てる
+│   │   │   └── TaskRouter.ts        # 実行先へのディスパッチ
+│   │   └── ai/                      # AIエージェント固有ロジック
+│   │       ├── AgentContext.ts      # AIへのプロンプトや履歴の管理
+│   │       └── AgentProvider.ts     # モデル（GPT-4, Llama等）の抽象化
+│   ├── security/                    # 金融・国家レベルの保護
+│   │   ├── MaskingService.ts        # PII/機密情報のマスキング
+│   │   ├── IntegritySigner.ts       # ログのハッシュチェーン・電子署名
+│   │   └── ComplianceAuditor.ts     # 法令ガイドライン適合チェック
+│   ├── transport/                   # 送信レイヤー
+│   │   ├── ILogTransport.ts         # 送信先IF
+│   │   ├── CloudWatchTransport.ts   # AWS用実装
+│   │   ├── DatabaseTransport.ts     # 監査用DB実装
+│   │   └── QueueTransport.ts        # 高負荷時用（SQS/Kafka等）
+│   ├── types/                       # 型定義（全域で参照）
+│   │   ├── log.ts                   # ログスキーマ
+│   │   ├── event.ts                 # システムイベント定義
+│   │   ├── task.ts                  # タスク・アクション定義
+│   │   └── agent.ts                 # AIエージェント定義
+│   └── index.ts                     # パブリックAPI（エントリーポイント）
+├── tests/                           # テストコード
+├── examples/                        # 実装例（金融、インフラ監視等）
+├── package.json
+└── tsconfig.json

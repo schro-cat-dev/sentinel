@@ -1,0 +1,49 @@
+{
+  "name": "@schro-cat-dev/sentinel",
+  "version": "0.1.0-alpha.1",
+  "description": "TypeScript Logging Libraries targeting Financial-Grade+ requirements. Adopts WAL for durability, WorkerPool for scalability, Hash-Chaining for integrity, PII Masking for privacy, and AI Agentic & Deterministic Processing for intelligent log analysis. (Alpha)",
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    "import": "./dist/index.mjs",
+    "require": "./dist/index.cjs"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc && rollup -c",
+    "prepublishOnly": "npm run build",
+    "test": "vitest run",
+    "lint": "eslint \"src/**/*.ts\""
+  },
+  "files": [
+    "dist",
+    "dist/workers",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "logging",
+    "ai",
+    "wal",
+    "integrity",
+    "audit-log",
+    "typescript"
+  ],
+  "author": "sy (schro-cat-dev)",
+  "license": "MIT",
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@types/node": "^20.19.30",
+    "eslint": "^8.57.1",
+    "globals": "^17.1.0",
+    "rollup": "^4.56.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.53.1",
+    "vitest": "^4.0.18"
+  }
+}

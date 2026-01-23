@@ -1,0 +1,62 @@
+.
+├── dir_structure.txt
+├── docs
+│   ├── dir_structure.txt
+│   ├── instance-manage.md
+│   └── modules-desc.txt
+├── eslint.config.js
+├── package-lock.json
+├── package.json
+├── README.md
+├── rollup.config.js
+├── samples
+│   ├── basic_usage.ts
+│   └── security_anomaly_ai.ts
+├── src
+│   ├── bootstrap
+│   │   ├── di-container.ts
+│   │   └── worker-pool.ts
+│   ├── configs
+│   │   ├── detailed-config.ts
+│   │   └── global-config.ts
+│   ├── core
+│   │   ├── engine
+│   │   │   └── ingestion-engine.ts
+│   │   └── persistence
+│   │       └── wal-manager.ts
+│   ├── index.ts
+│   ├── intelligence
+│   │   ├── ai
+│   │   │   ├── i-agent-provider.ts
+│   │   │   └── openai-agent-provider.ts
+│   │   ├── detector
+│   │   │   └── event-detector.ts
+│   │   └── task
+│   │       ├── i-task-repository.ts
+│   │       ├── sql-task-repository.ts
+│   │       └── task-manager.ts
+│   ├── security
+│   │   ├── integrity-signer.ts
+│   │   └── masking-service.ts
+│   ├── system
+│   │   ├── environment-metadata.ts
+│   │   └── result.ts
+│   ├── transport
+│   │   ├── batch-transport.ts
+│   │   ├── cloudwatch-transport.ts
+│   │   ├── i-log-transport.ts
+│   │   └── transport-manager.ts
+│   ├── types
+│   │   ├── agent.ts
+│   │   ├── event.ts
+│   │   ├── log.ts
+│   │   └── task.ts
+│   └── workers
+│       └── log.worker.ts
+├── tests
+├── tsconfig.json
+├── types
+│   └── global.d.ts
+└── util-commands.md
+
+20 directories, 40 files

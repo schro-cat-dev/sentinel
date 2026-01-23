@@ -1,0 +1,30 @@
+# Dev Sources
+src/
+tests/
+samples/
+docs/
+# types/ in root dir
+types/
+
+# Meta & Configs
+.github/
+dir_structure.txt
+util-commands.md
+
+# Build tool configs
+tsconfig.json
+rollup.config.js
+rollup.config.ts
+eslint.config.js
+vitest.config.ts
+.editorconfig
+package-lock.json
+
+# Environment & Buffers
+node_modules/
+.wal_buffer/
+*.log
+.DS_Store
+.env
+
+# Note: README.md、LICENSE、dist/ は非除外

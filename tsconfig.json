@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    /* Target: Node.js 20+ の最新機能を活用 */
+    "target": "ES2022",
+    "lib": ["ESNext"],
+
+    /* Module: ESM (NodeNext) 準拠。node: プレフィックスを解決 */
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "verbatimModuleSyntax": false, /** moduleの下に配置 */
+    "esModuleInterop": true,
+
+    /* Build: 型定義ファイル (.d.ts) を含めて dist へ出力 */
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "noEmit": false,
+
+    /* Strict: 堅牢性を最大化（any 禁止、厳格な null チェック） */
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* Resolution: モジュール解決の最適化 */
+    "resolveJsonModule": true,
+    "isolatedModules": true
+  },
+  "include": ["src/**/*.ts", "types/**/*.d.ts", "rollup.config.js", "eslint.config.js"],
+  "exclude": ["node_modules", "dist", "samples", "tests"]
+}

@@ -1,0 +1,16 @@
+# Dependency
+node_modules/
+
+# Build
+dist/
+
+# Sentinel Buffer (WAL)
+.wal_buffer/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
