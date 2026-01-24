@@ -102,3 +102,8 @@ export interface ServiceInfo {
     deployment: string; // "prod-ap-northeast-1"
     DIContainerRuntime?: string; // "docker", "di-containerd"
 }
+
+export interface WalEntryRaw extends Log {
+    sequenceId: bigint;
+    prevHash: string;
+}

@@ -109,6 +109,9 @@ sentinel/
 ├── eslint.config.js
 ├── package-lock.json
 ├── package.json
+├── readme
+│   ├── en(default).md
+│   └── ja.md
 ├── README.md
 ├── rollup.config.js
 ├── samples
@@ -124,9 +127,28 @@ sentinel/
 │   ├── core
 │   │   ├── engine
 │   │   │   └── ingestion-engine.ts
-│   │   └── persistence
-│   │       └── wal-manager.ts
+│   │   ├── persistence
+│   │   │   ├── i-storage-provider.ts
+│   │   │   └── wal-manager.ts
+│   │   └── system
+│   │       └── i-env-provider.ts
+│   ├── generated
+│   │   └── src
+│   │       └── proto
+│   │           └── wal.ts
 │   ├── index.ts
+│   ├── infra
+│   │   └── wal
+│   │       ├── atomic-file.ts
+│   │       ├── file-lock.ts
+│   │       └── wal-mapper.ts
+│   ├── infrastructure
+│   │   ├── persistence
+│   │   │   ├── i-wal-repository.ts
+│   │   │   └── wal-repository.ts
+│   │   ├── security
+│   │   └── system
+│   │       └── environment-metadata.ts
 │   ├── intelligence
 │   │   ├── ai
 │   │   │   ├── i-agent-provider.ts
@@ -137,12 +159,29 @@ sentinel/
 │   │       ├── i-task-repository.ts
 │   │       ├── sql-task-repository.ts
 │   │       └── task-manager.ts
+│   ├── proto
+│   │   └── wal.proto
 │   ├── security
 │   │   ├── integrity-signer.ts
 │   │   └── masking-service.ts
-│   ├── system
-│   │   ├── environment-metadata.ts
-│   │   └── result.ts
+│   ├── shared
+│   │   ├── constants
+│   │   │   └── http-status.ts
+│   │   ├── errors
+│   │   │   ├── app
+│   │   │   │   ├── auth-error.ts
+│   │   │   │   └── validation-error.ts
+│   │   │   ├── app-error.ts
+│   │   │   ├── index.ts
+│   │   │   └── infra
+│   │   │       ├── db-error.ts
+│   │   │       └── wal-error.ts
+│   │   ├── functional
+│   │   │   └── result.ts
+│   │   └── utils
+│   │       ├── error-utils.ts
+│   │       ├── guard-wal-entry-raw.ts
+│   │       └── seed-to-union-types.ts
 │   ├── transport
 │   │   ├── batch-transport.ts
 │   │   ├── cloudwatch-transport.ts

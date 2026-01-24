@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package wal;
+
+// メインのエントリポイント
+message WalEntry {
+  // WAL メタデータ
+  uint64 sequence_id = 1;
+  string prev_hash = 2;
+
+  // Log 共通フィールド
+  string trace_id = 3;
+  optional string span_id = 4;
+  optional string parent_span_id = 5;
+  optional string actor_id = 6;
+
+  string type = 7;     // LogType (string)
+  uint32 level = 8;    // LogLevel (number)
+  string timestamp = 9;
+  double logical_clock = 10;
+
+  string boundary = 11;
+  string service_id = 12;
+
+  string origin = 13; // "SYSTEM" | "AI_AGENT"
+  bool is_critical = 14;
+
+  // AI Context (Nested)
+  optional AiContext ai_context = 15;
+
+  string message = 16;
+  optional string input_json = 17; // JSONValue -> stringified
+  optional string trace_info = 18;
+  bool trigger_agent = 19;
+
+  optional AgentBacklog agent_back_log = 20;
+  optional string details = 21;
+
+  repeated LogTag tags = 22;
+  repeated string resource_ids = 23;
+
+  optional string previous_hash = 24; // Log interface's previousHash
+  optional string hash = 25;
+  optional string signature = 26;
+}
+
+message AiContext {
+  string agent_id = 1;
+  string task_id = 2;
+  double loop_depth = 3;
+}
+
+message LogTag {
+  string key = 1;
+  string category = 2;
+}
+
+message AgentBacklog {
+  string agent_id = 1;
+  string task_id = 2;
+  string action_type = 3;
+  string model = 4;
+  string input_hash = 5;
+  optional string output_json = 6; // unknown -> stringified
+  bool is_asynchronous = 7;
+  string generated_at = 8;
+  optional string triggered_at = 9;
+
+  ProcessorInfo processor_info = 10;
+
+  optional double confidence = 11;
+  string status = 12; // "pending" | "success" | "failed"
+  optional string error = 13;
+}
+
+message ProcessorInfo {
+  ResourceInfo resource_info = 1;
+}
+
+message ResourceInfo {
+  HardwareInfo cpu = 1;
+  HardwareInfo memory = 2;
+  HardwareInfo outer_storage = 3;
+  ServiceInfo service_info = 4;
+}
+
+message HardwareInfo {
+  double quantity = 1;
+  string unit = 2;
+}
+
+message ServiceInfo {
+  string service_id = 1;
+  string instance_id = 2;
+  string version = 3;
+  string deployment = 4;
+  optional string di_container_runtime = 5;
+}

@@ -1,8 +1,8 @@
 // 実行環境との「インターフェース」
 
 import process from "node:process";
-import { ServiceInfo, AIAgentProcessorInfo } from "../types/log";
-import { GlobalConfig } from "../configs/global-config";
+import { ServiceInfo, AIAgentProcessorInfo } from "../../types/log";
+import { GlobalConfig } from "../../configs/global-config";
 
 /**
  * 実行環境メタデータを生成するユーティリティ

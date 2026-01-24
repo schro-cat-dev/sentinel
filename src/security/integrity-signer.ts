@@ -1,6 +1,6 @@
 import { createHash, createSign } from "node:crypto";
 import { Log } from "../types/log";
-
+// TODO
 /**
  * ログに含めることが可能な値の厳格な定義
  */
