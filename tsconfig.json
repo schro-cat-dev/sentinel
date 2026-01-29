@@ -2,7 +2,7 @@
   "compilerOptions": {
     /* Target: Node.js 20+ の最新機能を活用 */
     "target": "ES2022",
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM"],
 
     /* Module: ESM (NodeNext) 準拠。node: プレフィックスを解決 */
     "module": "ESNext",

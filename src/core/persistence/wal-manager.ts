@@ -504,7 +504,7 @@ export class WALManager implements IWALManager {
                             expectedSeq++;
                         }
 
-                        // 13. 状態更新
+                        // 状態更新
                         expectedPrevHash = this.computeHash(decryptRes.value);
                         this.sequenceId = entry.sequenceId;
                         this.previousHash = expectedPrevHash;
