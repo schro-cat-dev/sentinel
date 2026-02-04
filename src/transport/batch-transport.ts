@@ -29,14 +29,15 @@ export abstract class BatchTransport implements ILogTransport {
 
         if (this.buffer.length === 0) return;
 
-        // バッファをコピーして即座に空にする（アトミックなバッファ管理）
+        // バッファをコピーして即座に空に
         const batchToSend = [...this.buffer];
         this.buffer = [];
 
+        // TODO 他の箇所ではこのTODOは省略するが src/shared/functional/のものを利用して一元化。さらに後フェーズで連携周り。
         try {
             await this.processBatch(batchToSend);
         } catch (error) {
-            // 送信失敗時のリトライロジック（金融グレードではここでデッドレターキューに回す）
+            // 送信失敗時のリトライロジック（イベント情報または情報保全の関係でここでデッドレターキューに回す。マルチノードまたはDS、クラウド、等）
             console.error(
                 `[Transport:${this.name}] Batch delivery failed:`,
                 error,

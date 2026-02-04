@@ -8,6 +8,11 @@ export class TransportManager {
         this.transports.push(transport);
     }
 
+    // WorkerPoolから受信
+    public handleProcessedLog(log: Log): Promise<void> {
+        return this.broadcast(log);
+    }
+
     /**
      * Worker で加工が終わったログを各トランスポートへ分配
      */

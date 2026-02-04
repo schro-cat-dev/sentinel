@@ -123,10 +123,14 @@ sentinel/
 │   │   └── global-config.ts
 │   ├── core
 │   │   ├── engine
-│   │   │   └── ingestion-engine.ts
-│   │   ├── persistence
-│   │   │   ├── i-storage-provider.ts
-│   │   │   └── wal-manager.ts
+│   │   │   ├── i-interfaces.ts
+│   │   │   ├── index.ts
+│   │   │   ├── ingestion-engine.ts
+│   │   │   ├── log-normalizer.ts
+│   │   │   ├── persistence-layer.ts
+│   │   │   ├── queue-adapter.ts
+│   │   │   ├── recovery-service.ts
+│   │   │   └── types.ts
 │   │   └── system
 │   │       └── i-env-provider.ts
 │   ├── generated
@@ -141,7 +145,9 @@ sentinel/
 │   │       └── wal-mapper.ts
 │   ├── infrastructure
 │   │   ├── persistence
+│   │   │   ├── i-storage-provider.ts
 │   │   │   ├── i-wal-repository.ts
+│   │   │   ├── wal-manager.ts
 │   │   │   └── wal-repository.ts
 │   │   ├── security
 │   │   └── system
@@ -156,6 +162,21 @@ sentinel/
 │   │       ├── i-task-repository.ts
 │   │       ├── sql-task-repository.ts
 │   │       └── task-manager.ts
+│   ├── lib
+│   │   ├── crypto
+│   │   │   ├── aesGcmEncryptionStrategy.ts
+│   │   │   ├── cryptoFactory.ts
+│   │   │   ├── cryptoTypes.ts
+│   │   │   ├── index.ts
+│   │   │   └── keyDerivation.ts
+│   │   ├── env
+│   │   │   ├── di.ts
+│   │   │   ├── factory.ts
+│   │   │   ├── index.ts
+│   │   │   ├── types.ts
+│   │   │   └── validator.ts
+│   │   └── time
+│   │       └── date-time-provider.ts
 │   ├── proto
 │   │   └── wal.proto
 │   ├── security
@@ -182,7 +203,10 @@ sentinel/
 │   ├── transport
 │   │   ├── batch-transport.ts
 │   │   ├── cloudwatch-transport.ts
+│   │   ├── datadog-transport.ts
+│   │   ├── http-transport.ts
 │   │   ├── i-log-transport.ts
+│   │   ├── index.ts
 │   │   └── transport-manager.ts
 │   ├── types
 │   │   ├── agent.ts

@@ -78,6 +78,7 @@ export class WorkerPool extends EventEmitter {
                 workerData: {
                     gConfig: this.gConfig,
                     dConfig: this.dConfig,
+                    workerId: `worker-${index}`,
                 },
             });
 
@@ -181,5 +182,27 @@ export class WorkerPool extends EventEmitter {
         this.workers = [];
         this.removeAllListeners();
         console.log("[WorkerPool] Shutdown complete.");
+    }
+
+    /**
+     * 運用監視メトリクス（Prometheus/Grafana対応）
+     */
+    public getStats(): {
+        activeWorkers: number;
+        totalWorkers: number;
+        activeTasks: number;
+        queuePressure: number;
+        isFull: boolean;
+    } {
+        return {
+            activeWorkers: this.workers.filter(Boolean).length,
+            totalWorkers: this.gConfig.concurrency.workerCount,
+            activeTasks: this.activeTaskCount,
+            queuePressure: Math.min(
+                this.activeTaskCount / this.gConfig.concurrency.maxQueueSize,
+                1.0,
+            ),
+            isFull: this.isFull(),
+        };
     }
 }

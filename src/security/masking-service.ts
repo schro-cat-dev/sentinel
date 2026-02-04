@@ -10,7 +10,7 @@ export class MaskingService {
     private static readonly PII_PATTERNS: Record<string, RegExp> = {
         CREDIT_CARD: /\b(?:\d[ -]*?){13,19}\b/g,
         PHONE: /(\+81|0)\d{1,4}[- ]?\d{1,4}[- ]?\d{4}/g,
-        EMAIL: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}/g,
+        EMAIL: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
         GOVERNMENT_ID: /\b\d{12}\b/g,
         JAPAN_ACCOUNT: /\d{3}[-]\d{7}|\d{4}[-]\d{7}/g,
         POSTAL_CODE: /(?:〒?\s?)?\d{3}[-]?\d{4}/g,

@@ -5,6 +5,7 @@ import { GlobalConfig } from "./configs/global-config";
 import { IngestionEngine } from "./core/engine/ingestion-engine";
 import { Log } from "./types/log";
 
+// TODO ai-intelligence周り + 他細微な内部調整、確認が終わってから調整
 export class Logger {
     private static instance: Logger;
     private engine!: IngestionEngine;
@@ -13,9 +14,6 @@ export class Logger {
 
     private constructor() {}
 
-    /**
-     * 世界最高峰の初期化フロー
-     */
     public static async initialize(
         gConfig: GlobalConfig,
         dConfig: DetailedConfig,
@@ -25,7 +23,6 @@ export class Logger {
         const logger = new Logger();
         const diContainer = new DIContainer(gConfig, dConfig);
 
-        // 全てのコンポーネント（WAL, Worker, DB等）を非同期で結合
         await diContainer.init();
 
         logger.engine = diContainer.resolve<IngestionEngine>("IngestionEngine");

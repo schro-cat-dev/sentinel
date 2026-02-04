@@ -10,6 +10,7 @@ import { WorkerToMainMessage } from "../types/event";
 const { gConfig, dConfig } = workerData as {
     gConfig: GlobalConfig;
     dConfig: DetailedConfig;
+    workerId: string;
 };
 
 // 内部状態：不変性を担保するハッシュチェーンの起点
@@ -19,7 +20,8 @@ parentPort?.on("message", async (message: { type: string; payload: Log }) => {
     if (message.type !== "PROCESS_LOG") return;
 
     try {
-        const log = message.payload;
+        // 直接書き換えではなく、コピー作成
+        const log = { ...message.payload };
 
         // --- 1. マスキング (PII保護) ---
         if (dConfig.masking.enabled) {

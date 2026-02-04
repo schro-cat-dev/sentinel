@@ -12,7 +12,7 @@ import {
 } from "../../types/log";
 import { err, ok, Result, tryCatch } from "../functional/result";
 
-// 1. バリデーションヘルパー
+// --- バリデーションヘルパー ---
 
 /** 必須項目の検証 */
 const req = <T>(
@@ -83,10 +83,10 @@ const isJSONValue = (v: unknown): v is JSONValue => {
     );
 };
 
-// 2. サブバリデータ (ネストしたオブジェクト用)
+// --- サブバリデータ (ネストしたオブジェクト用) ---
 
 // tryCatch内の ensure 用ヘルパー (Result -> Value or Throw)
-// この throw は tryCatch で捕捉され、最終的に Result.error に変換されます
+// この throw は tryCatch で捕捉され、最終的に Result.error に変換される
 const ensure = <T>(r: Result<T, Error>): T => {
     if (!r.success) throw r.error;
     return r.value;
