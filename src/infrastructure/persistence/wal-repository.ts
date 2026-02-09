@@ -4,7 +4,7 @@
 // import * as crypto from "crypto";
 // import path from "path";
 // import { pipeline } from "stream/promise";
-// import { AppErrorMeta } from "../../shared/errors/app-error";
+// import { ErrorMeta } from "../../shared/errors/app-error";
 // import {
 //     WalError,
 //     walWriteError,

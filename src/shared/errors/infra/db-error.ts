@@ -1,79 +1,84 @@
-import type { AppErrorBase, AppErrorMeta } from "../app-error";
+import { ERROR_HTTP_STATUS, ERROR_LAYERS } from "../../constants";
+import { ERROR_KIND } from "../../constants/error-protocol-kind";
+import { DB_ERROR_KINDS } from "../../constants/kinds/persistence/db-error-kind";
+import { ErrorMeta, ErrorPayloadProtocol } from "../error-payload-protocol";
 
-// DB特化判別子
-export type DbErrorKind =
-    | "DbConnection"
-    | "DbQuery"
-    | "DbTransaction"
-    | "DbConstraint"
-    | "DbTimeout"
-    | "DbDeadlock"
-    | "DbDuplicateKey";
-
-// DBエラーインターフェース群
-export interface DbConnectionError extends AppErrorBase {
-    readonly kind: "DbConnection";
+// NOTE: ここで各種エラー型は個別の回復処理またはエラー情報特定のための個別コンテキスト情報をDI。プロトコルとしては内部的には守れるので標準的なフローを遵守しつつ、拡張性と柔軟性・堅牢性を担保。
+export interface DbConnectionError extends ErrorPayloadProtocol {
+    readonly kind: typeof ERROR_KIND.EXTERNAL;
+    readonly detailKind: typeof DB_ERROR_KINDS.CONNECTION;
     readonly host: string;
     readonly port: number;
     readonly database: string;
 }
 
-export interface DbQueryError extends AppErrorBase {
-    readonly kind: "DbQuery";
+export interface DbQueryError extends ErrorPayloadProtocol {
+    readonly kind: typeof ERROR_KIND.EXTERNAL;
+    readonly detailKind: typeof DB_ERROR_KINDS.QUERY;
     readonly sql: string;
     readonly params?: Record<string, unknown>;
     readonly rowCount?: number;
 }
 
-export interface DbTransactionError extends AppErrorBase {
-    readonly kind: "DbTransaction";
+export interface DbTransactionError extends ErrorPayloadProtocol {
+    readonly kind: typeof ERROR_KIND.EXTERNAL;
+    readonly detailKind: typeof DB_ERROR_KINDS.TRANSACTION;
     readonly operation: "begin" | "commit" | "rollback";
     readonly transactionId: string;
 }
 
-export interface DbConstraintError extends AppErrorBase {
-    readonly kind: "DbConstraint";
+export interface DbConstraintError extends ErrorPayloadProtocol {
+    readonly kind: typeof ERROR_KIND.EXTERNAL;
+    readonly detailKind: typeof DB_ERROR_KINDS.CONSTRAINT;
     readonly constraint: string;
     readonly table: string;
     readonly column?: string;
 }
 
-export interface DbTimeoutError extends AppErrorBase {
-    readonly kind: "DbTimeout";
+export interface DbTimeoutError extends ErrorPayloadProtocol {
+    readonly kind: typeof ERROR_KIND.EXTERNAL;
+    readonly detailKind: typeof DB_ERROR_KINDS.QUERY_TIMEOUT;
     readonly query: string;
     readonly timeoutMs: number;
 }
 
-export interface DbDeadlockError extends AppErrorBase {
-    readonly kind: "DbDeadlock";
+export interface DbDeadlockError extends ErrorPayloadProtocol {
+    readonly kind: typeof ERROR_KIND.EXTERNAL;
+    readonly detailKind: typeof DB_ERROR_KINDS.DEADLOCK;
     readonly query: string;
     readonly deadlockId: string;
 }
 
-export interface DbDuplicateKeyError extends AppErrorBase {
-    readonly kind: "DbDuplicateKey";
+export interface DbDuplicateKeyError extends ErrorPayloadProtocol {
+    readonly kind: typeof ERROR_KIND.EXTERNAL;
+    readonly detailKind: typeof DB_ERROR_KINDS.DUPLICATE_KEY;
     readonly table: string;
     readonly keyFields: string[];
     readonly keyValues: unknown[];
 }
 
-// ファクトリ関数群（完全型安全）
+// --- ファクトリ関数群 ---
+const DEFAULT_DB_META: ErrorMeta = {
+    layer: ERROR_LAYERS.REPOSITORY,
+    httpStatus: ERROR_HTTP_STATUS.SERVICE_UNAVAILABLE,
+};
+
 export const dbConnectionError = (
     host: string,
     port: number,
     database: string,
-    meta: AppErrorMeta = {
-        layer: "Repository",
-        httpStatus: 503,
-    },
+    meta: Partial<ErrorMeta> = {},
 ): DbConnectionError => ({
-    kind: "DbConnection",
+    kind: "External",
+    detailKind: "DbConnection",
     code: "DB_CONNECTION_FAILED",
     message: `Database connection failed: ${host}:${port}/${database}`,
     meta: {
-        ...meta,
+        ...DEFAULT_DB_META,
+        httpStatus: ERROR_HTTP_STATUS.SERVICE_UNAVAILABLE,
         entityType: "Database",
         context: { host, port, database },
+        ...meta,
     },
     host,
     port,
@@ -84,39 +89,40 @@ export const dbQueryError = (
     sql: string,
     params?: Record<string, unknown>,
     rowCount?: number,
-    meta: AppErrorMeta = {
-        layer: "Repository",
-        httpStatus: 500,
-    },
+    meta: Partial<ErrorMeta> = {},
 ): DbQueryError => ({
-    kind: "DbQuery",
+    kind: "External",
+    detailKind: "DbQuery",
     code: "DB_QUERY_FAILED",
     message: `Database query failed`,
     meta: {
-        ...meta,
+        ...DEFAULT_DB_META,
+        httpStatus: ERROR_HTTP_STATUS.INTERNAL_SERVER_ERROR,
         operation: "query",
         context: { sql: sql.slice(0, 100) + "..." },
+        ...meta,
     },
     sql,
     params,
     rowCount,
 });
 
+// 3. 不足ファクトリ（この4つを追加）
 export const dbTransactionError = (
     operation: "begin" | "commit" | "rollback",
     transactionId: string,
-    meta: AppErrorMeta = {
-        layer: "Repository",
-        httpStatus: 500,
-    },
+    meta: Partial<ErrorMeta> = {},
 ): DbTransactionError => ({
-    kind: "DbTransaction",
+    kind: "External",
+    detailKind: "DbTransaction",
     code: "DB_TRANSACTION_FAILED",
-    message: `Transaction ${operation} failed`,
+    message: `Database transaction ${operation} failed: ${transactionId}`,
     meta: {
+        ...DEFAULT_DB_META,
+        httpStatus: ERROR_HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        operation: `transaction_${operation}`,
+        context: { transactionId, operation },
         ...meta,
-        operation,
-        entityId: transactionId,
     },
     operation,
     transactionId,
@@ -125,21 +131,23 @@ export const dbTransactionError = (
 export const dbConstraintError = (
     constraint: string,
     table: string,
-    column?: string, // 現実では半分くらいundefined
-    meta: AppErrorMeta = { layer: "Repository", httpStatus: 409 },
+    column?: string,
+    meta: Partial<ErrorMeta> = {},
 ): DbConstraintError => ({
-    kind: "DbConstraint",
+    kind: "External",
+    detailKind: "DbConstraint",
     code: "DB_CONSTRAINT_VIOLATION",
-    message: `Constraint violation on ${table}.${constraint}`,
+    message: `Constraint violation: ${constraint} on ${table}`,
     meta: {
-        ...meta,
+        ...DEFAULT_DB_META,
+        httpStatus: ERROR_HTTP_STATUS.BAD_REQUEST,
         entityType: table,
-        context: {
+        context: safeContext({
             constraint,
             table,
-            column: column ?? null,
-            isColumnIdentified: !!column, // boolean（運用確認用）
-        },
+            column: column || null, // note: undefined → null変換
+        }),
+        ...meta,
     },
     constraint,
     table,
@@ -149,40 +157,40 @@ export const dbConstraintError = (
 export const dbTimeoutError = (
     query: string,
     timeoutMs: number,
-    meta: AppErrorMeta = {
-        layer: "Repository",
-        httpStatus: 408,
-    },
+    meta: Partial<ErrorMeta> = {},
 ): DbTimeoutError => ({
-    kind: "DbTimeout",
-    code: "DB_QUERY_TIMEOUT",
-    message: `Query timeout after ${timeoutMs}ms`,
+    kind: "External",
+    detailKind: "DbTimeout",
+    code: "DB_TIMEOUT",
+    message: `Database query timeout after ${timeoutMs}ms`,
     meta: {
+        ...DEFAULT_DB_META,
+        httpStatus: ERROR_HTTP_STATUS.SERVICE_UNAVAILABLE,
+        operation: "timeout",
+        context: { timeoutMs, query: query.slice(0, 100) + "..." },
         ...meta,
-        operation: "query",
-        context: { timeoutMs },
     },
-    query: query.slice(0, 100),
+    query,
     timeoutMs,
 });
 
 export const dbDeadlockError = (
     query: string,
     deadlockId: string,
-    meta: AppErrorMeta = {
-        layer: "Repository",
-        httpStatus: 503,
-    },
+    meta: Partial<ErrorMeta> = {},
 ): DbDeadlockError => ({
-    kind: "DbDeadlock",
-    code: "DB_DEADLOCK_DETECTED",
-    message: `Database deadlock detected`,
+    kind: "External",
+    detailKind: "DbDeadlock",
+    code: "DB_DEADLOCK",
+    message: `Database deadlock detected: ${deadlockId}`,
     meta: {
+        ...DEFAULT_DB_META,
+        httpStatus: ERROR_HTTP_STATUS.SERVICE_UNAVAILABLE,
+        operation: "deadlock",
+        context: { deadlockId, query: query.slice(0, 100) + "..." },
         ...meta,
-        operation: "query",
-        context: { deadlockId },
     },
-    query: query.slice(0, 100),
+    query,
     deadlockId,
 });
 
@@ -192,11 +200,11 @@ const safeContext = (
     const result: Record<string, string | number | boolean> = {};
     for (const [key, value] of Object.entries(data)) {
         if (value === null || value === undefined) {
-            result[key] = false; // null→false変換（金融系ではnull許容しない）
+            result[key] = false;
         } else if (Array.isArray(value)) {
-            result[key] = value.length.toString(); // 配列→length string
+            result[key] = value.length.toString();
         } else if (typeof value === "object") {
-            result[key] = Object.keys(value).length.toString(); // オブジェクト→key数
+            result[key] = Object.keys(value).length.toString();
         } else {
             result[key] = value as string | number | boolean;
         }
@@ -204,52 +212,37 @@ const safeContext = (
     return result;
 };
 
-const createDbMeta = (
-    baseMeta: AppErrorMeta,
-    table: string,
-    details: Record<string, unknown>,
-): AppErrorMeta => ({
-    ...baseMeta,
-    entityType: table,
-    context: safeContext(details),
-});
-
 export const dbDuplicateKeyError = (
     table: string,
     keyFields: string[],
     keyValues: unknown[],
-    meta: AppErrorMeta = { layer: "Repository", httpStatus: 409 },
+    meta: Partial<ErrorMeta> = {},
 ): DbDuplicateKeyError => ({
-    kind: "DbDuplicateKey",
+    kind: "External",
+    detailKind: "DbDuplicateKey",
     code: "DB_DUPLICATE_KEY",
     message: `Duplicate key violation on ${table}`,
-    meta: createDbMeta(meta, table, {
-        keyFields: keyFields.join(","),
-        keyValuesCount: keyValues.length,
-        firstKeyValueType: typeof keyValues[0],
-    }),
+    meta: {
+        ...DEFAULT_DB_META,
+        httpStatus: ERROR_HTTP_STATUS.CONFLICT,
+        entityType: table,
+        context: safeContext({
+            keyFields: keyFields.join(","),
+            keyValuesCount: keyValues.length,
+            firstKeyValueType: typeof keyValues[0],
+        }),
+        ...meta,
+    },
     table,
     keyFields,
     keyValues,
 });
 
-// 型ガード
-export const isDbError = (
-    error: AppErrorBase,
-): error is
+export type DbError =
     | DbConnectionError
     | DbQueryError
     | DbTransactionError
     | DbConstraintError
     | DbTimeoutError
     | DbDeadlockError
-    | DbDuplicateKeyError =>
-    [
-        "DbConnection",
-        "DbQuery",
-        "DbTransaction",
-        "DbConstraint",
-        "DbTimeout",
-        "DbDeadlock",
-        "DbDuplicateKey",
-    ].includes(error.kind);
+    | DbDuplicateKeyError;

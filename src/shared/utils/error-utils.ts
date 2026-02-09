@@ -1,4 +1,4 @@
-import type { AppErrorBase } from "../errors/app-error";
+import type { AppErrorPayloadProtocol } from "../errors/error-payload-protocol";
 
 type SafeValue = string | number | boolean | null;
 
@@ -99,7 +99,7 @@ export const safeContext = (
 };
 
 /** 監査用シリアライザ（キー名PII除去） */
-export const serializeForAudit = (error: AppErrorBase): string => {
+export const serializeForAudit = (error: AppErrorPayloadProtocol): string => {
     const context = error.meta.context || {};
     const safeContextKeys = Object.keys(context).filter(isPiiSafe).slice(0, 10);
 
@@ -117,7 +117,7 @@ export const serializeForAudit = (error: AppErrorBase): string => {
 };
 
 /** 運用ログ用（非破壊・完全型安全） */
-export const logFinancialError = (error: AppErrorBase): void => {
+export const logFinancialError = (error: AppErrorPayloadProtocol): void => {
     const safeContextData = error.meta.context
         ? safeContext(error.meta.context as Record<string, unknown>)
         : null;
@@ -129,7 +129,7 @@ export const logFinancialError = (error: AppErrorBase): void => {
             ...error.meta,
             context: safeContextData,
         },
-    } as AppErrorBase;
+    } as AppErrorPayloadProtocol;
 
     console.error(serializeForAudit(auditError));
 };
@@ -147,7 +147,7 @@ export const DEFAULT_ERROR_SEVERITY: ErrorSeverityConfig = {
 
 /** エラー重大度分類 */
 export const classifyError = (
-    error: AppErrorBase,
+    error: AppErrorPayloadProtocol,
     config: ErrorSeverityConfig = DEFAULT_ERROR_SEVERITY,
 ): "CRITICAL" | "WARNING" | "INFO" => {
     if (config.CRITICAL.includes(error.kind)) return "CRITICAL";
@@ -157,7 +157,7 @@ export const classifyError = (
 
 /** 多言語対応ログヘルパー */
 export const getErrorMessage = (
-    error: AppErrorBase,
+    error: AppErrorPayloadProtocol,
     locale: "ja" | "en" = "ja",
 ): string => {
     const messages: Record<string, Record<"ja" | "en", string>> = {

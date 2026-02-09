@@ -1,7 +1,7 @@
 import { open, unlink, FileHandle } from "fs/promises";
 import { Result, safe, mapError, ok } from "../../shared/functional/result";
 import { walLockError, WalError } from "../../shared/errors/infra/wal-error";
-import { AppErrorMeta } from "../../shared/errors/app-error";
+import { ErrorMeta } from "../../shared/errors/error-payload-protocol";
 
 export class FileLock {
     private lockHandle: FileHandle | null = null;
@@ -20,7 +20,7 @@ export class FileLock {
         return mapError(result, (e: unknown) =>
             walLockError("acquire", this.walId, this.lockFilePath, {
                 originalError: e,
-            } as AppErrorMeta),
+            } as ErrorMeta),
         );
     }
 
@@ -36,7 +36,7 @@ export class FileLock {
         return mapError(result, (e: unknown) =>
             walLockError("release", this.walId, this.lockFilePath, {
                 originalError: e,
-            } as AppErrorMeta),
+            } as ErrorMeta),
         );
     }
 }

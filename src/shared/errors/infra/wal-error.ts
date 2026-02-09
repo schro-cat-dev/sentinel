@@ -1,6 +1,6 @@
-// AppErrorMetaだけimport（共通メタデータ用）
+// ErrorMetaだけimport（共通メタデータ用）
 import { createIsUnionMember } from "../../utils/seed-to-union-types";
-import { AppErrorMeta } from "../app-error";
+import { ErrorMeta } from "../error-payload-protocol";
 
 // NOTE: walで発生したエラー周りはアプリ層で検知・ハンドルするためこちらの層から明示的な変換処理の実装は不適切。実装しないように。
 
@@ -37,7 +37,7 @@ export interface WalError {
     readonly walId: string;
     readonly code: string; // WAL専用
     readonly message: string; // WAL専用
-    readonly meta: AppErrorMeta; // 共通メタデータのみ
+    readonly meta: ErrorMeta; // 共通メタデータのみ
 }
 
 // 本ブロック下のファクトリ関数群は wal-manager.ts で利用。
@@ -58,7 +58,7 @@ export interface WalError {
 export const walInitError = (
     walId: string,
     filePath: string,
-    meta: AppErrorMeta = { layer: "Repository", httpStatus: 500 },
+    meta: ErrorMeta = { layer: "Repository", httpStatus: 500 },
 ): WalError => ({
     kind: "WalInit",
     operation: "initialize",
@@ -75,7 +75,7 @@ export const walWriteError = (
     operation: string,
     walId: string,
     filePath: string,
-    meta: AppErrorMeta = { layer: "Repository", httpStatus: 500 },
+    meta: ErrorMeta = { layer: "Repository", httpStatus: 500 },
 ): WalError => ({
     kind: "WalWrite",
     operation,
@@ -93,7 +93,7 @@ export const walReadError = (
     operation: string,
     walId: string,
     filePath: string,
-    meta: AppErrorMeta = { layer: "Repository", httpStatus: 500 },
+    meta: ErrorMeta = { layer: "Repository", httpStatus: 500 },
 ): WalError => ({
     kind: "WalRead",
     operation,
@@ -110,7 +110,7 @@ export const walCryptoError = (
     operation: string,
     walId: string,
     filePath: string,
-    meta: AppErrorMeta = { layer: "Repository", httpStatus: 500 },
+    meta: ErrorMeta = { layer: "Repository", httpStatus: 500 },
 ): WalError => ({
     kind: "WalCrypto",
     operation,
@@ -124,7 +124,7 @@ export const walDiskFullError = (
     operation: string,
     walId: string,
     filePath: string,
-    meta: AppErrorMeta = { layer: "Repository", httpStatus: 503 },
+    meta: ErrorMeta = { layer: "Repository", httpStatus: 503 },
 ): WalError => ({
     kind: "WalDiskFull",
     operation,
@@ -138,7 +138,7 @@ export const walLockError = (
     operation: string,
     walId: string,
     filePath: string,
-    meta: AppErrorMeta = { layer: "Repository", httpStatus: 503 },
+    meta: ErrorMeta = { layer: "Repository", httpStatus: 503 },
 ): WalError => ({
     kind: "WalLock",
     operation,
@@ -151,7 +151,7 @@ export const walLockError = (
 export const walTruncateError = (
     walId: string,
     filePath: string,
-    meta: AppErrorMeta = { layer: "Repository", httpStatus: 500 },
+    meta: ErrorMeta = { layer: "Repository", httpStatus: 500 },
 ): WalError => ({
     kind: "WalTruncate",
     operation: "truncate",
@@ -166,7 +166,7 @@ export const walCorruptedError = (
     walId: string,
     filePath: string,
     details: string,
-    meta: AppErrorMeta = { layer: "Repository", httpStatus: 500 },
+    meta: ErrorMeta = { layer: "Repository", httpStatus: 500 },
 ): WalError => ({
     kind: "WalCorrupted",
     operation,
@@ -180,7 +180,7 @@ export const walFsyncError = (
     operation: string,
     walId: string,
     filePath: string,
-    meta: AppErrorMeta = { layer: "Repository", httpStatus: 500 },
+    meta: ErrorMeta = { layer: "Repository", httpStatus: 500 },
 ): WalError => ({
     kind: "WalFsync",
     operation,

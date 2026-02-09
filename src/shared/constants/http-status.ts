@@ -1,4 +1,3 @@
-// データ型等一元化、汎用化の場合は、本ファイル最下部のコメントアウトの実装方針確認。（他PJ検索面倒なので）
 export const SUCCESS_HTTP_STATUS = {
     OK: 200,
     CREATED: 201,
@@ -35,27 +34,3 @@ export const HTTP_STATUS = {
 } as const;
 
 export type HttpStatusCode = (typeof HTTP_STATUS)[keyof typeof HTTP_STATUS];
-
-// よく使うやつ。NOTE: 他のデータハンドリングタイプはまたメイン個人PJ内検索。
-// import { z } from "zod";
-
-// /**
-//  * HASH_TYPES represents the supported hash algorithms for PBKDF2.
-//  */
-// export const HASH_TYPES = {
-//     SHA1: "SHA-1",
-//     SHA256: "SHA-256",
-//     SHA384: "SHA-384",
-//     SHA512: "SHA-512",
-// } as const;
-
-// /**
-//  * HashTypeEnum defines the Zod enum for hash algorithms.
-//  */
-// export const HashTypeEnum = z.enum(
-//     Object.values(HASH_TYPES) as unknown as [
-//         (typeof HASH_TYPES)[keyof typeof HASH_TYPES],
-//     ],
-// );
-
-// export type HashType = z.infer<typeof HashTypeEnum>;

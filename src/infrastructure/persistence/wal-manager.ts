@@ -31,7 +31,7 @@ import {
 import { WalEntry as ProtoWalEntry } from "../../generated/src/proto/wal";
 import { toProto, fromProto } from "../../infra/wal/wal-mapper";
 import { validateWalEntry } from "../../shared/utils/guard-wal-entry-raw";
-import { AppErrorMeta } from "../../shared/errors/app-error";
+import { ErrorMeta } from "../../shared/errors/error-payload-protocol";
 import { FileLock } from "../../infra/wal/file-lock";
 import { atomicTruncate } from "../../infra/wal/atomic-file";
 
@@ -98,7 +98,7 @@ export class WALManager implements IWALManager {
             return err(
                 walCryptoError("validateKMSKey", this.walId, this.walFilePath, {
                     reason: "Invalid key length",
-                } as AppErrorMeta),
+                } as ErrorMeta),
             );
         }
 
@@ -140,7 +140,7 @@ export class WALManager implements IWALManager {
             (e) =>
                 walCryptoError("validateKMSKey", this.walId, this.walFilePath, {
                     originalError: e,
-                } as AppErrorMeta),
+                } as ErrorMeta),
         );
     }
 
@@ -183,7 +183,7 @@ export class WALManager implements IWALManager {
                     this.walFilePath,
                     {
                         originalError: e,
-                    } as AppErrorMeta,
+                    } as ErrorMeta,
                 ),
         );
     }
@@ -250,7 +250,7 @@ export class WALManager implements IWALManager {
                     this.walFilePath,
                     {
                         originalError: e,
-                    } as AppErrorMeta,
+                    } as ErrorMeta,
                 ),
         );
     }
@@ -262,7 +262,7 @@ export class WALManager implements IWALManager {
             return mapError(lockRes, (e) =>
                 walInitError(this.walId, this.walFilePath, {
                     originalError: e,
-                } as AppErrorMeta),
+                } as ErrorMeta),
             );
         }
 
@@ -285,7 +285,7 @@ export class WALManager implements IWALManager {
             mapError(res, (e) =>
                 walInitError(this.walId, this.walFilePath, {
                     originalError: e,
-                } as AppErrorMeta),
+                } as ErrorMeta),
             ),
         );
 
@@ -301,7 +301,7 @@ export class WALManager implements IWALManager {
             return mapError(lockRes, (e) =>
                 walWriteError("append:lock", this.walId, this.walFilePath, {
                     originalError: e,
-                } as AppErrorMeta),
+                } as ErrorMeta),
             );
         }
 
@@ -337,7 +337,7 @@ export class WALManager implements IWALManager {
             (e) =>
                 walWriteError("append:encode", this.walId, this.walFilePath, {
                     originalError: e,
-                } as AppErrorMeta),
+                } as ErrorMeta),
         );
         if (isErr(encodeRes)) {
             this.fileLock.release().catch(console.error);
@@ -376,7 +376,7 @@ export class WALManager implements IWALManager {
             mapError(res, (e) =>
                 walWriteError("append:write", this.walId, this.walFilePath, {
                     originalError: e,
-                } as AppErrorMeta),
+                } as ErrorMeta),
             ),
         );
 
@@ -395,7 +395,7 @@ export class WALManager implements IWALManager {
             return mapError(lockRes, (e) =>
                 walReadError("recover:lock", this.walId, this.walFilePath, {
                     originalError: e,
-                } as AppErrorMeta),
+                } as ErrorMeta),
             );
         }
 
@@ -528,7 +528,7 @@ export class WALManager implements IWALManager {
                         this.walFilePath,
                         {
                             originalError: e,
-                        } as AppErrorMeta,
+                        } as ErrorMeta,
                     );
                 }),
             );
@@ -606,7 +606,7 @@ export class WALManager implements IWALManager {
                     this.walFilePath,
                     {
                         reason: e.message,
-                    } as AppErrorMeta,
+                    } as ErrorMeta,
                 ),
             ),
         );
@@ -672,7 +672,7 @@ export class WALManager implements IWALManager {
             (e) =>
                 walCryptoError("encryptBuffer", this.walId, this.walFilePath, {
                     originalError: e,
-                } as AppErrorMeta),
+                } as ErrorMeta),
         );
     }
 
@@ -726,7 +726,7 @@ export class WALManager implements IWALManager {
             (e) =>
                 walCryptoError("decryptBuffer", this.walId, this.walFilePath, {
                     originalError: e,
-                } as AppErrorMeta),
+                } as ErrorMeta),
         );
     }
 }

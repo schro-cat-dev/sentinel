@@ -4,7 +4,7 @@ import {
     walTruncateError,
 } from "../../shared/errors/infra/wal-error";
 import { mapError, Result, safe } from "../../shared/functional/result";
-import { AppErrorMeta } from "../../shared/errors/app-error";
+import { ErrorMeta } from "../../shared/errors/error-payload-protocol";
 
 export const atomicTruncate = async (
     filePath: string,
@@ -17,7 +17,7 @@ export const atomicTruncate = async (
         (e: unknown): WalError =>
             walTruncateError(walId, filePath, {
                 originalError: e,
-            } as AppErrorMeta),
+            } as ErrorMeta),
     );
 };
 
