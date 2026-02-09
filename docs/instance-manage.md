@@ -1,3 +1,5 @@
+### NOTE: 念の為メモを残しておきます。よくわからないAIからの内容をそのまま貼り付けています。結論、嘘が多いです。信じないようにお願いします。一旦残しておきますが、後で消します。
+
 金融・国家プロジェクトレベルのシステムにおいて、ロガーの**インスタンス管理**と**実行モデル（並行処理）**の設計は、システムのパフォーマンスと信頼性に直結する極めて重要な要素です。
 
 ご提案の通り、設定ファイルを分離すれば、アプリケーションコード側は非常にクリーンになります。その上で、内部的な「振る舞い」のベストプラクティスを整理しました。
@@ -17,7 +19,7 @@ const logger = await Logger.initialize(config); // デフォルトインスタ�
 
 // 別の場所で
 const logger = Logger.getInstance(); // どこからでも取得可能
-const auditLogger = Logger.getInstance('audit-boundary'); // 特定の境界用
+const auditLogger = Logger.getInstance("audit-boundary"); // 特定の境界用
 ```
 
 ---

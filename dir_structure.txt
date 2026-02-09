@@ -1,9 +1,11 @@
 .
 ├── dir_structure.txt
 ├── docs
+│   ├── coop-siem-like-tools-agent.md
 │   ├── dir_structure.txt
 │   ├── instance-manage.md
-│   └── modules-desc.txt
+│   ├── modules-desc.txt
+│   └── task-gen.md
 ├── eslint.config.js
 ├── package-lock.json
 ├── package.json
@@ -85,12 +87,37 @@
 │   │   └── masking-service.ts
 │   ├── shared
 │   │   ├── constants
-│   │   │   └── http-status.ts
+│   │   │   ├── error-layer.ts
+│   │   │   ├── error-protocol-kind.ts
+│   │   │   ├── http-status.ts
+│   │   │   ├── index.ts
+│   │   │   ├── infra
+│   │   │   │   ├── cache
+│   │   │   │   ├── datastore
+│   │   │   │   ├── db
+│   │   │   │   │   └── db-error-kind.ts
+│   │   │   │   └── storage
+│   │   │   └── kinds
+│   │   │       ├── application
+│   │   │       │   ├── access.ts
+│   │   │       │   ├── auth.ts
+│   │   │       │   ├── index.ts
+│   │   │       │   ├── limit-over.ts
+│   │   │       │   ├── permission.ts
+│   │   │       │   ├── security.ts
+│   │   │       │   └── validation.ts
+│   │   │       ├── index.ts
+│   │   │       └── persistence
+│   │   │           ├── cache-error-kind.ts
+│   │   │           ├── datastore-error-kind.ts
+│   │   │           ├── db-error-kind.ts
+│   │   │           ├── index.ts
+│   │   │           └── storage-error-kind.ts
 │   │   ├── errors
 │   │   │   ├── app
 │   │   │   │   ├── auth-error.ts
 │   │   │   │   └── validation-error.ts
-│   │   │   ├── app-error.ts
+│   │   │   ├── error-payload-protocol.ts
 │   │   │   ├── index.ts
 │   │   │   └── infra
 │   │   │       ├── db-error.ts
@@ -122,4 +149,4 @@
 │   └── global.d.ts
 └── util-commands.md
 
-41 directories, 82 files
+49 directories, 101 files

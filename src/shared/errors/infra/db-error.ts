@@ -1,9 +1,9 @@
-import { ERROR_HTTP_STATUS, ERROR_LAYERS } from "../../constants";
+import { ERROR_HTTP_STATUS, ERROR_LAYERS, ErrorLayer } from "../../constants";
 import { ERROR_KIND } from "../../constants/error-protocol-kind";
 import { DB_ERROR_KINDS } from "../../constants/kinds/persistence/db-error-kind";
 import { ErrorMeta, ErrorPayloadProtocol } from "../error-payload-protocol";
 
-// NOTE: ここで各種エラー型は個別の回復処理またはエラー情報特定のための個別コンテキスト情報をDI。プロトコルとしては内部的には守れるので標準的なフローを遵守しつつ、拡張性と柔軟性・堅牢性を担保。
+// NOTE: ここで各種エラー型は個別の回復処理またはエラー情報特定のための個別コンテキスト情報をDI
 export interface DbConnectionError extends ErrorPayloadProtocol {
     readonly kind: typeof ERROR_KIND.EXTERNAL;
     readonly detailKind: typeof DB_ERROR_KINDS.CONNECTION;
@@ -57,27 +57,55 @@ export interface DbDuplicateKeyError extends ErrorPayloadProtocol {
     readonly keyValues: unknown[];
 }
 
-// --- ファクトリ関数群 ---
-const DEFAULT_DB_META: ErrorMeta = {
-    layer: ERROR_LAYERS.REPOSITORY,
-    httpStatus: ERROR_HTTP_STATUS.SERVICE_UNAVAILABLE,
+// 共通ベースメタ（ErrorLayer構造体対応）
+const DEFAULT_DB_META_BASE: Partial<ErrorMeta> = {
+    layer: {
+        module: "Database",
+        component: ERROR_LAYERS.REPOSITORY,
+    },
+    entityType: "Database",
 };
 
+// 安全なコンテキスト変換
+const safeContext = (
+    data: Record<string, unknown>,
+): Record<string, string | number | boolean> => {
+    const result: Record<string, string | number | boolean> = {};
+    for (const [key, value] of Object.entries(data)) {
+        if (value === null || value === undefined) {
+            result[key] = false;
+        } else if (Array.isArray(value)) {
+            result[key] = value.length.toString();
+        } else if (typeof value === "object") {
+            result[key] = Object.keys(value).length.toString();
+        } else {
+            result[key] = String(value);
+        }
+    }
+    return result;
+};
+
+// --- ファクトリ関数群（完全版）---
 export const dbConnectionError = (
     host: string,
     port: number,
     database: string,
     meta: Partial<ErrorMeta> = {},
 ): DbConnectionError => ({
-    kind: "External",
-    detailKind: "DbConnection",
+    kind: ERROR_KIND.EXTERNAL,
+    detailKind: DB_ERROR_KINDS.CONNECTION,
     code: "DB_CONNECTION_FAILED",
     message: `Database connection failed: ${host}:${port}/${database}`,
     meta: {
-        ...DEFAULT_DB_META,
+        ...DEFAULT_DB_META_BASE,
+        layer: {
+            module: (meta.layer as Partial<ErrorLayer>)?.module || "Database",
+            component:
+                (meta.layer as Partial<ErrorLayer>)?.component ||
+                ERROR_LAYERS.REPOSITORY,
+        },
         httpStatus: ERROR_HTTP_STATUS.SERVICE_UNAVAILABLE,
-        entityType: "Database",
-        context: { host, port, database },
+        context: safeContext({ host, port, database }),
         ...meta,
     },
     host,
@@ -91,15 +119,25 @@ export const dbQueryError = (
     rowCount?: number,
     meta: Partial<ErrorMeta> = {},
 ): DbQueryError => ({
-    kind: "External",
-    detailKind: "DbQuery",
+    kind: ERROR_KIND.EXTERNAL,
+    detailKind: DB_ERROR_KINDS.QUERY,
     code: "DB_QUERY_FAILED",
     message: `Database query failed`,
     meta: {
-        ...DEFAULT_DB_META,
+        ...DEFAULT_DB_META_BASE,
+        layer: {
+            module: (meta.layer as Partial<ErrorLayer>)?.module || "Database",
+            component:
+                (meta.layer as Partial<ErrorLayer>)?.component ||
+                ERROR_LAYERS.REPOSITORY,
+        },
         httpStatus: ERROR_HTTP_STATUS.INTERNAL_SERVER_ERROR,
         operation: "query",
-        context: { sql: sql.slice(0, 100) + "..." },
+        context: safeContext({
+            sql: sql.length > 100 ? sql.slice(0, 100) + "..." : sql,
+            paramsCount: params ? Object.keys(params).length : 0,
+            rowCount: rowCount || 0,
+        }),
         ...meta,
     },
     sql,
@@ -107,21 +145,26 @@ export const dbQueryError = (
     rowCount,
 });
 
-// 3. 不足ファクトリ（この4つを追加）
 export const dbTransactionError = (
     operation: "begin" | "commit" | "rollback",
     transactionId: string,
     meta: Partial<ErrorMeta> = {},
 ): DbTransactionError => ({
-    kind: "External",
-    detailKind: "DbTransaction",
+    kind: ERROR_KIND.EXTERNAL,
+    detailKind: DB_ERROR_KINDS.TRANSACTION,
     code: "DB_TRANSACTION_FAILED",
     message: `Database transaction ${operation} failed: ${transactionId}`,
     meta: {
-        ...DEFAULT_DB_META,
+        ...DEFAULT_DB_META_BASE,
+        layer: {
+            module: (meta.layer as Partial<ErrorLayer>)?.module || "Database",
+            component:
+                (meta.layer as Partial<ErrorLayer>)?.component ||
+                ERROR_LAYERS.REPOSITORY,
+        },
         httpStatus: ERROR_HTTP_STATUS.INTERNAL_SERVER_ERROR,
         operation: `transaction_${operation}`,
-        context: { transactionId, operation },
+        context: safeContext({ transactionId, operation }),
         ...meta,
     },
     operation,
@@ -134,18 +177,23 @@ export const dbConstraintError = (
     column?: string,
     meta: Partial<ErrorMeta> = {},
 ): DbConstraintError => ({
-    kind: "External",
-    detailKind: "DbConstraint",
+    kind: ERROR_KIND.EXTERNAL,
+    detailKind: DB_ERROR_KINDS.CONSTRAINT,
     code: "DB_CONSTRAINT_VIOLATION",
     message: `Constraint violation: ${constraint} on ${table}`,
     meta: {
-        ...DEFAULT_DB_META,
+        ...DEFAULT_DB_META_BASE,
+        layer: {
+            module: (meta.layer as Partial<ErrorLayer>)?.module || "Database",
+            component:
+                (meta.layer as Partial<ErrorLayer>)?.component ||
+                ERROR_LAYERS.REPOSITORY,
+        },
         httpStatus: ERROR_HTTP_STATUS.BAD_REQUEST,
-        entityType: table,
         context: safeContext({
             constraint,
             table,
-            column: column || null, // note: undefined → null変換
+            column: column || null,
         }),
         ...meta,
     },
@@ -159,15 +207,24 @@ export const dbTimeoutError = (
     timeoutMs: number,
     meta: Partial<ErrorMeta> = {},
 ): DbTimeoutError => ({
-    kind: "External",
-    detailKind: "DbTimeout",
+    kind: ERROR_KIND.EXTERNAL,
+    detailKind: DB_ERROR_KINDS.QUERY_TIMEOUT,
     code: "DB_TIMEOUT",
     message: `Database query timeout after ${timeoutMs}ms`,
     meta: {
-        ...DEFAULT_DB_META,
+        ...DEFAULT_DB_META_BASE,
+        layer: {
+            module: (meta.layer as Partial<ErrorLayer>)?.module || "Database",
+            component:
+                (meta.layer as Partial<ErrorLayer>)?.component ||
+                ERROR_LAYERS.REPOSITORY,
+        },
         httpStatus: ERROR_HTTP_STATUS.SERVICE_UNAVAILABLE,
         operation: "timeout",
-        context: { timeoutMs, query: query.slice(0, 100) + "..." },
+        context: safeContext({
+            timeoutMs,
+            query: query.length > 100 ? query.slice(0, 100) + "..." : query,
+        }),
         ...meta,
     },
     query,
@@ -179,38 +236,29 @@ export const dbDeadlockError = (
     deadlockId: string,
     meta: Partial<ErrorMeta> = {},
 ): DbDeadlockError => ({
-    kind: "External",
-    detailKind: "DbDeadlock",
+    kind: ERROR_KIND.EXTERNAL,
+    detailKind: DB_ERROR_KINDS.DEADLOCK,
     code: "DB_DEADLOCK",
     message: `Database deadlock detected: ${deadlockId}`,
     meta: {
-        ...DEFAULT_DB_META,
+        ...DEFAULT_DB_META_BASE,
+        layer: {
+            module: (meta.layer as Partial<ErrorLayer>)?.module || "Database",
+            component:
+                (meta.layer as Partial<ErrorLayer>)?.component ||
+                ERROR_LAYERS.REPOSITORY,
+        },
         httpStatus: ERROR_HTTP_STATUS.SERVICE_UNAVAILABLE,
         operation: "deadlock",
-        context: { deadlockId, query: query.slice(0, 100) + "..." },
+        context: safeContext({
+            deadlockId,
+            query: query.length > 100 ? query.slice(0, 100) + "..." : query,
+        }),
         ...meta,
     },
     query,
     deadlockId,
 });
-
-const safeContext = (
-    data: Record<string, unknown>,
-): Record<string, string | number | boolean> => {
-    const result: Record<string, string | number | boolean> = {};
-    for (const [key, value] of Object.entries(data)) {
-        if (value === null || value === undefined) {
-            result[key] = false;
-        } else if (Array.isArray(value)) {
-            result[key] = value.length.toString();
-        } else if (typeof value === "object") {
-            result[key] = Object.keys(value).length.toString();
-        } else {
-            result[key] = value as string | number | boolean;
-        }
-    }
-    return result;
-};
 
 export const dbDuplicateKeyError = (
     table: string,
@@ -218,18 +266,24 @@ export const dbDuplicateKeyError = (
     keyValues: unknown[],
     meta: Partial<ErrorMeta> = {},
 ): DbDuplicateKeyError => ({
-    kind: "External",
-    detailKind: "DbDuplicateKey",
+    kind: ERROR_KIND.EXTERNAL,
+    detailKind: DB_ERROR_KINDS.DUPLICATE_KEY,
     code: "DB_DUPLICATE_KEY",
     message: `Duplicate key violation on ${table}`,
     meta: {
-        ...DEFAULT_DB_META,
+        ...DEFAULT_DB_META_BASE,
+        layer: {
+            module: (meta.layer as Partial<ErrorLayer>)?.module || "Database",
+            component:
+                (meta.layer as Partial<ErrorLayer>)?.component ||
+                ERROR_LAYERS.REPOSITORY,
+        },
         httpStatus: ERROR_HTTP_STATUS.CONFLICT,
-        entityType: table,
         context: safeContext({
+            table,
             keyFields: keyFields.join(","),
             keyValuesCount: keyValues.length,
-            firstKeyValueType: typeof keyValues[0],
+            firstKeyValueType: keyValues[0] ? typeof keyValues[0] : "unknown",
         }),
         ...meta,
     },
