@@ -1,0 +1,244 @@
+# Sentinel Security Design
+
+## Threat Model
+
+Sentinel processes application logs that may contain PII, security events, and compliance-critical data. The threat model addresses:
+
+| Threat | Mitigation | Status |
+|--------|-----------|--------|
+| **Log tampering** | HMAC-SHA256 hash chain with secret key | Implemented |
+| **PII exposure in logs** | Multi-pattern masking (regex, category, key-match) | Implemented |
+| **Timing attacks on hash verification** | `crypto/subtle.ConstantTimeCompare` (Go) | Implemented |
+| **Replay attacks** | Hash chain links each log to its predecessor | Implemented |
+| **Log injection (null bytes, control chars)** | Input validation rejects invalid UTF-8, null bytes; strips control characters | Implemented |
+| **Unauthorized log submission** | gRPC with payload size limits (1MB) | Implemented (size limits) |
+| **Secret key exposure** | Environment variable required, no defaults, minimum 32 bytes | Implemented |
+| **Concurrent state corruption** | `sync.Mutex` on hash chain, `sync.RWMutex` on handler registry | Implemented |
+| **PII in error messages** | gRPC returns generic error codes; details logged server-side only | Implemented |
+| **Critical action without handler** | `KILL_SWITCH` / `AUTOMATED_REMEDIATE` fail if no handler registered | Implemented |
+| **MitM on gRPC** | TLS/mTLS support | Not yet implemented (see Roadmap) |
+| **Service impersonation** | mTLS client certificates / API key auth | Not yet implemented (see Roadmap) |
+| **Rate-based DoS** | Per-client rate limiting | Not yet implemented (see Roadmap) |
+
+---
+
+## Hash Chain Integrity
+
+### Algorithm
+
+```
+H_n = HMAC-SHA256(key, serialize(L_n) + H_{n-1})
+
+Where:
+  key      = SENTINEL_HMAC_KEY (minimum 32 bytes, from environment variable)
+  L_n      = Log entry with hash and signature fields zeroed
+  H_{n-1}  = Previous log's hash (empty string for first log)
+  serialize = Deterministic JSON (keys sorted alphabetically at every depth)
+```
+
+### Properties
+
+| Property | Guarantee |
+|----------|-----------|
+| **Integrity** | Any modification to a log entry invalidates its hash and all subsequent hashes |
+| **Ordering** | Each hash depends on the previous, enforcing sequential order |
+| **Authenticity** | HMAC requires the secret key; without it, valid hashes cannot be forged |
+| **Determinism** | Same log + same previousHash + same key = same hash (keys sorted, undefined → null) |
+| **Constant-time verification** | Go uses `crypto/subtle.ConstantTimeCompare` to prevent timing side channels |
+
+### What is NOT guaranteed
+
+| Limitation | Reason |
+|-----------|--------|
+| Cross-server chain | Each server instance maintains its own in-memory chain. Chain resets on restart. |
+| Non-repudiation | HMAC is symmetric. Both parties with the key can produce valid hashes. Use Ed25519 signatures for non-repudiation (not implemented). |
+| Persistence | Hash chain lives in memory only. For durable chains, persist hashes to external storage. |
+
+### Key Management
+
+```bash
+# Generate a secure key
+openssl rand -base64 32
+
+# Set as environment variable (required)
+export SENTINEL_HMAC_KEY="$(openssl rand -base64 32)"
+
+# The server refuses to start without a valid key
+# Minimum length: 32 bytes
+```
+
+The Go server validates the key at startup:
+- Empty key: exits with error
+- Key < 32 bytes: exits with error
+- No hardcoded defaults exist in the codebase
+
+---
+
+## PII Masking
+
+### Covered PII Patterns
+
+| Category | Pattern | Example Input | Masked Output |
+|----------|---------|---------------|---------------|
+| `EMAIL` | `[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}` | `admin@example.com` | `[MASKED_EMAIL]` |
+| `CREDIT_CARD` | `\b(?:\d[ -]*?){13,19}\b` | `4111 1111 1111 1111` | `[MASKED_CREDIT_CARD]` |
+| `PHONE` | `(\+81\|0)\d{1,4}[- ]?\d{1,4}[- ]?\d{4}` | `090-1234-5678` | `[MASKED_PHONE]` |
+| `GOVERNMENT_ID` | `\b\d{12}\b` | `123456789012` | `[MASKED_GOVERNMENT_ID]` |
+
+### Masking Scope
+
+**Go Server** masks the following fields:
+- `log.Message` — always masked
+- `log.ActorID` — masked unless `"actorId"` is in `preserveFields`
+- `log.Tags[].Category` — masked unless the tag's `Key` is in `preserveFields`
+
+**TypeScript SDK** masks:
+- `log.message` — via string-level rules (REGEX, PII_TYPE)
+- Object-level masking via `KEY_MATCH` rules
+
+### Rule Types
+
+| Type | Description | Configuration |
+|------|-------------|---------------|
+| `REGEX` | Custom regex pattern with replacement string | `{ type: "REGEX", pattern: /secret-\d+/, replacement: "[REDACTED]" }` |
+| `PII_TYPE` | Built-in PII category detection | `{ type: "PII_TYPE", category: "EMAIL" }` |
+| `KEY_MATCH` | Mask object keys by name | `{ type: "KEY_MATCH", sensitiveKeys: ["password", "ssn"] }` |
+
+### Preserve Fields
+
+Fields listed in `preserveFields` are exempt from masking. Use this for correlation IDs that must remain readable:
+
+```typescript
+preserveFields: ["traceId", "spanId"]
+```
+
+### Known Limitations
+
+| Limitation | Detail |
+|-----------|--------|
+| Phone patterns | Currently Japan-format only (+81/0XX). International formats not covered. |
+| Credit card validation | Pattern-based only. No Luhn algorithm check. |
+| Unicode normalization | Different Unicode representations of the same character may bypass regex. |
+| Nested PII | `KEY_MATCH` works recursively on objects, but string-level PII within nested string fields depends on rule order. |
+
+---
+
+## Input Validation (Go Server)
+
+The normalizer (`internal/engine/normalizer.go`) enforces:
+
+| Check | Behavior |
+|-------|----------|
+| Empty message | Returns error (rejected) |
+| Message > 65,536 chars | Returns error (rejected) |
+| Invalid UTF-8 | Returns error (rejected) |
+| Null bytes (`\x00`) | Returns error (rejected) |
+| Control characters | Silently removed (except `\t` and `\n`) |
+| Invalid LogType | Falls back to `SYSTEM` |
+| Invalid LogLevel (outside 1-6) | Falls back to `3` (INFO) |
+| Invalid Origin | Falls back to `SYSTEM` |
+| Missing traceId | Auto-generated UUID v4 |
+| Missing timestamp | Set to `time.Now().UTC()` |
+| Missing boundary | Set to `"unknown"` |
+
+---
+
+## gRPC Security
+
+### Current Implementation
+
+| Feature | Status |
+|---------|--------|
+| Payload size limit | 1MB (MaxRecvMsgSize / MaxSendMsgSize) |
+| Concurrent stream limit | 1000 (MaxConcurrentStreams) |
+| Error message sanitization | Internal errors return `codes.Internal` with generic message |
+| Input validation at API boundary | Empty message returns `codes.InvalidArgument` |
+| Structured logging | `log/slog` JSON format with traceId |
+| Graceful shutdown | 30-second timeout, then force stop |
+
+### Not Yet Implemented (Production Roadmap)
+
+| Feature | Priority | Notes |
+|---------|---------|-------|
+| TLS (server-side) | Required for production | Load cert/key from `SENTINEL_TLS_CERT_PATH` / `SENTINEL_TLS_KEY_PATH` |
+| mTLS (mutual) | Required for production | Client certificate verification against CA pool |
+| API key authentication | Required for production | gRPC metadata interceptor |
+| Per-client rate limiting | Required for production | Token bucket per source IP/service ID |
+| Request tracing | Recommended | OpenTelemetry gRPC interceptor |
+
+---
+
+## Task Execution Safety
+
+### Execution Levels
+
+| Level | Behavior | Use Case |
+|-------|----------|----------|
+| `AUTO` | Dispatched immediately to registered handlers | Low-risk automated responses (notifications, logging) |
+| `SEMI_AUTO` | Dispatched unless `requireHumanApproval` is set | Medium-risk actions (restart services, adjust configs) |
+| `MANUAL` | Always blocked (requires human approval) | High-risk actions (data deletion, infrastructure changes) |
+| `MONITOR` | Skipped (no action taken, observation only) | Baseline monitoring, trend analysis |
+
+### Guardrails
+
+| Guardrail | Effect |
+|-----------|--------|
+| `requireHumanApproval: true` | Task status set to `blocked_approval` regardless of execution level |
+| No handler registered for `KILL_SWITCH` | Returns error (Go server). Task marked as `failed`. |
+| No handler registered for `AUTOMATED_REMEDIATE` | Returns error (Go server). Task marked as `failed`. |
+| No handler registered for other actions | Task marked as `dispatched` (noop). |
+
+### AI Loop Prevention
+
+Logs with `origin: "AI_AGENT"` are not evaluated by the EventDetector (unless `isCritical: true`). This prevents:
+1. AI agent generates a log
+2. Detector fires on that log
+3. Task generated triggers AI agent
+4. AI agent generates another log → infinite loop
+
+---
+
+## Audit Trail
+
+Every processed log produces an `IngestionResult` containing:
+
+```json
+{
+  "traceId": "uuid-v4",
+  "hashChainValid": true,
+  "masked": true,
+  "tasksGenerated": [
+    {
+      "taskId": "uuid-v4",
+      "ruleId": "crit-notify",
+      "status": "dispatched",
+      "dispatchedAt": "2026-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+Server-side structured logs (JSON via `log/slog`) include:
+- `traceId` for correlation
+- Error details (server-side only, never sent to client)
+- Task dispatch events with ruleId, actionType, severity
+
+---
+
+## Compliance Considerations
+
+| Standard | Relevant Controls | Sentinel Coverage |
+|----------|-------------------|-------------------|
+| **SOC 2 Type II** | CC6.1 (logical access), CC7.2 (monitoring) | Hash chain integrity, PII masking, structured audit logging |
+| **ISO 27001** | A.12.4 (logging), A.18.1.4 (privacy) | Tamper-evident logs, PII redaction, error taxonomy |
+| **GDPR** | Art. 5(1)(f) (integrity), Art. 32 (security) | HMAC integrity, masking at collection point |
+| **PCI DSS** | Req. 10 (logging), Req. 3 (protect stored data) | Credit card masking, hash chain, audit trail |
+
+### Not Yet Addressed
+
+| Requirement | Gap |
+|-------------|-----|
+| GDPR Right to Erasure (Art. 17) | No mechanism to find/delete logs by actor ID |
+| SOC 2 CC6.3 (role-based access) | No RBAC on gRPC endpoints |
+| ISO 27001 A.10.1 (cryptographic controls policy) | Key rotation not automated |
+| PCI DSS Req. 10.5 (secure audit trails) | Logs stored in memory only, not persisted |

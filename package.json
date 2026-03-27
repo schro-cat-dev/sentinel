@@ -1,7 +1,7 @@
 {
   "name": "@schro-cat-dev/sentinel",
-  "version": "0.1.0-alpha.1",
-  "description": "TypeScript Logging Libraries targeting Financial-Grade+ requirements. Adopts WAL for durability, WorkerPool for scalability, Hash-Chaining for integrity, PII Masking for privacy, and AI Agentic & Deterministic Processing for intelligent log analysis. (Alpha)",
+  "version": "0.1.0-alpha.2",
+  "description": "TypeScript client SDK for intelligent log-to-task automation. Detects events from logs, auto-generates remediation tasks, and dispatches actions. Backend server planned in Go.",
   "main": "./dist/index.cjs",
   "types": "./dist/index.d.ts",
   "type": "module",
@@ -14,23 +14,24 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc && rollup -c",
-    "gen:proto": "protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated --ts_proto_opt=esModuleInterop=true,outputServices=false,oneof=unions,forceLong=bigint,useOptionals=messages,outputJsonMethods=false,outputEncodeMethods=true ./src/proto/wal.proto",
     "prepublishOnly": "npm run build",
     "test": "vitest run",
-    "lint": "eslint \"src/**/*.ts\""
+    "test:watch": "vitest",
+    "lint": "eslint \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit"
   },
   "files": [
     "dist",
-    "dist/workers",
     "README.md",
     "LICENSE"
   ],
   "keywords": [
     "logging",
-    "ai",
-    "wal",
+    "task-automation",
+    "event-detection",
     "integrity",
-    "audit-log",
+    "hash-chain",
+    "pii-masking",
     "typescript"
   ],
   "author": "sy (schro-cat-dev)",
@@ -38,20 +39,14 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@rollup/plugin-typescript": "^11.1.6",
-    "@types/luxon": "^3.7.1",
     "@types/node": "^20.19.30",
     "eslint": "^9.39.2",
     "globals": "^17.1.0",
     "rollup": "^4.56.0",
     "ts-node": "^10.9.0",
-    "ts-proto": "^2.11.0",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.53.1",
     "vitest": "^4.0.18"
   },
-  "dependencies": {
-    "long": "^5.3.2",
-    "luxon": "^3.7.2",
-    "protobufjs": "^8.0.0"
-  }
+  "dependencies": {}
 }

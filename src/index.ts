@@ -1,71 +1,112 @@
-import { DIContainer } from "./bootstrap/di-container";
-import { WorkerPool } from "./bootstrap/worker-pool";
-import { DetailedConfig } from "./configs/detailed-config";
-import { GlobalConfig } from "./configs/global-config";
+import { SentinelConfig, createDefaultConfig } from "./configs/sentinel-config";
 import { IngestionEngine } from "./core/engine/ingestion-engine";
+import { LogNormalizer } from "./core/engine/log-normalizer";
+import { MaskingService } from "./security/masking-service";
+import { IntegritySigner } from "./security/integrity-signer";
+import { EventDetector } from "./core/detection/event-detector";
+import { TaskGenerator } from "./core/task/task-generator";
+import { TaskExecutor, TaskDispatchHandler } from "./core/task/task-executor";
 import { Log } from "./types/log";
+import { IngestionResult } from "./core/engine/types";
 
-// TODO ai-intelligence周り + 他細微な内部調整、確認が終わってから調整
-export class Logger {
-    private static instance: Logger;
-    private engine!: IngestionEngine;
-    private workerPool!: WorkerPool;
+/**
+ * Sentinel v1 Client SDK
+ *
+ * ログ → イベント検知 → タスク自動生成 → アクションディスパッチ
+ * バックエンドサーバはGoに移行予定。本SDKはクライアント側の責務のみ担当。
+ */
+export class Sentinel {
+    private static instance: Sentinel | null = null;
+    private readonly engine: IngestionEngine;
+    private readonly taskExecutor: TaskExecutor;
+    private readonly config: SentinelConfig;
     private initialized = false;
 
-    private constructor() {}
+    private constructor(config: SentinelConfig) {
+        this.config = config;
 
-    public static async initialize(
-        gConfig: GlobalConfig,
-        dConfig: DetailedConfig,
-    ): Promise<Logger> {
-        if (this.instance?.initialized) return this.instance;
+        const normalizer = new LogNormalizer(config.serviceId);
+        const masking = new MaskingService();
+        const signer = new IntegritySigner();
+        const detector = new EventDetector();
+        const taskGenerator = new TaskGenerator(config.taskRules);
+        this.taskExecutor = new TaskExecutor();
 
-        const logger = new Logger();
-        const diContainer = new DIContainer(gConfig, dConfig);
+        this.engine = new IngestionEngine({
+            config,
+            normalizer,
+            masking,
+            signer,
+            detector,
+            taskGenerator,
+            taskExecutor: this.taskExecutor,
+        });
 
-        await diContainer.init();
-
-        logger.engine = diContainer.resolve<IngestionEngine>("IngestionEngine");
-        logger.workerPool = diContainer.resolve<WorkerPool>("WorkerPool");
-        logger.initialized = true;
-
-        this.instance = logger;
-        console.log(
-            `[Logger] Successfully initialized for project: ${gConfig.projectName}`,
-        );
-        return this.instance;
+        this.initialized = true;
     }
 
-    public static getInstance(): Logger {
-        if (!this.instance) throw new Error("Logger must be initialized first");
-        return this.instance;
+    /**
+     * Sentinel を初期化（シングルトン）
+     */
+    public static initialize(config: SentinelConfig): Sentinel {
+        if (Sentinel.instance?.initialized) return Sentinel.instance;
+        Sentinel.instance = new Sentinel(config);
+        return Sentinel.instance;
+    }
+
+    /**
+     * インスタンス取得
+     */
+    public static getInstance(): Sentinel {
+        if (!Sentinel.instance) {
+            throw new Error("Sentinel must be initialized first. Call Sentinel.initialize(config).");
+        }
+        return Sentinel.instance;
+    }
+
+    /**
+     * インスタンスリセット（テスト用）
+     */
+    public static reset(): void {
+        Sentinel.instance = null;
     }
 
     /**
      * ログ投入
      */
-    public async ingest(log: Partial<Log>): Promise<void> {
+    public async ingest(log: Partial<Log>): Promise<IngestionResult> {
         return this.engine.handle(log);
     }
 
     /**
-     * 正常終了処理
-     * 全ての Worker を停止し、仕掛かり中のログを保護する
+     * タスクアクションハンドラの登録
      */
-    public async shutdown(): Promise<void> {
-        console.log("[Logger] Initiating graceful shutdown...");
+    public onTaskAction(actionType: string, handler: TaskDispatchHandler): void {
+        this.taskExecutor.registerHandler(actionType, handler);
+    }
 
-        // 1. WorkerPool の停止（処理中のタスク完了を待機）
-        await this.workerPool.shutdown();
-
-        // 2. 必要に応じて Transport のフラッシュ（TransportManager がある場合）
-
-        this.initialized = false;
-        console.log("[Logger] Shutdown complete.");
+    /**
+     * 現在の設定を取得
+     */
+    public getConfig(): Readonly<SentinelConfig> {
+        return this.config;
     }
 }
 
-// 型のエクスポート
-export * from "./types/log";
-export * from "./configs/global-config";
-export * from "./configs/detailed-config";
+// Public API exports
+export { createDefaultConfig } from "./configs/sentinel-config";
+export type { SentinelConfig } from "./configs/sentinel-config";
+export type { MaskingRule } from "./configs/masking-rule";
+export type { Log, LogType, LogLevel, LogTag } from "./types/log";
+export type { IngestionResult } from "./core/engine/types";
+export type {
+    TaskRule,
+    GeneratedTask,
+    TaskResult,
+    TaskActionType,
+    TaskPriority,
+    TaskSeverity,
+    TaskExecutionLevel,
+} from "./types/task";
+export type { SystemEventName, DetectionResult } from "./types/event";
+export type { TaskDispatchHandler } from "./core/task/task-executor";

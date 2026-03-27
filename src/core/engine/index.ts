@@ -1,15 +1,4 @@
-export {
-    type IIngestionCoordinator,
-    createIngestionEngine,
-} from "./ingestion-engine";
-export type {
-    OverflowStrategy,
-    RecoveryStatus,
-    IngestionResult,
-} from "./types";
-export type {
-    ILoggerNormalizer,
-    IPersistenceLayer,
-    IQueueAdapter,
-    IRecoveryService,
-} from "./i-interfaces";
+export { IngestionEngine } from "./ingestion-engine";
+export type { IngestionResult } from "./types";
+export type { IIngestionCoordinator, ILogNormalizer } from "./i-interfaces";
+export { LogNormalizer } from "./log-normalizer";

@@ -1,4 +1,4 @@
-import { MaskingRule } from "../configs/detailed-config";
+import { MaskingRule } from "../configs/masking-rule";
 
 interface MaskingContext {
     readonly seen: WeakSet<object>;
@@ -64,14 +64,23 @@ export class MaskingService {
                 const result: unknown[] = [];
                 for (let i = 0; i < Math.min(data.length, maxLength); i++) {
                     const item = data[i];
-                    const itemResult = MaskingService.maskInternal(
-                        item,
-                        rules,
-                        preserveFields,
-                        { ...context, depth: context.depth }, // 子コンテキスト共有
-                        options,
-                    );
-                    result.push(itemResult);
+                    if (item === null || item === undefined) {
+                        result.push(item);
+                    } else if (typeof item === "string") {
+                        result.push(MaskingService.maskString(item, rules));
+                    } else if (typeof item === "object") {
+                        result.push(
+                            MaskingService.maskInternal(
+                                item,
+                                rules,
+                                preserveFields,
+                                { ...context, depth: context.depth },
+                                options,
+                            ),
+                        );
+                    } else {
+                        result.push(item);
+                    }
                 }
                 return result;
             }
@@ -104,13 +113,19 @@ export class MaskingService {
                     continue;
                 }
 
-                result[key] = MaskingService.maskInternal(
-                    value,
-                    rules,
-                    preserveFields,
-                    { ...context, depth: context.depth },
-                    options,
-                );
+                if (typeof value === "string") {
+                    result[key] = MaskingService.maskString(value, rules);
+                } else if (typeof value === "object") {
+                    result[key] = MaskingService.maskInternal(
+                        value,
+                        rules,
+                        preserveFields,
+                        { ...context, depth: context.depth },
+                        options,
+                    );
+                } else {
+                    result[key] = value;
+                }
             }
 
             return result;

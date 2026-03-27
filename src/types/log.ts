@@ -103,7 +103,3 @@ export interface ServiceInfo {
     DIContainerRuntime?: string; // "docker", "di-containerd"
 }
 
-export interface WalEntryRaw extends Log {
-    sequenceId: bigint;
-    prevHash: string;
-}

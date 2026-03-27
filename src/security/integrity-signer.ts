@@ -1,24 +1,45 @@
-import { createHash, createSign } from "node:crypto";
+import { createHash } from "node:crypto";
 import { Log } from "../types/log";
-// TODO
-/**
- * ログに含めることが可能な値の厳格な定義
- */
+
 type JsonPrimitive = string | number | boolean | null;
 type JsonObject = { [key: string]: JsonValue };
 type JsonArray = JsonValue[];
 type JsonValue = JsonPrimitive | JsonObject | JsonArray;
 
+/**
+ * ハッシュチェーン管理（インメモリ）
+ * H_n = SHA256(L_n || H_{n-1})
+ */
 export class IntegritySigner {
+    private previousHash = "";
+
+    /**
+     * 現在のチェーンの最新ハッシュを取得
+     */
+    public getPreviousHash(): string {
+        return this.previousHash;
+    }
+
+    /**
+     * チェーンの最新ハッシュを更新
+     */
+    public updateChain(hash: string): void {
+        this.previousHash = hash;
+    }
+
+    /**
+     * チェーンをリセット
+     */
+    public resetChain(): void {
+        this.previousHash = "";
+    }
+
     /**
      * 前のハッシュと現在のログを結合して SHA-256 ハッシュを計算
      */
     public static calculateHash(log: Log, previousHash: string): string {
-        // 整合性チェック対象外のフィールドを除外
-        const immutableParts = this.omit(log, ["hash", "signature"]);
-
-        // 決定論的シリアライズ
-        const serializedData = this.deterministicStringify(immutableParts);
+        const immutableParts = IntegritySigner.omit(log, ["hash", "signature"]);
+        const serializedData = IntegritySigner.deterministicStringify(immutableParts);
 
         return createHash("sha256")
             .update(serializedData + previousHash)
@@ -26,75 +47,65 @@ export class IntegritySigner {
     }
 
     /**
+     * 指定されたログのハッシュを検証
+     */
+    public static verifyHash(log: Log, expectedPreviousHash: string): boolean {
+        if (!log.hash) return false;
+        const computed = IntegritySigner.calculateHash(log, expectedPreviousHash);
+        return computed === log.hash;
+    }
+
+    /**
      * 決定論的なシリアライズ
-     * 型ガードを用いて JsonValue であることを保証した上で処理
      */
     private static deterministicStringify(val: unknown): string {
-        // 1. 型ガードによる検証
-        if (!this.isJsonValue(val)) {
-            // JsonValue でない場合（undefined や Symbol 等）は、
-            // 決定論的ハッシュを壊さないための既定値に変換するか例外を投げる
+        if (!IntegritySigner.isJsonValue(val)) {
             return "null";
         }
 
-        // 2. プリミティブ値の処理
         if (val === null || typeof val !== "object") {
             return JSON.stringify(val);
         }
 
-        // 3. 配列の処理
         if (Array.isArray(val)) {
-            const items = val.map((item) => this.deterministicStringify(item));
+            const items = val.map((item) => IntegritySigner.deterministicStringify(item));
             return `[${items.join(",")}]`;
         }
 
-        // 4. オブジェクトの処理（キーをソート）
         const obj = val as JsonObject;
         const sortedKeys = Object.keys(obj).sort();
 
         const kvPairs = sortedKeys.map((key) => {
             const value = obj[key];
-            // JSON.stringify は undefined をキーごと消すが、
-            // ハッシュ計算では明示的に null 扱いにするか、一貫したルールが必要
             const safeValue =
                 value === undefined
                     ? "null"
-                    : this.deterministicStringify(value);
+                    : IntegritySigner.deterministicStringify(value);
             return `${JSON.stringify(key)}:${safeValue}`;
         });
 
         return `{${kvPairs.join(",")}}`;
     }
 
-    /**
-     * 再帰的な型ガード: 与えられた値が JsonValue であるかを確認
-     */
     private static isJsonValue(val: unknown): val is JsonValue {
         if (val === null) return true;
         const type = typeof val;
-        if (type === "string" || type === "number" || type === "boolean")
-            return true;
+        if (type === "string" || type === "number" || type === "boolean") return true;
 
         if (Array.isArray(val)) {
-            return val.every((item) => this.isJsonValue(item));
+            return val.every((item) => IntegritySigner.isJsonValue(item));
         }
 
         if (type === "object") {
-            // プロトタイプが Object でないもの（関数やクラスインスタンス）を除外
-            if (Object.prototype.toString.call(val) !== "[object Object]")
-                return false;
-
+            if (Object.prototype.toString.call(val) !== "[object Object]") return false;
             return Object.values(val as Record<string, unknown>).every((item) =>
-                this.isJsonValue(item),
+                IntegritySigner.isJsonValue(item),
             );
         }
 
         return false;
     }
 
-    /**
-     * 特定のプロパティを型安全に除外
-     */
     private static omit<T extends object, K extends keyof T>(
         obj: T,
         keys: K[],
@@ -104,14 +115,5 @@ export class IntegritySigner {
             delete result[key];
         }
         return result as Omit<T, K>;
-    }
-
-    /**
-     * 秘密鍵による署名
-     */
-    public static sign(logHash: string, privateKey: string): string {
-        const signer = createSign("SHA256");
-        signer.update(logHash);
-        return signer.sign(privateKey, "hex");
     }
 }

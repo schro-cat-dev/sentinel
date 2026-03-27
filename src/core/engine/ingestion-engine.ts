@@ -1,103 +1,89 @@
-import { WorkerPool } from "../../bootstrap/worker-pool";
-import { GlobalConfig } from "../../configs/global-config";
 import { Log } from "../../types/log";
-import { WALManager } from "../../infrastructure/persistence/wal-manager";
-import {
-    ILoggerNormalizer,
-    IPersistenceLayer,
-    IQueueAdapter,
-    IRecoveryService,
-} from "./i-interfaces";
+import { MaskingService } from "../../security/masking-service";
+import { IntegritySigner } from "../../security/integrity-signer";
+import { EventDetector } from "../detection/event-detector";
+import { TaskGenerator } from "../task/task-generator";
+import { TaskExecutor } from "../task/task-executor";
 import { LogNormalizer } from "./log-normalizer";
-import { PersistenceLayer } from "./persistence-layer";
-import { QueueAdapter } from "./queue-adapter";
-import { RecoveryService } from "./recovery-service";
+import { IIngestionCoordinator } from "./i-interfaces";
 import { IngestionResult } from "./types";
-
-export interface IIngestionCoordinator {
-    handle(raw: Partial<Log>): Promise<IngestionResult>;
-}
+import { SentinelConfig } from "../../configs/sentinel-config";
+import { TaskResult } from "../../types/task";
 
 export class IngestionEngine implements IIngestionCoordinator {
-    private readonly normalizer: ILoggerNormalizer;
-    private readonly persistence: IPersistenceLayer;
-    private readonly queue: IQueueAdapter;
-    private readonly recovery: IRecoveryService;
-    private readonly gConfig: GlobalConfig;
+    private readonly normalizer: LogNormalizer;
+    private readonly masking: MaskingService;
+    private readonly signer: IntegritySigner;
+    private readonly detector: EventDetector;
+    private readonly taskGenerator: TaskGenerator;
+    private readonly taskExecutor: TaskExecutor;
+    private readonly config: SentinelConfig;
 
     constructor(deps: {
-        gConfig: GlobalConfig;
-        wal: WALManager;
-        workerPool: WorkerPool;
-        // taskRepo: ITaskRepository;
+        config: SentinelConfig;
+        normalizer: LogNormalizer;
+        masking: MaskingService;
+        signer: IntegritySigner;
+        detector: EventDetector;
+        taskGenerator: TaskGenerator;
+        taskExecutor: TaskExecutor;
     }) {
-        this.gConfig = deps.gConfig;
-
-        this.normalizer = new LogNormalizer(deps.gConfig);
-        this.persistence = new PersistenceLayer(deps.wal);
-        this.queue = new QueueAdapter(deps.workerPool, deps.gConfig);
-        this.recovery = new RecoveryService(this.persistence, this.queue);
-
-        // 復旧処理を非同期起動（メイン処理と分離）
-        this.recovery
-            .recoverUnsentLogs()
-            .catch((err) =>
-                console.error("[IngestionEngine] Recovery failed:", err),
-            );
+        this.config = deps.config;
+        this.normalizer = deps.normalizer;
+        this.masking = deps.masking;
+        this.signer = deps.signer;
+        this.detector = deps.detector;
+        this.taskGenerator = deps.taskGenerator;
+        this.taskExecutor = deps.taskExecutor;
     }
 
     async handle(raw: Partial<Log>): Promise<IngestionResult> {
+        // 1. Normalize
         const log = this.normalizer.normalize(raw);
 
-        const [persistResult, dispatchResult] = await Promise.allSettled([
-            this.persistence.append(log),
-            this.queue.enqueueWithBackpressure(log),
-        ]);
-
-        // オーバーフロー処理
-        let overflowHandled = false;
-        if (dispatchResult.status === "rejected") {
-            this.handleOverflow(log, dispatchResult.reason);
-            overflowHandled = true;
+        // 2. Mask PII (if enabled)
+        let masked = false;
+        if (this.config.masking.enabled) {
+            const maskedMessage = MaskingService.mask(
+                log.message,
+                this.config.masking.rules,
+                this.config.masking.preserveFields,
+            ) as string;
+            log.message = maskedMessage;
+            masked = true;
         }
+
+        // 3. Hash-chain (if enabled)
+        let hashChainValid = false;
+        if (this.config.security.enableHashChain) {
+            const previousHash = this.signer.getPreviousHash();
+            log.previousHash = previousHash;
+            log.hash = IntegritySigner.calculateHash(log, previousHash);
+            this.signer.updateChain(log.hash);
+            hashChainValid = true;
+        }
+
+        // 4. Detect events
+        const detection = this.detector.detect(log);
+
+        // 5. Generate + dispatch tasks
+        const tasksGenerated: TaskResult[] = [];
+        if (detection) {
+            const tasks = this.taskGenerator.generate(detection, log);
+            for (const task of tasks) {
+                const result = await this.taskExecutor.dispatch(task);
+                tasksGenerated.push(result);
+            }
+        }
+
+        // 6. Emit to handlers
+        this.config.onLogProcessed?.(log);
 
         return {
             traceId: log.traceId,
-            persisted: persistResult.status === "fulfilled",
-            dispatched: dispatchResult.status === "fulfilled",
-            overflowHandled,
+            hashChainValid,
+            tasksGenerated,
+            masked,
         };
     }
-
-    /**
-     * オーバーフロー専用ハンドラ
-     */
-    private handleOverflow(log: Log, error: unknown): void {
-        const strategy = this.gConfig.concurrency.overflowStrategy;
-
-        // クリティカルログは強制出力（金融要件志向）
-        if (log.isCritical || log.level >= 5) {
-            console.error(
-                "[IngestionEngine] CRITICAL LOG OVERFLOW:",
-                JSON.stringify(log),
-            );
-        }
-
-        if (strategy === "FAIL_FAST") {
-            const errMsg = `Log queue overflow: ${
-                error instanceof Error ? error.message : String(error)
-            }`;
-            throw new Error(errMsg);
-        }
-        // TODO DROP_LOW_PRIORITYはサイレントドロップなので要改修
-    }
 }
-
-export const createIngestionEngine = (deps: {
-    gConfig: GlobalConfig;
-    wal: WALManager;
-    workerPool: WorkerPool;
-    // taskRepo: ITaskRepository;
-}): IIngestionCoordinator => {
-    return new IngestionEngine(deps);
-};

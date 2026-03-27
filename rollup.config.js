@@ -7,14 +7,7 @@ export default {
         { file: 'dist/index.mjs', format: 'es' }
     ],
     plugins: [typescript()],
-    // Node.jsビルトイン 外部化
     external: [
-        'node:fs',
-        'node:path',
         'node:crypto',
-        'node:worker_threads',
-        'node:events',
-        'node:url',
-        'node:process'
     ]
 };

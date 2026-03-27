@@ -1,0 +1,87 @@
+server:
+  addr: ":50051"
+  max_recv_msg_size_bytes: 1048576
+  max_concurrent_streams: 1000
+  graceful_timeout_sec: 30
+
+security:
+  # hmac_key: override via SENTINEL_HMAC_KEY env var (required, min 32 bytes)
+  enable_masking: true
+  enable_hash_chain: true
+  preserve_fields:
+    - traceId
+    - spanId
+    - ip
+  masking_depth_limit: 32
+  masking_rules:
+    - type: PII_TYPE
+      category: EMAIL
+    - type: PII_TYPE
+      category: CREDIT_CARD
+    - type: PII_TYPE
+      category: PHONE
+    - type: PII_TYPE
+      category: GOVERNMENT_ID
+    - type: PII_TYPE
+      category: JAPAN_ACCOUNT
+    - type: PII_TYPE
+      category: POSTAL_CODE
+
+pipeline:
+  service_id: sentinel-server
+  rules:
+    - rule_id: crit-notify
+      event_name: SYSTEM_CRITICAL_FAILURE
+      severity: HIGH
+      action_type: SYSTEM_NOTIFICATION
+      execution_level: AUTO
+      priority: 1
+      description: "Notify on critical system failure"
+      exec_params:
+        notification_channel: "#incidents"
+      guardrails:
+        require_human_approval: false
+        timeout_ms: 30000
+        max_retries: 3
+
+    - rule_id: sec-analyze
+      event_name: SECURITY_INTRUSION_DETECTED
+      severity: HIGH
+      action_type: AI_ANALYZE
+      execution_level: SEMI_AUTO
+      priority: 1
+      description: "AI analysis of security intrusion (requires approval)"
+      guardrails:
+        require_human_approval: false
+        timeout_ms: 60000
+        max_retries: 2
+
+    - rule_id: comp-escalate
+      event_name: COMPLIANCE_VIOLATION
+      severity: MEDIUM
+      action_type: ESCALATE
+      execution_level: MANUAL
+      priority: 1
+      description: "Escalate compliance violation to legal team"
+      exec_params:
+        notification_channel: "#legal-compliance"
+      guardrails:
+        require_human_approval: true
+        timeout_ms: 86400000
+        max_retries: 0
+
+store:
+  driver: sqlite
+  dsn: "file:sentinel.db?_journal=WAL"
+
+auth:
+  enabled: false
+  # api_keys: override via SENTINEL_API_KEYS env var (comma-separated)
+  rate_limit_rps: 100
+  rate_limit_burst: 200
+
+webhook:
+  enabled: false
+  url: ""
+  timeout_sec: 10
+  # secret: HMAC secret for webhook payload signing

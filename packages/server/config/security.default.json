@@ -1,0 +1,39 @@
+{
+  "enabled": true,
+  "cors": {
+    "allowed_origins": [],
+    "allowed_methods": ["POST"],
+    "allowed_headers": ["Content-Type", "Authorization", "X-API-Key", "X-Request-ID"],
+    "exposed_headers": [],
+    "allow_credentials": false,
+    "max_age_sec": 0
+  },
+  "headers": [
+    { "key": "X-Content-Type-Options", "value": "nosniff" },
+    { "key": "X-Frame-Options", "value": "DENY" },
+    { "key": "X-DNS-Prefetch-Control", "value": "off" },
+    { "key": "X-Download-Options", "value": "noopen" },
+    { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
+    { "key": "Referrer-Policy", "value": "no-referrer" },
+    { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" },
+    { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" },
+    { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
+    { "key": "Content-Security-Policy", "value": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'" },
+    { "key": "Permissions-Policy", "value": "accelerometer=(), ambient-light-sensor=(), autoplay=(), battery=(), camera=(), clipboard-read=(), clipboard-write=(), display-capture=(), document-domain=(), encrypted-media=(), fullscreen=(), gamepad=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), interest-cohort=(), local-fonts=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), speaker-selection=(), usb=(), xr-spatial-tracking=()" },
+    { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" },
+    { "key": "Pragma", "value": "no-cache" }
+  ],
+  "honeypot_paths": [
+    "/admin", "/wp-login.php", "/.env", "/config", "/.git/config",
+    "/.aws/credentials", "/phpinfo.php", "/wp-admin", "/test.php",
+    "/shell", "/backup", "/db", "/api/keys", "/vendor",
+    "/.git/HEAD", "/server-status", "/phpmyadmin", "/administrator",
+    "/manager", "/debug", "/_profiler", "/composer.json",
+    "/package.json", "/.DS_Store", "/.gitignore", "/backup.sql"
+  ],
+  "rate_limit": {
+    "enabled": true,
+    "rps": 100,
+    "burst_max": 200
+  }
+}

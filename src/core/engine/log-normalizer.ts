@@ -1,34 +1,51 @@
 import { randomUUID } from "node:crypto";
-import { GlobalConfig } from "../../configs/global-config";
-import { Log } from "../../types/log";
-import { ILoggerNormalizer } from "./i-interfaces";
+import { Log, LogLevel, LogType } from "../../types/log";
+import { ILogNormalizer } from "./i-interfaces";
 
-export class LogNormalizer implements ILoggerNormalizer {
-    private readonly serviceId: string;
+const VALID_LOG_TYPES: readonly LogType[] = [
+    "BUSINESS-AUDIT", "SECURITY", "COMPLIANCE", "INFRA", "SYSTEM", "SLA", "DEBUG",
+];
 
-    constructor(gConfig: GlobalConfig) {
-        this.serviceId = gConfig.serviceId;
-    }
+const VALID_LOG_LEVELS: readonly LogLevel[] = [1, 2, 3, 4, 5, 6];
+
+export class LogNormalizer implements ILogNormalizer {
+    constructor(private readonly serviceId: string) {}
 
     normalize(raw: Partial<Log>): Log {
-        if (!raw.message?.trim()) {
-            throw new Error("Log message cannot be empty"); // TODO ValidationErrorがあれば使用
-        }
+        this.validate(raw);
 
         return {
             traceId: raw.traceId || randomUUID(),
-            type: raw.type || "SYSTEM",
-            level: raw.level || 3,
-            timestamp: new Date().toISOString(),
-            logicalClock: Date.now(),
+            type: raw.type && VALID_LOG_TYPES.includes(raw.type) ? raw.type : "SYSTEM",
+            level: raw.level && VALID_LOG_LEVELS.includes(raw.level) ? raw.level : 3,
+            timestamp: raw.timestamp || new Date().toISOString(),
+            logicalClock: raw.logicalClock ?? Date.now(),
             boundary: raw.boundary || "unknown",
             serviceId: this.serviceId,
-            isCritical: raw.isCritical || false,
-            message: raw.message,
-            origin: raw.origin || "SYSTEM",
-            triggerAgent: raw.triggerAgent || false,
-            tags: raw.tags || [],
-            ...raw,
-        } as Log;
+            isCritical: raw.isCritical ?? false,
+            message: raw.message!.trim(),
+            origin: raw.origin === "AI_AGENT" ? "AI_AGENT" : "SYSTEM",
+            triggerAgent: raw.triggerAgent ?? false,
+            tags: raw.tags ?? [],
+            spanId: raw.spanId,
+            parentSpanId: raw.parentSpanId,
+            actorId: raw.actorId,
+            aiContext: raw.aiContext,
+            input: raw.input,
+            details: raw.details,
+            resourceIds: raw.resourceIds,
+            previousHash: raw.previousHash,
+            hash: raw.hash,
+            signature: raw.signature,
+        };
+    }
+
+    private validate(raw: Partial<Log>): void {
+        if (!raw.message || !raw.message.trim()) {
+            throw new Error("Log message is required and cannot be empty");
+        }
+        if (raw.message.length > 65536) {
+            throw new Error("Log message exceeds maximum length of 65536 characters");
+        }
     }
 }

@@ -53,7 +53,7 @@ export const match = <T, E, R>(
     r: Result<T, E>,
     onOk: (v: T) => R,
     onErr: (e: E) => R,
-): R => (r.success ? onsuccess(r.value) : onfailure(r.error));
+): R => (r.success ? onOk(r.value) : onErr(r.error));
 
 /**
  * Result が成功ケースか（型ガード）
@@ -68,6 +68,10 @@ export const isOk = <T, E>(
 export const isErr = <T, E>(
     result: Result<T, E>,
 ): result is Extract<Result<T, E>, { success: false }> => !result.success;
+
+// Semantic aliases (WAL/infra layer conventions)
+export const issuccess = isOk;
+export const isfailure = isErr;
 
 // Resultを返す関数とのチェイン（非同期/複雑処理必須）
 export const flatMap = <T, E, U, F>(
