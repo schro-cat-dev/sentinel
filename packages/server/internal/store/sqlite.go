@@ -155,18 +155,21 @@ type SQLiteStore struct {
 }
 
 // WithTx はトランザクション内で複数操作を原子的に実行する
+// SQLiteではWALモードでも単一接続でBEGIN/COMMITを制御する。
+// fn内ではs.storeのメソッドをそのまま呼べる（同一接続で実行される）。
 func (s *SQLiteStore) WithTx(ctx context.Context, fn func(tx interface{}) error) error {
-	sqlTx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
+	if _, err := s.db.ExecContext(ctx, "BEGIN IMMEDIATE"); err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	if err := fn(sqlTx); err != nil {
-		if rbErr := sqlTx.Rollback(); rbErr != nil {
-			return fmt.Errorf("rollback failed (%v) after: %w", rbErr, err)
-		}
+	if err := fn(nil); err != nil {
+		s.db.ExecContext(ctx, "ROLLBACK")
 		return err
 	}
-	return sqlTx.Commit()
+	if _, err := s.db.ExecContext(ctx, "COMMIT"); err != nil {
+		s.db.ExecContext(ctx, "ROLLBACK")
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	return nil
 }
 
 func NewSQLiteStore(dsn string) (*SQLiteStore, error) {

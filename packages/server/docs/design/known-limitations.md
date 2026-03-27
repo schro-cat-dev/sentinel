@@ -65,8 +65,8 @@
 
 | 項目 | 現状 | 備考 |
 |---|---|---|
-| Go テスト | 622テスト、`-race` 全PASS | 12パッケージ |
-| TypeScript テスト | 184テスト、全PASS | 10テストファイル |
+| Go テスト | 632テスト、`-race` 全PASS | 13パッケージ（retryパッケージ追加） |
+| TypeScript テスト | 208テスト、全PASS | 11テストファイル（validator追加） |
 | SDK→Server ネットワーク統合テスト | なし | 両方同時起動してgrpc接続するE2Eテスト基盤が必要 |
 | 負荷テスト / ベンチマーク | `benchmark_test.go` は既存だが新モジュール未カバー | Ensemble/Anomaly/ThreatResponseのベンチマーク追加が望ましい |
 | Fuzzing | 未実装 | `go test -fuzz` でSanitizer/Masking/Detectorのfuzz対象化が可能 |

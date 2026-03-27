@@ -298,19 +298,27 @@ func (s *SentinelServer) ApproveTask(ctx context.Context, req *pb.ApproveTaskReq
 		StepOrder:   approval.CurrentStep,
 		Action:      "approved",
 		ActorID:     req.ApproverId,
-		ActorRole:   req.Reason, // reason doubles as role context for now
+		ActorRole:   req.Reason,
 		Reason:      req.Reason,
 		ContentHash: approval.ContentHash,
 		CreatedAt:   time.Now().UTC(),
 	}
-	s.store.InsertApprovalStepRecord(ctx, stepRecord)
 
 	// Multi-step: check if more steps remain
 	if approval.CurrentStep < approval.TotalSteps {
-		// Advance to next step
-		nextStep := approval.CurrentStep + 1
-		s.store.UpdateApprovalStep(ctx, approval.ApprovalID, nextStep, "in_review")
-		s.store.UpdateTaskStatus(ctx, req.TaskId, domain.StatusBlockedApproval, "")
+		// 原子的に: ステップ記録 + 承認ステップ進行 + タスクステータス更新
+		if err := s.store.WithTx(ctx, func(_ interface{}) error {
+			if err := s.store.InsertApprovalStepRecord(ctx, stepRecord); err != nil {
+				return err
+			}
+			nextStep := approval.CurrentStep + 1
+			if err := s.store.UpdateApprovalStep(ctx, approval.ApprovalID, nextStep, "in_review"); err != nil {
+				return err
+			}
+			return s.store.UpdateTaskStatus(ctx, req.TaskId, domain.StatusBlockedApproval, "")
+		}); err != nil {
+			return nil, status.Error(codes.Internal, "failed to advance approval step")
+		}
 
 		return &pb.ApproveTaskResponse{
 			TaskId: req.TaskId,
@@ -318,15 +326,20 @@ func (s *SentinelServer) ApproveTask(ctx context.Context, req *pb.ApproveTaskReq
 		}, nil
 	}
 
-	// All steps complete → resolve approval and execute
-	if err := s.store.ResolveApproval(ctx, approval.ApprovalID, "approved", req.ApproverId, req.Reason); err != nil {
-		slog.Error("resolve approval error", "error", err)
+	// All steps complete → 原子的に: ステップ記録 + 承認解決 + ステータス更新
+	if err := s.store.WithTx(ctx, func(_ interface{}) error {
+		if err := s.store.InsertApprovalStepRecord(ctx, stepRecord); err != nil {
+			return err
+		}
+		if err := s.store.ResolveApproval(ctx, approval.ApprovalID, "approved", req.ApproverId, req.Reason); err != nil {
+			return err
+		}
+		return s.store.UpdateTaskStatus(ctx, req.TaskId, domain.StatusApproved, "")
+	}); err != nil {
 		return nil, status.Error(codes.Internal, "failed to resolve approval")
 	}
 
-	s.store.UpdateTaskStatus(ctx, req.TaskId, domain.StatusApproved, "")
-
-	// Execute the task
+	// Execute the task (外部実行なのでトランザクション外)
 	dispatchResult := s.executor.Dispatch(domain.GeneratedTask{
 		TaskID: t.TaskID, RuleID: t.RuleID, EventName: t.EventName,
 		Severity: t.Severity, ActionType: t.ActionType,
@@ -372,22 +385,26 @@ func (s *SentinelServer) RejectTask(ctx context.Context, req *pb.RejectTaskReque
 		return nil, status.Error(codes.NotFound, "approval request not found")
 	}
 
-	// Record rejection step (audit trail)
-	s.store.InsertApprovalStepRecord(ctx, domain.ApprovalStepRecord{
-		ApprovalID:  approval.ApprovalID,
-		StepOrder:   approval.CurrentStep,
-		Action:      "rejected",
-		ActorID:     req.RejectorId,
-		Reason:      req.Reason,
-		ContentHash: approval.ContentHash,
-		CreatedAt:   time.Now().UTC(),
-	})
-
-	if err := s.store.ResolveApproval(ctx, approval.ApprovalID, "rejected", req.RejectorId, req.Reason); err != nil {
-		return nil, status.Error(codes.Internal, "failed to resolve approval")
+	// 原子的に: 却下記録 + 承認解決 + タスクステータス更新
+	if err := s.store.WithTx(ctx, func(_ interface{}) error {
+		if err := s.store.InsertApprovalStepRecord(ctx, domain.ApprovalStepRecord{
+			ApprovalID:  approval.ApprovalID,
+			StepOrder:   approval.CurrentStep,
+			Action:      "rejected",
+			ActorID:     req.RejectorId,
+			Reason:      req.Reason,
+			ContentHash: approval.ContentHash,
+			CreatedAt:   time.Now().UTC(),
+		}); err != nil {
+			return err
+		}
+		if err := s.store.ResolveApproval(ctx, approval.ApprovalID, "rejected", req.RejectorId, req.Reason); err != nil {
+			return err
+		}
+		return s.store.UpdateTaskStatus(ctx, req.TaskId, domain.StatusRejected, "")
+	}); err != nil {
+		return nil, status.Error(codes.Internal, "failed to reject task")
 	}
-
-	s.store.UpdateTaskStatus(ctx, req.TaskId, domain.StatusRejected, "")
 
 	return &pb.RejectTaskResponse{
 		TaskId: req.TaskId,

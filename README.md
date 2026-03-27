@@ -16,11 +16,11 @@ The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
-| Client SDK | TypeScript (zero dependencies) | Implemented | 184 tests (Vitest) |
-| Backend Server | Go 1.22+ / gRPC | Implemented | 614 tests |
+| Client SDK | TypeScript (zero dependencies) | Implemented | 208 tests (Vitest) |
+| Backend Server | Go 1.22+ / gRPC | Implemented | 632 tests (`-race` verified) |
 | gRPC Communication | Protocol Buffers v3 | Implemented | Server-side E2E verified (SDK→Server gRPC client is user-injected via Transport I/F) |
 
-**Total: 798 tests, 0 FAIL**
+**Total: 840 tests, 0 FAIL**
 
 ---
 
@@ -149,7 +149,7 @@ sentinel/
 │   ├── security/                 # Hash-chain, PII masking
 │   ├── shared/                   # Error taxonomy, Result monad
 │   └── types/                    # Domain models (Log, Task, Event)
-├── tests/                        # TS tests (184 cases)
+├── tests/                        # TS tests (208 cases)
 │   ├── unit/                     # Unit tests
 │   │   ├── core/                 # Detection, normalizer tests
 │   │   ├── security/             # Masking, signer tests
@@ -262,10 +262,10 @@ authorization:
 ## Testing
 
 ```bash
-# TypeScript SDK (184 tests)
+# TypeScript SDK (208 tests)
 npm test
 
-# Go Server (614 tests)
+# Go Server (632 tests)
 cd packages/server
 go test ./... -race -count=1
 
