@@ -37,6 +37,13 @@ export class IngestionEngine implements IIngestionCoordinator {
         this.taskExecutor = deps.taskExecutor;
     }
 
+    /**
+     * ログを正規化のみ行う（リモート送信用）
+     */
+    normalizeOnly(raw: Partial<Log>): Log {
+        return this.normalizer.normalize(raw);
+    }
+
     async handle(raw: Partial<Log>): Promise<IngestionResult> {
         // 1. Normalize
         const log = this.normalizer.normalize(raw);

@@ -105,12 +105,34 @@ CREATE TABLE IF NOT EXISTS task_results (
 	created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS threat_responses (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	response_id TEXT UNIQUE NOT NULL,
+	trace_id TEXT NOT NULL,
+	event_name TEXT NOT NULL,
+	strategy TEXT NOT NULL,
+	target_ip TEXT,
+	target_user_id TEXT,
+	boundary TEXT,
+	block_action TEXT,
+	block_success BOOLEAN,
+	block_target TEXT,
+	analyzed BOOLEAN,
+	risk_level TEXT,
+	confidence REAL,
+	analysis_summary TEXT,
+	notified BOOLEAN,
+	notify_target TEXT,
+	created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_tasks_event ON tasks(event_name);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_created ON tasks(created_at);
 CREATE INDEX IF NOT EXISTS idx_logs_trace ON logs(trace_id);
 CREATE INDEX IF NOT EXISTS idx_step_records_approval ON approval_step_records(approval_id);
 CREATE INDEX IF NOT EXISTS idx_modifications_task ON task_modifications(task_id);
+CREATE INDEX IF NOT EXISTS idx_threat_responses_trace ON threat_responses(trace_id);
 `
 
 type SQLiteStore struct {
@@ -418,4 +440,50 @@ func (s *SQLiteStore) InsertTaskResult(ctx context.Context, result domain.TaskRe
 		`INSERT INTO task_results (task_id, status, dispatched_at, error) VALUES (?, ?, ?, ?)`,
 		result.TaskID, string(result.Status), result.DispatchedAt.Format(time.RFC3339), result.Error)
 	return err
+}
+
+// === Threat Responses ===
+
+func (s *SQLiteStore) InsertThreatResponse(ctx context.Context, record domain.ThreatResponseStoreRecord) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO threat_responses (response_id, trace_id, event_name, strategy,
+		 target_ip, target_user_id, boundary, block_action, block_success, block_target,
+		 analyzed, risk_level, confidence, analysis_summary, notified, notify_target, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		record.ResponseID, record.TraceID, record.EventName, record.Strategy,
+		record.TargetIP, record.TargetUserID, record.Boundary,
+		record.BlockAction, record.BlockSuccess, record.BlockTarget,
+		record.Analyzed, record.RiskLevel, record.Confidence, record.AnalysisSummary,
+		record.Notified, record.NotifyTarget, record.CreatedAt,
+	)
+	return err
+}
+
+func (s *SQLiteStore) GetThreatResponsesByTraceID(ctx context.Context, traceID string) ([]domain.ThreatResponseStoreRecord, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT response_id, trace_id, event_name, strategy,
+		 target_ip, target_user_id, boundary, block_action, block_success, block_target,
+		 analyzed, risk_level, confidence, analysis_summary, notified, notify_target, created_at
+		 FROM threat_responses WHERE trace_id = ? ORDER BY created_at`,
+		traceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var records []domain.ThreatResponseStoreRecord
+	for rows.Next() {
+		var r domain.ThreatResponseStoreRecord
+		if err := rows.Scan(
+			&r.ResponseID, &r.TraceID, &r.EventName, &r.Strategy,
+			&r.TargetIP, &r.TargetUserID, &r.Boundary,
+			&r.BlockAction, &r.BlockSuccess, &r.BlockTarget,
+			&r.Analyzed, &r.RiskLevel, &r.Confidence, &r.AnalysisSummary,
+			&r.Notified, &r.NotifyTarget, &r.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		records = append(records, r)
+	}
+	return records, nil
 }

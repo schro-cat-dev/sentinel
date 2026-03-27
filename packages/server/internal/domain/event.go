@@ -51,7 +51,32 @@ func (ComplianceViolationPayload) eventPayloadMarker() {}
 
 // DetectionResult イベント検知結果
 type DetectionResult struct {
-	EventName SystemEventName
-	Priority  DetectionPriority
-	Payload   EventPayload
+	EventName  SystemEventName
+	Priority   DetectionPriority
+	Payload    EventPayload
+	Score      float64 // 0.0〜1.0 の信頼度スコア（アンサンブル用）
+	RuleID     string  // 発火したルールの識別子
+	Suppressed bool    // 重複抑制でスキップされた場合true
+}
+
+// AnomalyPayload 統計的異常検知用ペイロード
+type AnomalyPayload struct {
+	MetricKey    string  // 異常を検知したメトリクスキー
+	Baseline     float64 // ベースライン値
+	Observed     float64 // 観測値
+	DeviationPct float64 // 乖離率（%）
+}
+
+func (AnomalyPayload) eventPayloadMarker() {}
+
+// EventAnomaly 統計的異常検知イベント名
+const EventAnomaly SystemEventName = "ANOMALY_DETECTED"
+
+// --- Ensemble types ---
+
+// EnsembleResult はアンサンブル検知の集約結果
+type EnsembleResult struct {
+	Results        []*DetectionResult // 全発火ルールの結果
+	AggregateScore float64            // 集約スコア
+	TopResult      *DetectionResult   // 最高優先度の結果
 }

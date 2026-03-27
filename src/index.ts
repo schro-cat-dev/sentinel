@@ -8,22 +8,35 @@ import { TaskGenerator } from "./core/task/task-generator";
 import { TaskExecutor, TaskDispatchHandler } from "./core/task/task-executor";
 import { Log } from "./types/log";
 import { IngestionResult } from "./core/engine/types";
+import { TransportConfig, RemoteTransport } from "./transport/transport";
 
 /**
- * Sentinel v1 Client SDK
+ * SentinelOptions はSentinel初期化時のオプション
+ */
+export interface SentinelOptions {
+    /**
+     * Transport設定（省略時はローカルパイプラインのみ）
+     */
+    transport?: TransportConfig;
+}
+
+/**
+ * Sentinel v2 Client SDK
  *
  * ログ → イベント検知 → タスク自動生成 → アクションディスパッチ
- * バックエンドサーバはGoに移行予定。本SDKはクライアント側の責務のみ担当。
+ * Transport設定でローカル処理 / Goサーバへのリモート送信 / 両方を選択可能。
  */
 export class Sentinel {
     private static instance: Sentinel | null = null;
     private readonly engine: IngestionEngine;
     private readonly taskExecutor: TaskExecutor;
     private readonly config: SentinelConfig;
+    private readonly transportConfig: TransportConfig;
     private initialized = false;
 
-    private constructor(config: SentinelConfig) {
+    private constructor(config: SentinelConfig, options?: SentinelOptions) {
         this.config = config;
+        this.transportConfig = options?.transport ?? { mode: "local" };
 
         const normalizer = new LogNormalizer(config.serviceId);
         const masking = new MaskingService();
@@ -47,10 +60,12 @@ export class Sentinel {
 
     /**
      * Sentinel を初期化（シングルトン）
+     * @param config SDK設定
+     * @param options オプション（transport等）
      */
-    public static initialize(config: SentinelConfig): Sentinel {
+    public static initialize(config: SentinelConfig, options?: SentinelOptions): Sentinel {
         if (Sentinel.instance?.initialized) return Sentinel.instance;
-        Sentinel.instance = new Sentinel(config);
+        Sentinel.instance = new Sentinel(config, options);
         return Sentinel.instance;
     }
 
@@ -73,9 +88,39 @@ export class Sentinel {
 
     /**
      * ログ投入
+     *
+     * TransportMode に応じて処理先を切り替える:
+     * - "local":  SDKローカルパイプライン（デフォルト）
+     * - "remote": Goサーバにリモート送信（ローカル処理なし）
+     * - "dual":   ローカル処理 + リモート送信の両方
      */
     public async ingest(log: Partial<Log>): Promise<IngestionResult> {
-        return this.engine.handle(log);
+        const mode = this.transportConfig.mode;
+
+        if (mode === "remote" && this.transportConfig.transport) {
+            try {
+                const normalized = this.engine.normalizeOnly(log);
+                return await this.transportConfig.transport.send(normalized);
+            } catch (err) {
+                if (this.transportConfig.fallbackToLocal) {
+                    return this.engine.handle(log);
+                }
+                throw err;
+            }
+        }
+
+        const localResult = await this.engine.handle(log);
+
+        if (mode === "dual" && this.transportConfig.transport) {
+            try {
+                const normalized = this.engine.normalizeOnly(log);
+                await this.transportConfig.transport.send(normalized);
+            } catch {
+                // dual mode: リモート失敗はローカル結果に影響しない
+            }
+        }
+
+        return localResult;
     }
 
     /**
@@ -110,3 +155,4 @@ export type {
 } from "./types/task";
 export type { SystemEventName, DetectionResult } from "./types/event";
 export type { TaskDispatchHandler } from "./core/task/task-executor";
+export type { RemoteTransport, TransportMode, TransportConfig } from "./transport/transport";

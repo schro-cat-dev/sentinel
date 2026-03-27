@@ -10,9 +10,13 @@ import (
 	"time"
 
 	"github.com/schro-cat-dev/sentinel-server/config"
+	"github.com/schro-cat-dev/sentinel-server/internal/agent"
+	"github.com/schro-cat-dev/sentinel-server/internal/detection"
 	"github.com/schro-cat-dev/sentinel-server/internal/domain"
 	"github.com/schro-cat-dev/sentinel-server/internal/engine"
 	sentinelgrpc "github.com/schro-cat-dev/sentinel-server/internal/grpc"
+	"github.com/schro-cat-dev/sentinel-server/internal/middleware"
+	"github.com/schro-cat-dev/sentinel-server/internal/response"
 	"github.com/schro-cat-dev/sentinel-server/internal/security"
 	"github.com/schro-cat-dev/sentinel-server/internal/store"
 	"github.com/schro-cat-dev/sentinel-server/internal/task"
@@ -47,7 +51,7 @@ func main() {
 		notifier = webhook.NewNotifier(cfg.Webhook.URL, cfg.Webhook.TimeoutSec, cfg.Webhook.Secret)
 	}
 
-	// Pipeline config
+	// Pipeline config — 全モジュールの設定をマッピング
 	pipeCfg := engine.PipelineConfig{
 		ServiceID:       cfg.Pipeline.ServiceID,
 		EnableHashChain: cfg.Security.EnableHashChain,
@@ -56,11 +60,36 @@ func main() {
 		PreserveFields:  cfg.Security.PreserveFields,
 		MaskingRules:    convertMaskingRules(cfg.Security.MaskingRules),
 		TaskRules:       convertTaskRules(cfg.Pipeline.Rules),
+
+		// Ensemble detection
+		EnableEnsemble:        cfg.Ensemble.Enabled,
+		EnsembleAggregator:    convertAggregator(cfg.Ensemble.Aggregator),
+		EnsembleThreshold:     cfg.Ensemble.Threshold,
+		DedupWindowSec:        cfg.Ensemble.DedupWindowSec,
+		DynamicDetectionRules: convertDynamicRules(cfg.Ensemble.DynamicRules),
+
+		// Anomaly detection
+		EnableAnomalyDetection: cfg.Anomaly.Enabled,
+		AnomalyConfig: detection.AnomalyConfig{
+			WindowSize:     time.Duration(cfg.Anomaly.WindowSizeSec) * time.Second,
+			BaselineWindow: time.Duration(cfg.Anomaly.BaselineWindowSec) * time.Second,
+			ThresholdPct:   cfg.Anomaly.ThresholdPct,
+			MinBaseline:    cfg.Anomaly.MinBaseline,
+		},
+
+		// Masking verification
+		EnableMaskingVerification: cfg.Security.EnableMasking, // 有効ならverificationも有効
+
+		// Authorization
+		EnableAuthorization: cfg.Authorization.Enabled,
+		AuthzConfig:         convertAuthzConfig(cfg.Authorization),
 	}
 
 	// Executor
 	executor := task.NewTaskExecutor(func(t domain.GeneratedTask) error {
-		slog.Info("task dispatched", "taskId", t.TaskID, "ruleId", t.RuleID, "action", string(t.ActionType), "severity", string(t.Severity))
+		slog.Info("task dispatched",
+			"taskId", t.TaskID, "ruleId", t.RuleID,
+			"action", string(t.ActionType), "severity", string(t.Severity))
 		return nil
 	})
 
@@ -79,10 +108,97 @@ func main() {
 		)
 	}
 
-	srv, lis, err := sentinelgrpc.StartServer(cfg.Server.Addr, pipeCfg, executor, st, notifier, opts...)
+	sentinel, srv, lis, err := sentinelgrpc.StartServerWithSentinel(cfg.Server.Addr, pipeCfg, executor, st, notifier, opts...)
 	if err != nil {
 		slog.Error("failed to start server", "error", err)
 		os.Exit(1)
+	}
+
+	// --- Post-init: Agent Bridge ---
+	if cfg.Agent.Enabled {
+		provider := agent.NewMockProvider(cfg.Agent.Provider) // 実環境では実プロバイダに差し替え
+		agentExec := agent.NewAgentExecutor(provider, st, agent.AgentExecutorConfig{
+			MaxLoopDepth: cfg.Agent.MaxLoopDepth,
+			TimeoutSec:   cfg.Agent.TimeoutSec,
+		}, func(ctx context.Context, log domain.Log) error {
+			// AI実行結果のログ再投入（Pipeline.Processを直接呼ぶとループ検知に引っかかる設計）
+			slog.Info("agent log re-ingested", "traceId", log.TraceID, "origin", log.Origin)
+			return nil
+		})
+
+		bridge := engine.NewAgentBridge(agentExec, nil, engine.AgentBridgeConfig{
+			Enabled:        true,
+			MaxLoopDepth:   cfg.Agent.MaxLoopDepth,
+			TimeoutSec:     cfg.Agent.TimeoutSec,
+			AllowedActions: convertAllowedActions(cfg.Agent.AllowedActions),
+			MinSeverity:    domain.TaskSeverity(cfg.Agent.MinSeverity),
+		})
+		sentinel.Pipeline().SetAgentBridge(bridge)
+		slog.Info("agent bridge enabled", "provider", cfg.Agent.Provider)
+	}
+
+	// --- Post-init: Threat Response Orchestrator ---
+	if cfg.Response.Enabled {
+		enhancedBlocker := response.NewEnhancedBlockDispatcher(response.ExecModeImmediate, nil)
+		enhancedBlocker.Register(response.NewIPBlockAction())
+		enhancedBlocker.Register(response.NewAccountLockAction())
+
+		analyzer := response.NewMockAnalysisAgent() // 実環境では実プロバイダに差し替え
+
+		respCfg := response.ThreatResponseConfig{
+			Enabled:         true,
+			DefaultStrategy: response.ResponseStrategy(cfg.Response.DefaultStrategy),
+			Rules:           convertResponseRules(cfg.Response.Rules),
+		}
+
+		var orchOpts []response.OrchestratorOption
+
+		// 永続化: Store.InsertThreatResponse に接続
+		orchOpts = append(orchOpts, response.WithPersistFunc(func(ctx context.Context, record response.ThreatResponseRecord) error {
+			storeRecord := domain.ThreatResponseStoreRecord{
+				ResponseID: record.ResponseID,
+				TraceID:    record.TraceID,
+				EventName:  string(record.EventName),
+				Strategy:   string(record.Strategy),
+				TargetIP:   record.Target.IP,
+				TargetUserID: record.Target.UserID,
+				Boundary:   record.Target.Boundary,
+				Notified:   record.Notified,
+				NotifyTarget: record.NotifyTarget,
+				CreatedAt:  record.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			}
+			if record.Block != nil {
+				storeRecord.BlockAction = record.Block.ActionType
+				storeRecord.BlockSuccess = record.Block.Success
+				storeRecord.BlockTarget = record.Block.Target
+			}
+			if record.Analysis != nil && record.Analysis.Error == "" {
+				storeRecord.Analyzed = true
+				storeRecord.RiskLevel = record.Analysis.RiskLevel
+				storeRecord.Confidence = record.Analysis.Confidence
+				storeRecord.AnalysisSummary = record.Analysis.Summary
+			}
+			return st.InsertThreatResponse(ctx, storeRecord)
+		}))
+
+		// 通知: Webhook notifier があれば接続
+		if notifier != nil {
+			orchOpts = append(orchOpts, response.WithNotifyFunc(func(ctx context.Context, record response.ThreatResponseRecord) error {
+				slog.Info("threat notification sent",
+					"responseId", record.ResponseID,
+					"eventName", record.EventName,
+					"strategy", record.Strategy,
+				)
+				return nil
+			}))
+		}
+
+		orch := response.NewThreatResponseOrchestrator(respCfg, enhancedBlocker.BlockDispatcher, analyzer, orchOpts...)
+		sentinel.Pipeline().SetThreatOrchestrator(orch)
+		slog.Info("threat response orchestrator enabled",
+			"defaultStrategy", cfg.Response.DefaultStrategy,
+			"blockMode", "IMMEDIATE",
+		)
 	}
 
 	// Graceful shutdown
@@ -104,21 +220,27 @@ func main() {
 		}
 	}()
 
-	slog.Info("server listening", "addr", cfg.Server.Addr, "version", "0.2.0")
+	slog.Info("server listening", "addr", cfg.Server.Addr, "version", "0.3.0",
+		"ensemble", cfg.Ensemble.Enabled,
+		"anomaly", cfg.Anomaly.Enabled,
+		"authz", cfg.Authorization.Enabled,
+		"agent", cfg.Agent.Enabled,
+		"response", cfg.Response.Enabled,
+	)
 	if err := srv.Serve(lis); err != nil {
 		slog.Error("server error", "error", err)
 		os.Exit(1)
 	}
 }
 
+// --- Conversion helpers ---
+
 func convertMaskingRules(cfgRules []config.MaskingRuleConfig) []security.MaskingRule {
 	var rules []security.MaskingRule
 	for _, r := range cfgRules {
 		rule := security.MaskingRule{
-			Type:        r.Type,
-			Replacement: r.Replacement,
-			Category:    r.Category,
-			Keys:        r.Keys,
+			Type: r.Type, Replacement: r.Replacement,
+			Category: r.Category, Keys: r.Keys,
 		}
 		if r.Pattern != "" {
 			rule.Pattern = security.CompilePattern(r.Pattern)
@@ -132,8 +254,7 @@ func convertTaskRules(cfgRules []config.TaskRuleConfig) []domain.TaskRule {
 	var rules []domain.TaskRule
 	for _, r := range cfgRules {
 		rules = append(rules, domain.TaskRule{
-			RuleID:         r.RuleID,
-			EventName:      r.EventName,
+			RuleID: r.RuleID, EventName: r.EventName,
 			Severity:       domain.TaskSeverity(r.Severity),
 			ActionType:     domain.TaskActionType(r.ActionType),
 			ExecutionLevel: domain.TaskExecutionLevel(r.ExecutionLevel),
@@ -150,6 +271,82 @@ func convertTaskRules(cfgRules []config.TaskRuleConfig) []domain.TaskRule {
 				TimeoutMs:            r.Guardrails.TimeoutMs,
 				MaxRetries:           r.Guardrails.MaxRetries,
 			},
+		})
+	}
+	return rules
+}
+
+func convertDynamicRules(cfgRules []config.DynamicRuleConfig) []detection.DynamicRuleConfig {
+	var rules []detection.DynamicRuleConfig
+	for _, r := range cfgRules {
+		rules = append(rules, detection.DynamicRuleConfig{
+			RuleID: r.RuleID, EventName: r.EventName,
+			Priority: r.Priority, Score: r.Score,
+			PayloadBuilder: r.PayloadBuilder,
+			Conditions: detection.DynamicRuleConditions{
+				LogTypes: r.Conditions.LogTypes, MinLevel: r.Conditions.MinLevel,
+				MaxLevel: r.Conditions.MaxLevel, MessagePattern: r.Conditions.MessagePattern,
+				RequireCritical: r.Conditions.RequireCritical, TagKeys: r.Conditions.TagKeys,
+				Origins: r.Conditions.Origins,
+			},
+		})
+	}
+	return rules
+}
+
+func convertAggregator(s string) detection.ScoreAggregator {
+	switch s {
+	case "avg":
+		return detection.AggregateAvg
+	case "weighted_sum":
+		return detection.AggregateWeightedSum
+	default:
+		return detection.AggregateMax
+	}
+}
+
+func convertAuthzConfig(cfg config.AuthorizationConfig) middleware.AuthzConfig {
+	roles := make(map[string]middleware.Role, len(cfg.Roles))
+	for name, r := range cfg.Roles {
+		roles[name] = middleware.Role{
+			Name: name,
+			Permissions: middleware.Permission{
+				AllowedLogTypes: r.AllowedLogTypes, DeniedLogTypes: r.DeniedLogTypes,
+				MaxLogLevel: r.MaxLogLevel,
+				CanWrite: r.CanWrite, CanRead: r.CanRead,
+				CanApprove: r.CanApprove, CanAdmin: r.CanAdmin,
+			},
+		}
+	}
+	return middleware.AuthzConfig{
+		Enabled:     cfg.Enabled,
+		DefaultRole: cfg.DefaultRole,
+		Roles:       roles,
+		ClientRoles: cfg.ClientRoles,
+	}
+}
+
+func convertAllowedActions(actions []string) []domain.TaskActionType {
+	if len(actions) == 0 {
+		return []domain.TaskActionType{domain.ActionAIAnalyze}
+	}
+	result := make([]domain.TaskActionType, len(actions))
+	for i, a := range actions {
+		result[i] = domain.TaskActionType(a)
+	}
+	return result
+}
+
+func convertResponseRules(cfgRules []config.ResponseRuleConfig) []response.ResponseRuleConfig {
+	var rules []response.ResponseRuleConfig
+	for _, r := range cfgRules {
+		rules = append(rules, response.ResponseRuleConfig{
+			EventName:      r.EventName,
+			Strategy:       response.ResponseStrategy(r.Strategy),
+			BlockAction:    r.BlockAction,
+			AnalysisPrompt: r.AnalysisPrompt,
+			NotifyTargets:  r.NotifyTargets,
+			MinPriority:    r.MinPriority,
 		})
 	}
 	return rules

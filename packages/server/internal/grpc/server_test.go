@@ -74,7 +74,7 @@ func TestGRPC_HealthCheck(t *testing.T) {
 	if resp.Status != "SERVING" {
 		t.Errorf("expected SERVING, got %s", resp.Status)
 	}
-	if resp.Version != "0.2.0" {
+	if resp.Version != "0.3.0" {
 		t.Errorf("expected 0.2.0, got %s", resp.Version)
 	}
 }

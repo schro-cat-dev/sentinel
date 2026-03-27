@@ -413,19 +413,120 @@ func (x *IngestRequest) GetDetails() map[string]string {
 	return nil
 }
 
+type ThreatResponseSummary struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ResponseId    string                 `protobuf:"bytes,1,opt,name=response_id,json=responseId,proto3" json:"response_id,omitempty"`
+	EventName     string                 `protobuf:"bytes,2,opt,name=event_name,json=eventName,proto3" json:"event_name,omitempty"`
+	Strategy      string                 `protobuf:"bytes,3,opt,name=strategy,proto3" json:"strategy,omitempty"`
+	Blocked       bool                   `protobuf:"varint,4,opt,name=blocked,proto3" json:"blocked,omitempty"`
+	BlockTarget   string                 `protobuf:"bytes,5,opt,name=block_target,json=blockTarget,proto3" json:"block_target,omitempty"`
+	Analyzed      bool                   `protobuf:"varint,6,opt,name=analyzed,proto3" json:"analyzed,omitempty"`
+	RiskLevel     string                 `protobuf:"bytes,7,opt,name=risk_level,json=riskLevel,proto3" json:"risk_level,omitempty"`
+	Notified      bool                   `protobuf:"varint,8,opt,name=notified,proto3" json:"notified,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ThreatResponseSummary) Reset() {
+	*x = ThreatResponseSummary{}
+	mi := &file_sentinel_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ThreatResponseSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ThreatResponseSummary) ProtoMessage() {}
+
+func (x *ThreatResponseSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_sentinel_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ThreatResponseSummary.ProtoReflect.Descriptor instead.
+func (*ThreatResponseSummary) Descriptor() ([]byte, []int) {
+	return file_sentinel_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ThreatResponseSummary) GetResponseId() string {
+	if x != nil {
+		return x.ResponseId
+	}
+	return ""
+}
+
+func (x *ThreatResponseSummary) GetEventName() string {
+	if x != nil {
+		return x.EventName
+	}
+	return ""
+}
+
+func (x *ThreatResponseSummary) GetStrategy() string {
+	if x != nil {
+		return x.Strategy
+	}
+	return ""
+}
+
+func (x *ThreatResponseSummary) GetBlocked() bool {
+	if x != nil {
+		return x.Blocked
+	}
+	return false
+}
+
+func (x *ThreatResponseSummary) GetBlockTarget() string {
+	if x != nil {
+		return x.BlockTarget
+	}
+	return ""
+}
+
+func (x *ThreatResponseSummary) GetAnalyzed() bool {
+	if x != nil {
+		return x.Analyzed
+	}
+	return false
+}
+
+func (x *ThreatResponseSummary) GetRiskLevel() string {
+	if x != nil {
+		return x.RiskLevel
+	}
+	return ""
+}
+
+func (x *ThreatResponseSummary) GetNotified() bool {
+	if x != nil {
+		return x.Notified
+	}
+	return false
+}
+
 type IngestResponse struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	TraceId        string                 `protobuf:"bytes,1,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
-	HashChainValid bool                   `protobuf:"varint,2,opt,name=hash_chain_valid,json=hashChainValid,proto3" json:"hash_chain_valid,omitempty"`
-	Masked         bool                   `protobuf:"varint,3,opt,name=masked,proto3" json:"masked,omitempty"`
-	TasksGenerated []*TaskResult          `protobuf:"bytes,4,rep,name=tasks_generated,json=tasksGenerated,proto3" json:"tasks_generated,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state           protoimpl.MessageState   `protogen:"open.v1"`
+	TraceId         string                   `protobuf:"bytes,1,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	HashChainValid  bool                     `protobuf:"varint,2,opt,name=hash_chain_valid,json=hashChainValid,proto3" json:"hash_chain_valid,omitempty"`
+	Masked          bool                     `protobuf:"varint,3,opt,name=masked,proto3" json:"masked,omitempty"`
+	TasksGenerated  []*TaskResult            `protobuf:"bytes,4,rep,name=tasks_generated,json=tasksGenerated,proto3" json:"tasks_generated,omitempty"`
+	ThreatResponses []*ThreatResponseSummary `protobuf:"bytes,5,rep,name=threat_responses,json=threatResponses,proto3" json:"threat_responses,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *IngestResponse) Reset() {
 	*x = IngestResponse{}
-	mi := &file_sentinel_proto_msgTypes[4]
+	mi := &file_sentinel_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -437,7 +538,7 @@ func (x *IngestResponse) String() string {
 func (*IngestResponse) ProtoMessage() {}
 
 func (x *IngestResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sentinel_proto_msgTypes[4]
+	mi := &file_sentinel_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -450,7 +551,7 @@ func (x *IngestResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IngestResponse.ProtoReflect.Descriptor instead.
 func (*IngestResponse) Descriptor() ([]byte, []int) {
-	return file_sentinel_proto_rawDescGZIP(), []int{4}
+	return file_sentinel_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *IngestResponse) GetTraceId() string {
@@ -481,6 +582,13 @@ func (x *IngestResponse) GetTasksGenerated() []*TaskResult {
 	return nil
 }
 
+func (x *IngestResponse) GetThreatResponses() []*ThreatResponseSummary {
+	if x != nil {
+		return x.ThreatResponses
+	}
+	return nil
+}
+
 type TaskResult struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TaskId        string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
@@ -494,7 +602,7 @@ type TaskResult struct {
 
 func (x *TaskResult) Reset() {
 	*x = TaskResult{}
-	mi := &file_sentinel_proto_msgTypes[5]
+	mi := &file_sentinel_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -506,7 +614,7 @@ func (x *TaskResult) String() string {
 func (*TaskResult) ProtoMessage() {}
 
 func (x *TaskResult) ProtoReflect() protoreflect.Message {
-	mi := &file_sentinel_proto_msgTypes[5]
+	mi := &file_sentinel_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -519,7 +627,7 @@ func (x *TaskResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaskResult.ProtoReflect.Descriptor instead.
 func (*TaskResult) Descriptor() ([]byte, []int) {
-	return file_sentinel_proto_rawDescGZIP(), []int{5}
+	return file_sentinel_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *TaskResult) GetTaskId() string {
@@ -565,7 +673,7 @@ type HealthCheckRequest struct {
 
 func (x *HealthCheckRequest) Reset() {
 	*x = HealthCheckRequest{}
-	mi := &file_sentinel_proto_msgTypes[6]
+	mi := &file_sentinel_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -577,7 +685,7 @@ func (x *HealthCheckRequest) String() string {
 func (*HealthCheckRequest) ProtoMessage() {}
 
 func (x *HealthCheckRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sentinel_proto_msgTypes[6]
+	mi := &file_sentinel_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -590,7 +698,7 @@ func (x *HealthCheckRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthCheckRequest.ProtoReflect.Descriptor instead.
 func (*HealthCheckRequest) Descriptor() ([]byte, []int) {
-	return file_sentinel_proto_rawDescGZIP(), []int{6}
+	return file_sentinel_proto_rawDescGZIP(), []int{7}
 }
 
 type HealthCheckResponse struct {
@@ -603,7 +711,7 @@ type HealthCheckResponse struct {
 
 func (x *HealthCheckResponse) Reset() {
 	*x = HealthCheckResponse{}
-	mi := &file_sentinel_proto_msgTypes[7]
+	mi := &file_sentinel_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -615,7 +723,7 @@ func (x *HealthCheckResponse) String() string {
 func (*HealthCheckResponse) ProtoMessage() {}
 
 func (x *HealthCheckResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sentinel_proto_msgTypes[7]
+	mi := &file_sentinel_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -628,7 +736,7 @@ func (x *HealthCheckResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthCheckResponse.ProtoReflect.Descriptor instead.
 func (*HealthCheckResponse) Descriptor() ([]byte, []int) {
-	return file_sentinel_proto_rawDescGZIP(), []int{7}
+	return file_sentinel_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *HealthCheckResponse) GetStatus() string {
@@ -654,7 +762,7 @@ type GetTaskStatusRequest struct {
 
 func (x *GetTaskStatusRequest) Reset() {
 	*x = GetTaskStatusRequest{}
-	mi := &file_sentinel_proto_msgTypes[8]
+	mi := &file_sentinel_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -666,7 +774,7 @@ func (x *GetTaskStatusRequest) String() string {
 func (*GetTaskStatusRequest) ProtoMessage() {}
 
 func (x *GetTaskStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sentinel_proto_msgTypes[8]
+	mi := &file_sentinel_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -679,7 +787,7 @@ func (x *GetTaskStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTaskStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetTaskStatusRequest) Descriptor() ([]byte, []int) {
-	return file_sentinel_proto_rawDescGZIP(), []int{8}
+	return file_sentinel_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetTaskStatusRequest) GetTaskId() string {
@@ -709,7 +817,7 @@ type GetTaskStatusResponse struct {
 
 func (x *GetTaskStatusResponse) Reset() {
 	*x = GetTaskStatusResponse{}
-	mi := &file_sentinel_proto_msgTypes[9]
+	mi := &file_sentinel_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -721,7 +829,7 @@ func (x *GetTaskStatusResponse) String() string {
 func (*GetTaskStatusResponse) ProtoMessage() {}
 
 func (x *GetTaskStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sentinel_proto_msgTypes[9]
+	mi := &file_sentinel_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -734,7 +842,7 @@ func (x *GetTaskStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTaskStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetTaskStatusResponse) Descriptor() ([]byte, []int) {
-	return file_sentinel_proto_rawDescGZIP(), []int{9}
+	return file_sentinel_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetTaskStatusResponse) GetTaskId() string {
@@ -835,7 +943,7 @@ type ListTasksRequest struct {
 
 func (x *ListTasksRequest) Reset() {
 	*x = ListTasksRequest{}
-	mi := &file_sentinel_proto_msgTypes[10]
+	mi := &file_sentinel_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -847,7 +955,7 @@ func (x *ListTasksRequest) String() string {
 func (*ListTasksRequest) ProtoMessage() {}
 
 func (x *ListTasksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sentinel_proto_msgTypes[10]
+	mi := &file_sentinel_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -860,7 +968,7 @@ func (x *ListTasksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTasksRequest.ProtoReflect.Descriptor instead.
 func (*ListTasksRequest) Descriptor() ([]byte, []int) {
-	return file_sentinel_proto_rawDescGZIP(), []int{10}
+	return file_sentinel_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListTasksRequest) GetEventName() string {
@@ -915,7 +1023,7 @@ type ListTasksResponse struct {
 
 func (x *ListTasksResponse) Reset() {
 	*x = ListTasksResponse{}
-	mi := &file_sentinel_proto_msgTypes[11]
+	mi := &file_sentinel_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -927,7 +1035,7 @@ func (x *ListTasksResponse) String() string {
 func (*ListTasksResponse) ProtoMessage() {}
 
 func (x *ListTasksResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sentinel_proto_msgTypes[11]
+	mi := &file_sentinel_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -940,7 +1048,7 @@ func (x *ListTasksResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTasksResponse.ProtoReflect.Descriptor instead.
 func (*ListTasksResponse) Descriptor() ([]byte, []int) {
-	return file_sentinel_proto_rawDescGZIP(), []int{11}
+	return file_sentinel_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListTasksResponse) GetTasks() []*GetTaskStatusResponse {
@@ -968,7 +1076,7 @@ type ApproveTaskRequest struct {
 
 func (x *ApproveTaskRequest) Reset() {
 	*x = ApproveTaskRequest{}
-	mi := &file_sentinel_proto_msgTypes[12]
+	mi := &file_sentinel_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -980,7 +1088,7 @@ func (x *ApproveTaskRequest) String() string {
 func (*ApproveTaskRequest) ProtoMessage() {}
 
 func (x *ApproveTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sentinel_proto_msgTypes[12]
+	mi := &file_sentinel_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -993,7 +1101,7 @@ func (x *ApproveTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApproveTaskRequest.ProtoReflect.Descriptor instead.
 func (*ApproveTaskRequest) Descriptor() ([]byte, []int) {
-	return file_sentinel_proto_rawDescGZIP(), []int{12}
+	return file_sentinel_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ApproveTaskRequest) GetTaskId() string {
@@ -1029,7 +1137,7 @@ type ApproveTaskResponse struct {
 
 func (x *ApproveTaskResponse) Reset() {
 	*x = ApproveTaskResponse{}
-	mi := &file_sentinel_proto_msgTypes[13]
+	mi := &file_sentinel_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1041,7 +1149,7 @@ func (x *ApproveTaskResponse) String() string {
 func (*ApproveTaskResponse) ProtoMessage() {}
 
 func (x *ApproveTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sentinel_proto_msgTypes[13]
+	mi := &file_sentinel_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1054,7 +1162,7 @@ func (x *ApproveTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApproveTaskResponse.ProtoReflect.Descriptor instead.
 func (*ApproveTaskResponse) Descriptor() ([]byte, []int) {
-	return file_sentinel_proto_rawDescGZIP(), []int{13}
+	return file_sentinel_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ApproveTaskResponse) GetTaskId() string {
@@ -1096,7 +1204,7 @@ type RejectTaskRequest struct {
 
 func (x *RejectTaskRequest) Reset() {
 	*x = RejectTaskRequest{}
-	mi := &file_sentinel_proto_msgTypes[14]
+	mi := &file_sentinel_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1108,7 +1216,7 @@ func (x *RejectTaskRequest) String() string {
 func (*RejectTaskRequest) ProtoMessage() {}
 
 func (x *RejectTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sentinel_proto_msgTypes[14]
+	mi := &file_sentinel_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1121,7 +1229,7 @@ func (x *RejectTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RejectTaskRequest.ProtoReflect.Descriptor instead.
 func (*RejectTaskRequest) Descriptor() ([]byte, []int) {
-	return file_sentinel_proto_rawDescGZIP(), []int{14}
+	return file_sentinel_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *RejectTaskRequest) GetTaskId() string {
@@ -1155,7 +1263,7 @@ type RejectTaskResponse struct {
 
 func (x *RejectTaskResponse) Reset() {
 	*x = RejectTaskResponse{}
-	mi := &file_sentinel_proto_msgTypes[15]
+	mi := &file_sentinel_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1167,7 +1275,7 @@ func (x *RejectTaskResponse) String() string {
 func (*RejectTaskResponse) ProtoMessage() {}
 
 func (x *RejectTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sentinel_proto_msgTypes[15]
+	mi := &file_sentinel_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1180,7 +1288,7 @@ func (x *RejectTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RejectTaskResponse.ProtoReflect.Descriptor instead.
 func (*RejectTaskResponse) Descriptor() ([]byte, []int) {
-	return file_sentinel_proto_rawDescGZIP(), []int{15}
+	return file_sentinel_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *RejectTaskResponse) GetTaskId() string {
@@ -1246,12 +1354,25 @@ const file_sentinel_proto_rawDesc = "" +
 	"\adetails\x18\x12 \x03(\v2'.sentinel.v1.IngestRequest.DetailsEntryR\adetails\x1a:\n" +
 	"\fDetailsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xaf\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x87\x02\n" +
+	"\x15ThreatResponseSummary\x12\x1f\n" +
+	"\vresponse_id\x18\x01 \x01(\tR\n" +
+	"responseId\x12\x1d\n" +
+	"\n" +
+	"event_name\x18\x02 \x01(\tR\teventName\x12\x1a\n" +
+	"\bstrategy\x18\x03 \x01(\tR\bstrategy\x12\x18\n" +
+	"\ablocked\x18\x04 \x01(\bR\ablocked\x12!\n" +
+	"\fblock_target\x18\x05 \x01(\tR\vblockTarget\x12\x1a\n" +
+	"\banalyzed\x18\x06 \x01(\bR\banalyzed\x12\x1d\n" +
+	"\n" +
+	"risk_level\x18\a \x01(\tR\triskLevel\x12\x1a\n" +
+	"\bnotified\x18\b \x01(\bR\bnotified\"\xfe\x01\n" +
 	"\x0eIngestResponse\x12\x19\n" +
 	"\btrace_id\x18\x01 \x01(\tR\atraceId\x12(\n" +
 	"\x10hash_chain_valid\x18\x02 \x01(\bR\x0ehashChainValid\x12\x16\n" +
 	"\x06masked\x18\x03 \x01(\bR\x06masked\x12@\n" +
-	"\x0ftasks_generated\x18\x04 \x03(\v2\x17.sentinel.v1.TaskResultR\x0etasksGenerated\"\x91\x01\n" +
+	"\x0ftasks_generated\x18\x04 \x03(\v2\x17.sentinel.v1.TaskResultR\x0etasksGenerated\x12M\n" +
+	"\x10threat_responses\x18\x05 \x03(\v2\".sentinel.v1.ThreatResponseSummaryR\x0fthreatResponses\"\x91\x01\n" +
 	"\n" +
 	"TaskResult\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x17\n" +
@@ -1334,50 +1455,52 @@ func file_sentinel_proto_rawDescGZIP() []byte {
 	return file_sentinel_proto_rawDescData
 }
 
-var file_sentinel_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_sentinel_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_sentinel_proto_goTypes = []any{
 	(*LogTag)(nil),                // 0: sentinel.v1.LogTag
 	(*AIContext)(nil),             // 1: sentinel.v1.AIContext
 	(*AgentBackLogEntry)(nil),     // 2: sentinel.v1.AgentBackLogEntry
 	(*IngestRequest)(nil),         // 3: sentinel.v1.IngestRequest
-	(*IngestResponse)(nil),        // 4: sentinel.v1.IngestResponse
-	(*TaskResult)(nil),            // 5: sentinel.v1.TaskResult
-	(*HealthCheckRequest)(nil),    // 6: sentinel.v1.HealthCheckRequest
-	(*HealthCheckResponse)(nil),   // 7: sentinel.v1.HealthCheckResponse
-	(*GetTaskStatusRequest)(nil),  // 8: sentinel.v1.GetTaskStatusRequest
-	(*GetTaskStatusResponse)(nil), // 9: sentinel.v1.GetTaskStatusResponse
-	(*ListTasksRequest)(nil),      // 10: sentinel.v1.ListTasksRequest
-	(*ListTasksResponse)(nil),     // 11: sentinel.v1.ListTasksResponse
-	(*ApproveTaskRequest)(nil),    // 12: sentinel.v1.ApproveTaskRequest
-	(*ApproveTaskResponse)(nil),   // 13: sentinel.v1.ApproveTaskResponse
-	(*RejectTaskRequest)(nil),     // 14: sentinel.v1.RejectTaskRequest
-	(*RejectTaskResponse)(nil),    // 15: sentinel.v1.RejectTaskResponse
-	nil,                           // 16: sentinel.v1.IngestRequest.DetailsEntry
+	(*ThreatResponseSummary)(nil), // 4: sentinel.v1.ThreatResponseSummary
+	(*IngestResponse)(nil),        // 5: sentinel.v1.IngestResponse
+	(*TaskResult)(nil),            // 6: sentinel.v1.TaskResult
+	(*HealthCheckRequest)(nil),    // 7: sentinel.v1.HealthCheckRequest
+	(*HealthCheckResponse)(nil),   // 8: sentinel.v1.HealthCheckResponse
+	(*GetTaskStatusRequest)(nil),  // 9: sentinel.v1.GetTaskStatusRequest
+	(*GetTaskStatusResponse)(nil), // 10: sentinel.v1.GetTaskStatusResponse
+	(*ListTasksRequest)(nil),      // 11: sentinel.v1.ListTasksRequest
+	(*ListTasksResponse)(nil),     // 12: sentinel.v1.ListTasksResponse
+	(*ApproveTaskRequest)(nil),    // 13: sentinel.v1.ApproveTaskRequest
+	(*ApproveTaskResponse)(nil),   // 14: sentinel.v1.ApproveTaskResponse
+	(*RejectTaskRequest)(nil),     // 15: sentinel.v1.RejectTaskRequest
+	(*RejectTaskResponse)(nil),    // 16: sentinel.v1.RejectTaskResponse
+	nil,                           // 17: sentinel.v1.IngestRequest.DetailsEntry
 }
 var file_sentinel_proto_depIdxs = []int32{
 	0,  // 0: sentinel.v1.IngestRequest.tags:type_name -> sentinel.v1.LogTag
 	1,  // 1: sentinel.v1.IngestRequest.ai_context:type_name -> sentinel.v1.AIContext
 	2,  // 2: sentinel.v1.IngestRequest.agent_back_log:type_name -> sentinel.v1.AgentBackLogEntry
-	16, // 3: sentinel.v1.IngestRequest.details:type_name -> sentinel.v1.IngestRequest.DetailsEntry
-	5,  // 4: sentinel.v1.IngestResponse.tasks_generated:type_name -> sentinel.v1.TaskResult
-	9,  // 5: sentinel.v1.ListTasksResponse.tasks:type_name -> sentinel.v1.GetTaskStatusResponse
-	3,  // 6: sentinel.v1.SentinelService.Ingest:input_type -> sentinel.v1.IngestRequest
-	6,  // 7: sentinel.v1.SentinelService.HealthCheck:input_type -> sentinel.v1.HealthCheckRequest
-	8,  // 8: sentinel.v1.SentinelService.GetTaskStatus:input_type -> sentinel.v1.GetTaskStatusRequest
-	10, // 9: sentinel.v1.SentinelService.ListTasks:input_type -> sentinel.v1.ListTasksRequest
-	12, // 10: sentinel.v1.SentinelService.ApproveTask:input_type -> sentinel.v1.ApproveTaskRequest
-	14, // 11: sentinel.v1.SentinelService.RejectTask:input_type -> sentinel.v1.RejectTaskRequest
-	4,  // 12: sentinel.v1.SentinelService.Ingest:output_type -> sentinel.v1.IngestResponse
-	7,  // 13: sentinel.v1.SentinelService.HealthCheck:output_type -> sentinel.v1.HealthCheckResponse
-	9,  // 14: sentinel.v1.SentinelService.GetTaskStatus:output_type -> sentinel.v1.GetTaskStatusResponse
-	11, // 15: sentinel.v1.SentinelService.ListTasks:output_type -> sentinel.v1.ListTasksResponse
-	13, // 16: sentinel.v1.SentinelService.ApproveTask:output_type -> sentinel.v1.ApproveTaskResponse
-	15, // 17: sentinel.v1.SentinelService.RejectTask:output_type -> sentinel.v1.RejectTaskResponse
-	12, // [12:18] is the sub-list for method output_type
-	6,  // [6:12] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	17, // 3: sentinel.v1.IngestRequest.details:type_name -> sentinel.v1.IngestRequest.DetailsEntry
+	6,  // 4: sentinel.v1.IngestResponse.tasks_generated:type_name -> sentinel.v1.TaskResult
+	4,  // 5: sentinel.v1.IngestResponse.threat_responses:type_name -> sentinel.v1.ThreatResponseSummary
+	10, // 6: sentinel.v1.ListTasksResponse.tasks:type_name -> sentinel.v1.GetTaskStatusResponse
+	3,  // 7: sentinel.v1.SentinelService.Ingest:input_type -> sentinel.v1.IngestRequest
+	7,  // 8: sentinel.v1.SentinelService.HealthCheck:input_type -> sentinel.v1.HealthCheckRequest
+	9,  // 9: sentinel.v1.SentinelService.GetTaskStatus:input_type -> sentinel.v1.GetTaskStatusRequest
+	11, // 10: sentinel.v1.SentinelService.ListTasks:input_type -> sentinel.v1.ListTasksRequest
+	13, // 11: sentinel.v1.SentinelService.ApproveTask:input_type -> sentinel.v1.ApproveTaskRequest
+	15, // 12: sentinel.v1.SentinelService.RejectTask:input_type -> sentinel.v1.RejectTaskRequest
+	5,  // 13: sentinel.v1.SentinelService.Ingest:output_type -> sentinel.v1.IngestResponse
+	8,  // 14: sentinel.v1.SentinelService.HealthCheck:output_type -> sentinel.v1.HealthCheckResponse
+	10, // 15: sentinel.v1.SentinelService.GetTaskStatus:output_type -> sentinel.v1.GetTaskStatusResponse
+	12, // 16: sentinel.v1.SentinelService.ListTasks:output_type -> sentinel.v1.ListTasksResponse
+	14, // 17: sentinel.v1.SentinelService.ApproveTask:output_type -> sentinel.v1.ApproveTaskResponse
+	16, // 18: sentinel.v1.SentinelService.RejectTask:output_type -> sentinel.v1.RejectTaskResponse
+	13, // [13:19] is the sub-list for method output_type
+	7,  // [7:13] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_sentinel_proto_init() }
@@ -1391,7 +1514,7 @@ func file_sentinel_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sentinel_proto_rawDesc), len(file_sentinel_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

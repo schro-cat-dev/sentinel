@@ -46,5 +46,9 @@ type Store interface {
 	// --- Task Results (append-only) ---
 	InsertTaskResult(ctx context.Context, result domain.TaskResult) error
 
+	// --- Threat Responses (append-only audit trail) ---
+	InsertThreatResponse(ctx context.Context, record domain.ThreatResponseStoreRecord) error
+	GetThreatResponsesByTraceID(ctx context.Context, traceID string) ([]domain.ThreatResponseStoreRecord, error)
+
 	Close() error
 }

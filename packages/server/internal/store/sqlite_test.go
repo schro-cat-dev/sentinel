@@ -247,3 +247,101 @@ func TestSQLiteStore_ContentHashIntegrity(t *testing.T) {
 		if h1 == h2 { t.Error("modified task should produce different hash") }
 	})
 }
+
+// === Threat Response Tests ===
+
+func TestStore_InsertThreatResponse(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	record := domain.ThreatResponseStoreRecord{
+		ResponseID: "resp-001",
+		TraceID:    "trace-001",
+		EventName:  "SECURITY_INTRUSION_DETECTED",
+		Strategy:   "BLOCK_AND_NOTIFY",
+		TargetIP:   "192.168.1.100",
+		TargetUserID: "user-1",
+		Boundary:   "auth-svc",
+		BlockAction: "block_ip",
+		BlockSuccess: true,
+		BlockTarget: "192.168.1.100",
+		Analyzed:   true,
+		RiskLevel:  "high",
+		Confidence: 0.92,
+		AnalysisSummary: "Brute force attack detected",
+		Notified:   true,
+		NotifyTarget: "#security",
+		CreatedAt:  time.Now().UTC().Format(time.RFC3339),
+	}
+
+	err := s.InsertThreatResponse(ctx, record)
+	if err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	// Retrieve
+	records, err := s.GetThreatResponsesByTraceID(ctx, "trace-001")
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if len(records) != 1 {
+		t.Fatalf("expected 1 record, got %d", len(records))
+	}
+
+	r := records[0]
+	if r.ResponseID != "resp-001" {
+		t.Errorf("responseID: %s", r.ResponseID)
+	}
+	if r.EventName != "SECURITY_INTRUSION_DETECTED" {
+		t.Error("wrong event name")
+	}
+	if r.Strategy != "BLOCK_AND_NOTIFY" {
+		t.Error("wrong strategy")
+	}
+	if r.TargetIP != "192.168.1.100" {
+		t.Error("wrong target IP")
+	}
+	if !r.BlockSuccess {
+		t.Error("block should be successful")
+	}
+	if !r.Analyzed {
+		t.Error("should be analyzed")
+	}
+	if r.RiskLevel != "high" {
+		t.Error("wrong risk level")
+	}
+	if r.Confidence != 0.92 {
+		t.Errorf("wrong confidence: %f", r.Confidence)
+	}
+}
+
+func TestStore_GetThreatResponsesByTraceID_Empty(t *testing.T) {
+	s := newTestStore(t)
+	records, err := s.GetThreatResponsesByTraceID(context.Background(), "nonexistent")
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if len(records) != 0 {
+		t.Error("expected empty")
+	}
+}
+
+func TestStore_MultipleThreatResponses(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	for i := 0; i < 3; i++ {
+		s.InsertThreatResponse(ctx, domain.ThreatResponseStoreRecord{
+			ResponseID: "resp-" + string(rune('A'+i)),
+			TraceID:    "trace-multi",
+			EventName:  "TEST",
+			Strategy:   "NOTIFY_ONLY",
+			CreatedAt:  time.Now().UTC().Format(time.RFC3339),
+		})
+	}
+
+	records, _ := s.GetThreatResponsesByTraceID(ctx, "trace-multi")
+	if len(records) != 3 {
+		t.Errorf("expected 3, got %d", len(records))
+	}
+}

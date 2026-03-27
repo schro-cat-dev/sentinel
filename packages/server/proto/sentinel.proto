@@ -51,11 +51,23 @@ message IngestRequest {
   map<string, string> details = 18;
 }
 
+message ThreatResponseSummary {
+  string response_id = 1;
+  string event_name = 2;
+  string strategy = 3;
+  bool blocked = 4;
+  string block_target = 5;
+  bool analyzed = 6;
+  string risk_level = 7;
+  bool notified = 8;
+}
+
 message IngestResponse {
   string trace_id = 1;
   bool hash_chain_valid = 2;
   bool masked = 3;
   repeated TaskResult tasks_generated = 4;
+  repeated ThreatResponseSummary threat_responses = 5;
 }
 
 message TaskResult {

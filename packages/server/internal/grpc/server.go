@@ -19,7 +19,7 @@ import (
 	"github.com/schro-cat-dev/sentinel-server/internal/webhook"
 )
 
-const version = "0.2.0"
+const version = "0.3.0"
 
 type SentinelServer struct {
 	pb.UnimplementedSentinelServiceServer
@@ -34,6 +34,11 @@ func NewSentinelServer(cfg engine.PipelineConfig, executor *task.TaskExecutor, s
 		return nil, fmt.Errorf("pipeline init: %w", err)
 	}
 	return &SentinelServer{pipeline: p, store: st, executor: executor}, nil
+}
+
+// Pipeline はPipelineへの参照を返す（post-init設定用: SetAgentBridge, SetThreatOrchestrator）
+func (s *SentinelServer) Pipeline() *engine.Pipeline {
+	return s.pipeline
 }
 
 // --- Ingest ---
@@ -58,6 +63,20 @@ func (s *SentinelServer) Ingest(ctx context.Context, req *pb.IngestRequest) (*pb
 	for _, tr := range result.TasksGenerated {
 		resp.TasksGenerated = append(resp.TasksGenerated, taskResultToProto(tr))
 	}
+
+	for _, tr := range result.ThreatResponses {
+		resp.ThreatResponses = append(resp.ThreatResponses, &pb.ThreatResponseSummary{
+			ResponseId:  tr.ResponseID,
+			EventName:   string(tr.EventName),
+			Strategy:    tr.Strategy,
+			Blocked:     tr.Blocked,
+			BlockTarget: tr.BlockTarget,
+			Analyzed:    tr.Analyzed,
+			RiskLevel:   tr.RiskLevel,
+			Notified:    tr.Notified,
+		})
+	}
+
 	return resp, nil
 }
 
@@ -267,9 +286,15 @@ func (s *SentinelServer) RejectTask(ctx context.Context, req *pb.RejectTaskReque
 // --- StartServer ---
 
 func StartServer(addr string, cfg engine.PipelineConfig, executor *task.TaskExecutor, st store.Store, notifier *webhook.Notifier, opts ...ggrpc.ServerOption) (*ggrpc.Server, net.Listener, error) {
+	_, srv, lis, err := StartServerWithSentinel(addr, cfg, executor, st, notifier, opts...)
+	return srv, lis, err
+}
+
+// StartServerWithSentinel はStartServerと同じだが、SentinelServerも返す（post-init設定用）
+func StartServerWithSentinel(addr string, cfg engine.PipelineConfig, executor *task.TaskExecutor, st store.Store, notifier *webhook.Notifier, opts ...ggrpc.ServerOption) (*SentinelServer, *ggrpc.Server, net.Listener, error) {
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to listen: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to listen: %w", err)
 	}
 
 	defaultOpts := []ggrpc.ServerOption{
@@ -283,10 +308,10 @@ func StartServer(addr string, cfg engine.PipelineConfig, executor *task.TaskExec
 	sentinel, err := NewSentinelServer(cfg, executor, st, notifier)
 	if err != nil {
 		lis.Close()
-		return nil, nil, fmt.Errorf("server init: %w", err)
+		return nil, nil, nil, fmt.Errorf("server init: %w", err)
 	}
 	pb.RegisterSentinelServiceServer(srv, sentinel)
-	return srv, lis, nil
+	return sentinel, srv, lis, nil
 }
 
 // --- Proto conversion helpers ---

@@ -1,8 +1,8 @@
 # Sentinel
 
-**Intelligent Log-to-Task Automation Platform**
+**Intelligent Log-to-Task Automation Platform with Threat Response**
 
-Sentinel detects events from application logs and automatically generates remediation tasks based on configurable rules. The core value is converting logs into actionable tasks — not just collecting them.
+Sentinel detects events from application logs and automatically generates remediation tasks based on configurable rules. Beyond collection, it analyzes threats with AI agents, blocks malicious actors in real-time, and notifies teams through multiple channels.
 
 The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **Go backend server** communicating over gRPC.
 
@@ -10,13 +10,15 @@ The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **
 
 ---
 
-## Project Status: **v1 MVP**
+## Project Status: **v2**
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
-| Client SDK | TypeScript (zero dependencies) | Implemented | 177 tests (Vitest) |
-| Backend Server | Go 1.26 + gRPC | Implemented | 134 tests (`-race` verified) |
+| Client SDK | TypeScript (zero dependencies) | Implemented | 184 tests (Vitest) |
+| Backend Server | Go 1.22+ / gRPC | Implemented | 614 tests (`-race` verified) |
 | gRPC Communication | Protocol Buffers v3 | Implemented | End-to-end verified |
+
+**Total: 798 tests, 0 FAIL**
 
 ---
 
@@ -24,34 +26,46 @@ The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **
 
 ```
 Application log arrives
-    -> Normalize (validate, defaults, trim)
-    -> Mask PII (email, phone, credit card, government ID)
-    -> Hash-chain (HMAC-SHA256, tamper detection)
-    -> Detect event (critical failure, security intrusion, compliance violation, SLA breach)
-    -> Generate task (rule-based, severity-filtered, priority-sorted)
-    -> Dispatch action (AUTO / SEMI_AUTO / MANUAL / MONITOR)
+    -> [Authorization]  RBAC access control (per-client log type/level restrictions)
+    -> [Normalize]      Validate, defaults, sanitize (null bytes, control chars, UTF-8)
+    -> [Mask PII]       Context-dependent policy (email, phone, credit card, gov ID)
+    -> [Verify]         Post-mask PII residual detection with fallback re-masking
+    -> [Hash-chain]     HMAC-SHA256 tamper detection (constant-time comparison)
+    -> [Persist]        SQLite with WAL (parameterized queries, SQL injection safe)
+    -> [Detect]         Ensemble detection (all rules + dynamic rules + score aggregation)
+    -> [Anomaly]        Statistical frequency-based anomaly detection
+    -> [Threat Response] Strategy-based: Block IP / Analyze with AI / Notify team
+    -> [Generate Task]  Rule-based, severity-filtered, priority-sorted
+    -> [Dispatch]       AUTO / SEMI_AUTO / MANUAL / MONITOR + AI agent delegation
 ```
-
-A critical database failure log triggers a `SYSTEM_NOTIFICATION` task automatically dispatched to registered handlers. A security intrusion triggers an `AI_ANALYZE` task. A compliance violation triggers an `ESCALATE` task requiring human approval.
 
 ---
 
 ## Architecture
 
 ```
-┌──────────────────┐       gRPC        ┌──────────────────────┐
-│  Applications    │  ──────────────>  │  Go Sentinel Server  │
-│  (@sentinel/     │                   │                      │
-│   client SDK)    │  <──────────────  │  Normalize           │
-│                  │   IngestResponse   │  Mask PII            │
-│  TypeScript      │                   │  Hash-chain (HMAC)   │
-│  Zero deps       │                   │  Detect events       │
-│  ESM + CJS       │                   │  Generate tasks      │
-└──────────────────┘                   │  Dispatch actions    │
-                                       └──────────────────────┘
+┌──────────────────┐       gRPC        ┌──────────────────────────────────┐
+│  Applications    │  ──────────────>  │  Go Sentinel Server              │
+│  (@sentinel/     │                   │                                  │
+│   client SDK)    │  <──────────────  │  Auth → Authz → RateLimit        │
+│                  │   IngestResponse   │  Normalize → Mask(Policy)        │
+│  TypeScript      │                   │  Verify → HashChain → Persist    │
+│  Zero deps       │                   │  Detect(Ensemble + Anomaly)      │
+│  ESM + CJS       │                   │  ThreatResponse(Block/Analyze)   │
+└──────────────────┘                   │  TaskGenerate → AgentBridge      │
+                                       └──────────────────────────────────┘
+                                                      │
+                                       ┌──────────────┴──────────────┐
+                                       │                             │
+                                  ┌────▼────┐                 ┌─────▼─────┐
+                                  │ Notify  │                 │ AI Agent  │
+                                  │ Slack   │                 │ Analyze   │
+                                  │ Gmail   │                 │ Block IP  │
+                                  │ Discord │                 │ Lock Acct │
+                                  │ Webhook │                 │ AWS/GCP/  │
+                                  └─────────┘                 │ Azure     │
+                                                              └───────────┘
 ```
-
-The TS client SDK can also run the full pipeline locally (without the Go server) for development and testing. See [Usage Guide](docs/usage-guide.md) for details.
 
 ---
 
@@ -65,15 +79,16 @@ cd packages/server
 # Required: set HMAC key (minimum 32 bytes)
 export SENTINEL_HMAC_KEY="your-secret-key-at-least-32-bytes-long"
 
+# Optional: enable enhanced modules via environment variables
+export SENTINEL_ENSEMBLE_ENABLED=true
+export SENTINEL_ANOMALY_ENABLED=true
+export SENTINEL_AGENT_ENABLED=true
+export SENTINEL_RESPONSE_ENABLED=true
+export SENTINEL_RESPONSE_DEFAULT_STRATEGY=BLOCK_AND_NOTIFY
+
 # Build and run
 go build -o sentinel-server ./cmd/server/
 ./sentinel-server
-# Output: {"level":"INFO","msg":"server listening","addr":":50051"}
-
-# Test with grpcurl
-grpcurl -plaintext -import-path proto -proto sentinel.proto \
-  -d '{"message":"DB pool exhausted","type":"SYSTEM","level":6,"is_critical":true}' \
-  localhost:50051 sentinel.v1.SentinelService/Ingest
 ```
 
 ### TypeScript Client SDK
@@ -103,10 +118,6 @@ const sentinel = Sentinel.initialize(createDefaultConfig({
   }],
 }));
 
-sentinel.onTaskAction("SYSTEM_NOTIFICATION", (task) => {
-  console.log(`Task dispatched: ${task.taskId} (${task.severity})`);
-});
-
 const result = await sentinel.ingest({
   message: "Database connection pool exhausted",
   isCritical: true,
@@ -130,33 +141,118 @@ sentinel/
 │   │   ├── detection/            # Event detection rules
 │   │   └── task/                 # Task generation + execution
 │   ├── security/                 # Hash-chain, PII masking
-│   ├── shared/                   # Error taxonomy, Result monad, utilities
+│   ├── shared/                   # Error taxonomy, Result monad
 │   └── types/                    # Domain models (Log, Task, Event)
 ├── tests/                        # TS tests (177 cases)
 ├── packages/
 │   └── server/                   # Go Backend Server
-│       ├── cmd/server/           # Entry point
+│       ├── cmd/server/           # Entry point (full module wiring)
+│       ├── config/               # YAML config + env var overrides
 │       ├── internal/
 │       │   ├── domain/           # Domain models
-│       │   ├── engine/           # Pipeline + normalizer
-│       │   ├── detection/        # Rule-based detection (Strategy pattern)
-│       │   ├── security/         # HMAC-SHA256 signer, PII masking
+│       │   ├── engine/           # Pipeline + normalizer + agent bridge
+│       │   ├── detection/        # Ensemble + dynamic rules + anomaly + dedup
+│       │   ├── security/         # HMAC, masking, policy engine, verifier
+│       │   ├── response/         # Threat response orchestrator + block agents
+│       │   ├── notify/           # Notification adapters (Slack/Gmail/Discord/Webhook)
+│       │   ├── middleware/       # Auth + RBAC authorizer + security headers
 │       │   ├── task/             # Task generator + executor
-│       │   └── grpc/             # gRPC server implementation
+│       │   ├── agent/            # AI agent provider + executor
+│       │   ├── grpc/             # gRPC server + interceptors
+│       │   ├── store/            # SQLite persistence
+│       │   └── webhook/          # Legacy webhook notifier
 │       ├── proto/                # Protocol Buffers definition
+│       ├── docs/design/          # Design documents
 │       └── testutil/             # Test fixtures
 └── docs/                         # Documentation
 ```
 
 ---
 
+## Configuration (YAML + Environment Variables)
+
+```yaml
+# config/sentinel.yaml
+pipeline:
+  service_id: "my-service"
+
+security:
+  enable_masking: true
+  enable_hash_chain: true
+  hmac_key: "at-least-32-bytes..."  # or SENTINEL_HMAC_KEY env var
+
+ensemble:
+  enabled: true                     # or SENTINEL_ENSEMBLE_ENABLED=true
+  aggregator: "max"                 # max | avg | weighted_sum
+  threshold: 0.5
+  dedup_window_sec: 10
+  dynamic_rules:
+    - rule_id: "brute-force"
+      event_name: "SECURITY_INTRUSION_DETECTED"
+      priority: "HIGH"
+      score: 0.95
+      conditions:
+        log_types: ["SECURITY"]
+        min_level: 4
+        message_pattern: "(?i)brute\\s*force"
+
+anomaly:
+  enabled: true                     # or SENTINEL_ANOMALY_ENABLED=true
+  threshold_pct: 300.0
+
+agent:
+  enabled: true                     # or SENTINEL_AGENT_ENABLED=true
+  provider: "mock"                  # or SENTINEL_AGENT_PROVIDER
+  max_loop_depth: 5
+  allowed_actions: ["AI_ANALYZE"]
+  min_severity: "HIGH"
+
+response:
+  enabled: true                     # or SENTINEL_RESPONSE_ENABLED=true
+  default_strategy: "NOTIFY_ONLY"   # or SENTINEL_RESPONSE_DEFAULT_STRATEGY
+  rules:
+    - event_name: "SECURITY_INTRUSION_DETECTED"
+      strategy: "BLOCK_AND_NOTIFY"
+      block_action: "block_ip"
+      notify_targets: ["#security"]
+
+authorization:
+  enabled: true                     # or SENTINEL_AUTHZ_ENABLED=true
+  default_role: "viewer"
+  roles:
+    admin:
+      can_write: true
+      can_read: true
+      can_approve: true
+      can_admin: true
+    writer:
+      allowed_log_types: ["SYSTEM", "INFRA"]
+      max_log_level: 5
+      can_write: true
+      can_read: true
+```
+
+---
+
+## Threat Response Strategies
+
+| Strategy | Behavior |
+|---|---|
+| `BLOCK_AND_NOTIFY` | Analyze with AI -> Block IP/Account -> Notify with results |
+| `ANALYZE_AND_NOTIFY` | Analyze with AI -> Notify with analysis (no block) |
+| `NOTIFY_ONLY` | Notify detection result only |
+| `BLOCK_ONLY` | Block immediately (silent defense) |
+| `MONITOR` | Log only (no action) |
+
+---
+
 ## Testing
 
 ```bash
-# TypeScript SDK (177 tests)
+# TypeScript SDK (184 tests)
 npm test
 
-# Go Server (134 tests with race detector)
+# Go Server (614 tests)
 cd packages/server
 go test ./... -race -count=1
 
@@ -170,9 +266,12 @@ go test ./... -race -v -count=1
 
 | Document | Content |
 |----------|---------|
-| [docs/architecture.md](docs/architecture.md) | Module responsibilities, design principles, dependency map |
-| [docs/security.md](docs/security.md) | HMAC, PII masking, TLS, audit trail, threat model |
-| [docs/usage-guide.md](docs/usage-guide.md) | Setup, configuration reference, API examples |
+| [docs/architecture.md](docs/architecture.md) | Module responsibilities, design principles |
+| [docs/security.md](docs/security.md) | HMAC, PII masking, threat model |
+| [docs/usage-guide.md](docs/usage-guide.md) | Setup, configuration reference |
+| [packages/server/docs/design/module-responsibility-map.md](packages/server/docs/design/module-responsibility-map.md) | モジュール責務マップ + データフロー |
+| [packages/server/docs/design/threat-response-orchestration.md](packages/server/docs/design/threat-response-orchestration.md) | 脅威レスポンス設計仕様書 |
+| [packages/server/docs/design/work-log-2026-03-27.md](packages/server/docs/design/work-log-2026-03-27.md) | v2実装 作業ログ |
 
 ---
 
