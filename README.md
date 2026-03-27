@@ -2,7 +2,7 @@
 
 **Intelligent Log-to-Task Automation Platform with Threat Response**
 
-Sentinel detects events from application logs and automatically generates remediation tasks based on configurable rules. Beyond collection, it analyzes threats with AI agents, blocks malicious actors in real-time, and notifies teams through multiple channels.
+Sentinel detects events from application logs and automatically generates remediation tasks based on configurable rules. Beyond collection, it provides a pluggable framework for threat analysis (via AI agents), blocking (IP/account, with cloud provider adapter interfaces for AWS/GCP/Azure), and multi-channel notification (Slack/Gmail/Discord/Webhook adapter interfaces).
 
 The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **Go backend server** communicating over gRPC.
 
@@ -15,8 +15,8 @@ The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
 | Client SDK | TypeScript (zero dependencies) | Implemented | 184 tests (Vitest) |
-| Backend Server | Go 1.22+ / gRPC | Implemented | 614 tests (`-race` verified) |
-| gRPC Communication | Protocol Buffers v3 | Implemented | End-to-end verified |
+| Backend Server | Go 1.22+ / gRPC | Implemented | 614 tests |
+| gRPC Communication | Protocol Buffers v3 | Implemented | Server-side E2E verified (SDK→Server gRPC client is user-injected via Transport I/F) |
 
 **Total: 798 tests, 0 FAIL**
 
@@ -44,27 +44,30 @@ Application log arrives
 ## Architecture
 
 ```
-┌──────────────────┐       gRPC        ┌──────────────────────────────────┐
-│  Applications    │  ──────────────>  │  Go Sentinel Server              │
-│  (@sentinel/     │                   │                                  │
-│   client SDK)    │  <──────────────  │  Auth → Authz → RateLimit        │
-│                  │   IngestResponse   │  Normalize → Mask(Policy)        │
-│  TypeScript      │                   │  Verify → HashChain → Persist    │
-│  Zero deps       │                   │  Detect(Ensemble + Anomaly)      │
-│  ESM + CJS       │                   │  ThreatResponse(Block/Analyze)   │
-└──────────────────┘                   │  TaskGenerate → AgentBridge      │
-                                       └──────────────────────────────────┘
-                                                      │
-                                       ┌──────────────┴──────────────┐
-                                       │                             │
+┌──────────────────┐                   ┌──────────────────────────────────┐
+│  Applications    │     gRPC          │  Go Sentinel Server              │
+│                  │  (Transport I/F   │                                  │
+│  @sentinel/      │   で接続。利用側  │  Auth → Authz → RateLimit        │
+│  client SDK      │   がgRPCクライ   │  Normalize → Mask(Policy)        │
+│                  │   アントを注入)   │  Verify → HashChain → Persist    │
+│  TypeScript      │  ──────────────>  │  Detect(Ensemble + Anomaly)      │
+│  Zero deps       │  <──────────────  │  ThreatResponse(Block/Analyze)   │
+│  ESM + CJS       │                   │  TaskGenerate → AgentBridge      │
+│                  │                   └──────────────────────────────────┘
+│  ローカルでも    │                                  │
+│  単独動作可能    │                   ┌──────────────┴──────────────┐
+└──────────────────┘                   │                             │
                                   ┌────▼────┐                 ┌─────▼─────┐
                                   │ Notify  │                 │ AI Agent  │
+                                  │ (I/F)   │                 │ (Mock)    │
                                   │ Slack   │                 │ Analyze   │
                                   │ Gmail   │                 │ Block IP  │
                                   │ Discord │                 │ Lock Acct │
                                   │ Webhook │                 │ AWS/GCP/  │
-                                  └─────────┘                 │ Azure     │
+                                  └─────────┘                 │ Azure(I/F)│
                                                               └───────────┘
+※ 通知・AI分析・クラウドブロックは現在Mock/I/F実装。
+  実プロバイダ接続は利用側がアダプタを注入する設計。
 ```
 
 ---
@@ -134,37 +137,45 @@ const result = await sentinel.ingest({
 ```
 sentinel/
 ├── src/                          # TypeScript Client SDK
-│   ├── index.ts                  # Public API (Sentinel class)
+│   ├── index.ts                  # Public API (Sentinel class + SentinelOptions)
 │   ├── configs/                  # Configuration types
 │   ├── core/
-│   │   ├── engine/               # Ingestion pipeline
-│   │   ├── detection/            # Event detection rules
+│   │   ├── engine/               # Ingestion pipeline (IngestionEngine)
+│   │   ├── detection/            # Event detection rules (EventDetector)
 │   │   └── task/                 # Task generation + execution
+│   ├── transport/                # RemoteTransport I/F (local/remote/dual)
 │   ├── security/                 # Hash-chain, PII masking
 │   ├── shared/                   # Error taxonomy, Result monad
 │   └── types/                    # Domain models (Log, Task, Event)
-├── tests/                        # TS tests (177 cases)
+├── tests/                        # TS tests (184 cases)
+│   ├── unit/                     # Unit tests
+│   │   ├── core/                 # Detection, normalizer tests
+│   │   ├── security/             # Masking, signer tests
+│   │   ├── intelligence/         # Task generator, executor, severity tests
+│   │   ├── transport/            # Transport mode tests (local/remote/dual)
+│   │   └── shared/               # Result monad tests
+│   └── integration/              # Pipeline E2E tests
 ├── packages/
 │   └── server/                   # Go Backend Server
-│       ├── cmd/server/           # Entry point (full module wiring)
-│       ├── config/               # YAML config + env var overrides
+│       ├── cmd/server/           # Entry point (全モジュールワイヤリング)
+│       ├── config/               # YAML config + env var overrides + validation
 │       ├── internal/
-│       │   ├── domain/           # Domain models
-│       │   ├── engine/           # Pipeline + normalizer + agent bridge
+│       │   ├── domain/           # Domain models (Log, Task, Event, Result)
+│       │   ├── engine/           # Pipeline(10ステージ) + normalizer + agent bridge
 │       │   ├── detection/        # Ensemble + dynamic rules + anomaly + dedup
-│       │   ├── security/         # HMAC, masking, policy engine, verifier
-│       │   ├── response/         # Threat response orchestrator + block agents
-│       │   ├── notify/           # Notification adapters (Slack/Gmail/Discord/Webhook)
-│       │   ├── middleware/       # Auth + RBAC authorizer + security headers
+│       │   ├── security/         # HMAC signer, masking, policy engine, verifier
+│       │   ├── response/         # Threat response orchestrator + block agents + cloud adapters
+│       │   ├── notify/           # Notification adapters (Slack/Gmail/Discord/Webhook/Log)
+│       │   ├── middleware/       # Auth(TokenValidator) + RBAC authorizer + security headers
 │       │   ├── task/             # Task generator + executor
-│       │   ├── agent/            # AI agent provider + executor
-│       │   ├── grpc/             # gRPC server + interceptors
-│       │   ├── store/            # SQLite persistence
-│       │   └── webhook/          # Legacy webhook notifier
-│       ├── proto/                # Protocol Buffers definition
-│       ├── docs/design/          # Design documents
+│       │   ├── agent/            # AI agent provider(I/F) + executor + mock
+│       │   ├── grpc/             # gRPC server + interceptors + pb
+│       │   ├── store/            # SQLite persistence (logs/tasks/approvals/threat_responses)
+│       │   └── webhook/          # Webhook notifier (approval notifications)
+│       ├── proto/                # Protocol Buffers definition (sentinel.proto)
+│       ├── docs/design/          # Design documents + work log
 │       └── testutil/             # Test fixtures
-└── docs/                         # Documentation
+└── docs/                         # Architecture, security, usage guide
 ```
 
 ---
