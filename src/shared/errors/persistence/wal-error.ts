@@ -43,7 +43,7 @@ export interface WalError {
 // 本ブロック下のファクトリ関数群は wal-manager.ts で利用。
 // --- Usage of the factory-funcs under this comment block ---
 // ❌ 毎回WALManager内でこれを書く（重複・ミス多発）
-// return err({
+// return failure({
 //   kind: "WalWrite",
 //   operation: "append",
 //   walId: this.walId,
@@ -53,7 +53,7 @@ export interface WalError {
 // });
 
 // ✅ ファクトリ1行（構造保証・監査情報自動付与）
-// return err(walWriteError("append", this.walId, this.walFilePath));
+// return failure(walWriteError("append", this.walId, this.walFilePath));
 
 export const walInitError = (
     walId: string,

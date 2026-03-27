@@ -82,7 +82,7 @@ export class WALManager implements IWALManager {
         this.fileLock = new FileLock(this.lockFilePath, this.walId);
 
         const keyResult = this.validateKMSKey(kmsKeyBuffer);
-        if (isErr(keyResult)) {
+        if (isfailure(keyResult)) {
             throw keyResult.error;
         }
 
@@ -95,7 +95,7 @@ export class WALManager implements IWALManager {
      */
     private validateKMSKey(kmsKeyBuffer: Buffer): Result<void, WalError> {
         if (kmsKeyBuffer.length !== 32) {
-            return err(
+            return failure(
                 walCryptoError("validateKMSKey", this.walId, this.walFilePath, {
                     reason: "Invalid key length",
                 } as ErrorMeta),
@@ -122,7 +122,7 @@ export class WALManager implements IWALManager {
                     testEncryptionKey,
                     testHmacKey,
                 );
-                if (isErr(encRes)) throw encRes.error;
+                if (isfailure(encRes)) throw encRes.error;
 
                 // テスト鍵で復号
                 const decRes = this.decryptBufferWithKeys(
@@ -131,7 +131,7 @@ export class WALManager implements IWALManager {
                     testEncryptionKey,
                     testHmacKey,
                 );
-                if (isErr(decRes)) throw decRes.error;
+                if (isfailure(decRes)) throw decRes.error;
 
                 if (!decRes.value.equals(testData)) {
                     throw new Error("Test key decryption result mismatch");
@@ -258,7 +258,7 @@ export class WALManager implements IWALManager {
     public async initialize(): Promise<Result<void, WalError>> {
         // 初期化は短時間ロックで十分
         const lockRes = await this.fileLock.acquire();
-        if (isErr(lockRes)) {
+        if (isfailure(lockRes)) {
             return mapError(lockRes, (e) =>
                 walInitError(this.walId, this.walFilePath, {
                     originalError: e,
@@ -273,12 +273,12 @@ export class WALManager implements IWALManager {
 
             const statRes = await safe(() => stat(this.walFilePath));
             if (
-                isErr(statRes) &&
+                isfailure(statRes) &&
                 (statRes.error as NodeJS.ErrnoException).code !== "ENOENT"
             ) {
                 throw statRes.error;
             }
-            if (isErr(statRes)) {
+            if (isfailure(statRes)) {
                 await writeFile(this.walFilePath, Buffer.alloc(0));
             }
         }).then((res) =>
@@ -297,7 +297,7 @@ export class WALManager implements IWALManager {
     public async append(log: Log): Promise<Result<void, WalError>> {
         // ロック取得（排他制御）
         const lockRes = await this.fileLock.acquire();
-        if (isErr(lockRes)) {
+        if (isfailure(lockRes)) {
             return mapError(lockRes, (e) =>
                 walWriteError("append:lock", this.walId, this.walFilePath, {
                     originalError: e,
@@ -307,7 +307,7 @@ export class WALManager implements IWALManager {
 
         // ディスク容量チェック
         const diskRes = await this.checkDiskSpace();
-        if (isErr(diskRes)) {
+        if (isfailure(diskRes)) {
             this.fileLock
                 .release()
                 .catch((e) =>
@@ -339,7 +339,7 @@ export class WALManager implements IWALManager {
                     originalError: e,
                 } as ErrorMeta),
         );
-        if (isErr(encodeRes)) {
+        if (isfailure(encodeRes)) {
             this.fileLock.release().catch(console.error);
             return encodeRes;
         }
@@ -355,7 +355,7 @@ export class WALManager implements IWALManager {
 
         // 暗号化
         const encryptRes = this.encryptBuffer(dataBuffer, mode);
-        if (isErr(encryptRes)) {
+        if (isfailure(encryptRes)) {
             this.fileLock.release().catch(console.error);
             return encryptRes;
         }
@@ -391,7 +391,7 @@ export class WALManager implements IWALManager {
     public async recover(): Promise<Result<Log[], WalError>> {
         // ロック取得（必須）
         const lockRes = await this.fileLock.acquire();
-        if (isErr(lockRes)) {
+        if (isfailure(lockRes)) {
             return mapError(lockRes, (e) =>
                 walReadError("recover:lock", this.walId, this.walFilePath, {
                     originalError: e,
@@ -403,7 +403,7 @@ export class WALManager implements IWALManager {
             return safe(async () => {
                 // ファイル存在確認
                 const statRes = await safe(() => stat(this.walFilePath));
-                if (isErr(statRes)) return []; // ファイル不存在時は空配列
+                if (isfailure(statRes)) return []; // ファイル不存在時は空配列
 
                 // ファイルハンドル取得
                 const fileHandle = await open(this.walFilePath, "r");
@@ -460,7 +460,7 @@ export class WALManager implements IWALManager {
 
                         // 復号
                         const decryptRes = this.decryptBuffer(bodyBuf, mode);
-                        if (isErr(decryptRes)) {
+                        if (isfailure(decryptRes)) {
                             throw decryptRes.error;
                         }
 
@@ -471,7 +471,7 @@ export class WALManager implements IWALManager {
 
                         // 検証
                         const validateRes = validateWalEntry(rawObj);
-                        if (isErr(validateRes)) {
+                        if (isfailure(validateRes)) {
                             throw walCorruptedError(
                                 "recover",
                                 this.walId,
@@ -568,7 +568,7 @@ export class WALManager implements IWALManager {
             // 1. WALファイルサイズチェック（ファイルが存在する場合のみ）
             const fileStatRes = await safe(() => stat(this.walFilePath));
             if (
-                isOk(fileStatRes) &&
+                issuccess(fileStatRes) &&
                 fileStatRes.value.size > maxWalSizeBytes * 0.9
             ) {
                 throw new Error(
@@ -581,7 +581,7 @@ export class WALManager implements IWALManager {
             const dirStatRes = await safe(() =>
                 stat(this.gConfig.persistence.bufferDirectory),
             );
-            if (isErr(dirStatRes)) {
+            if (isfailure(dirStatRes)) {
                 // ディレクトリ不存在時は後でmkdirされるためOK
                 return;
             }
@@ -623,7 +623,7 @@ export class WALManager implements IWALManager {
                     totalSize += await this.estimateDirectorySize(fullPath);
                 } else {
                     const statRes = await safe(() => stat(fullPath));
-                    if (isOk(statRes)) {
+                    if (issuccess(statRes)) {
                         totalSize += statRes.value.size;
                     }
                 }

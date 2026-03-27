@@ -25,7 +25,7 @@ export class FileLock {
     }
 
     public async release(): Promise<Result<void, WalError>> {
-        if (!this.lockHandle) return ok(undefined);
+        if (!this.lockHandle) return success(undefined);
 
         const result = await safe(async () => {
             await this.lockHandle!.close();

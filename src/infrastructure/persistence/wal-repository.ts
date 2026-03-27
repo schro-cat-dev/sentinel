@@ -49,7 +49,7 @@
 
 //     private async getCurrentWalFile(): Promise<Result<string, WalError>> {
 //         if (this.currentWalFile) {
-//             return ok(this.currentWalFile);
+//             return success(this.currentWalFile);
 //         }
 
 //         return safe(

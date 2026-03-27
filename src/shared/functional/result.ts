@@ -7,16 +7,20 @@
 // 並列処理集約
 // レイヤー間エラー変換
 
-export type Result<T, E = Error> =
-    | { success: true; value: T }
-    | { success: false; error: E };
+export type Result<InputType, Err = Error> =
+    | { success: true; value: InputType }
+    | { success: false; error: Err };
 
-export const ok = <T>(value: T): Result<T, never> => ({
+// never型に該当する部分のデータは実質的に何もデータがないことを意味
+export const success = <InputType>(
+    value: InputType,
+): Result<InputType, never> => ({
     success: true,
     value,
 });
 
-export const err = <E>(error: E): Result<never, E> => ({
+// never型に該当する部分のデータは実質的に何もデータがないことを意味
+export const failure = <Err>(error: Err): Result<never, Err> => ({
     success: false,
     error,
 });
@@ -27,10 +31,10 @@ export const tryCatch = <T, E = Error>(
     onError?: (e: unknown) => E,
 ): Result<T, E> => {
     try {
-        return ok(fn());
+        return success(fn());
     } catch (e) {
         const error = onError ? onError(e) : (e as E);
-        return err(error);
+        return failure(error);
     }
 };
 
@@ -43,13 +47,13 @@ export const tryCatch = <T, E = Error>(
 // };
 
 export const map = <T, E, U>(r: Result<T, E>, fn: (v: T) => U): Result<U, E> =>
-    r.success ? ok(fn(r.value)) : r;
+    r.success ? success(fn(r.value)) : r;
 
 export const match = <T, E, R>(
     r: Result<T, E>,
     onOk: (v: T) => R,
     onErr: (e: E) => R,
-): R => (r.success ? onOk(r.value) : onErr(r.error));
+): R => (r.success ? onsuccess(r.value) : onfailure(r.error));
 
 /**
  * Result が成功ケースか（型ガード）
@@ -83,12 +87,11 @@ export const safe = async <T, E extends Error = Error>(
 
     for (let i = 0; i <= retries; i++) {
         try {
-            return ok(await fn());
+            return success(await fn());
         } catch (error) {
             const appError = error as E;
             notify?.(appError);
-            if (i === retries) return err(appError);
-            // eslint-disable-next-line no-await-in-loop
+            if (i === retries) return failure(appError);
             await new Promise((r) => setTimeout(r, i * 100));
         }
     }
@@ -99,7 +102,7 @@ export const safe = async <T, E extends Error = Error>(
 export const mapError = <T, E, F>(
     r: Result<T, E>,
     fn: (e: E) => F,
-): Result<T, F> => (r.success ? r : err(fn(r.error)));
+): Result<T, F> => (r.success ? r : failure(fn(r.error)));
 
 // 条件分岐（検証系処理）
 export const guard =
@@ -108,7 +111,7 @@ export const guard =
         error: E,
     ): ((value: T) => Result<T, E>) =>
     (value) =>
-        predicate(value) ? ok(value) : err(error);
+        predicate(value) ? success(value) : failure(error);
 
 // 全Resultを1つに集約（複数処理後）
 export const all = <T, E>(results: Result<T, E>[]): Result<T[], E> => {
@@ -117,13 +120,13 @@ export const all = <T, E>(results: Result<T, E>[]): Result<T[], E> => {
         if (!result.success) return result;
         values.push(result.value);
     }
-    return ok(values);
+    return success(values);
 };
 
 // --- Usage ---
 // ex1: Service layer
 // function executeTrade(order: Order): Result<TradeResult, AppError> {
-//   return ok(order.amount)
+//   return success(order.amount)
 //     .map(v => checkBalance(v))      // number → boolean? → Result
 //     .map(v => validateLimit(v))     // boolean → void? → Result
 //     .map(v => execute(v));          // void → TradeResult
@@ -137,7 +140,7 @@ export const all = <T, E>(results: Result<T, E>[]): Result<T[], E> => {
 
 // ex1: Service layer
 // async function executeTrade(order: Order): Promise<Result<TradeResult, AppError>> {
-//   return ok(order)
+//   return success(order)
 //     .flatMap(async v => safe(async () => checkBalance(v), { retries: 2 }))  // DBリトライ
 //     .flatMap(async v => safe(async () => checkInventory(v)))               // 在庫確認
 //     .flatMap(v => guard(v => v <= userLimit, LimitExceededError))          // 限度額ガード

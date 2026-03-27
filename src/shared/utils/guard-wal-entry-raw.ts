@@ -20,8 +20,8 @@ const req = <T>(
     name: string,
     check: (v: unknown) => v is T,
 ): Result<T, Error> => {
-    if (check(val)) return ok(val);
-    return err(new Error(`Field '${name}' is invalid or missing`));
+    if (check(val)) return success(val);
+    return failure(new Error(`Field '${name}' is invalid or missing`));
 };
 
 /** オプショナル項目の検証 (undefined/null は OK) */
@@ -30,9 +30,9 @@ const opt = <T>(
     name: string,
     check: (v: unknown) => v is T,
 ): Result<T | undefined, Error> => {
-    if (val === undefined || val === null) return ok(undefined);
-    if (check(val)) return ok(val);
-    return err(new Error(`Field '${name}' is invalid type`));
+    if (val === undefined || val === null) return success(undefined);
+    if (check(val)) return success(val);
+    return failure(new Error(`Field '${name}' is invalid type`));
 };
 
 // --- 型ガード (プリミティブ) ---
@@ -192,7 +192,7 @@ const validateAgentBackLog = (obj: unknown): AIAgentEventBacklog => {
 // メインバリデータ (集約・Strict Mode)
 
 export const validateWalEntry = (obj: unknown): Result<WalEntryRaw, Error> => {
-    if (!isObj(obj)) return err(new Error("Input is not an object"));
+    if (!isObj(obj)) return failure(new Error("Input is not an object"));
 
     return tryCatch(() => {
         // --- 1. バリデーションと値の抽出 ---
