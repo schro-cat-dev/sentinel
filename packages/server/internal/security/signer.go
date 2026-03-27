@@ -26,6 +26,7 @@ type IntegritySigner struct {
 	mu           sync.Mutex
 	previousHash string
 	hmacKey      []byte
+	previousKeys [][]byte // キーローテーション用: 旧キーでの検証に使用
 }
 
 // NewIntegritySigner はHMACキー付きでSignerを生成する。キーは必須（最低32 bytes）。
@@ -78,6 +79,34 @@ func VerifyHash(log domain.Log, expectedPreviousHash string, hmacKey []byte) boo
 	}
 	computed := CalculateHash(log, expectedPreviousHash, hmacKey)
 	return subtle.ConstantTimeCompare([]byte(computed), []byte(log.Hash)) == 1
+}
+
+// AddPreviousKey はキーローテーション用の旧キーを追加する
+func (s *IntegritySigner) AddPreviousKey(key []byte) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.previousKeys = append(s.previousKeys, key)
+}
+
+// VerifyHashWithRotation は現在のキー + 旧キーで検証を試みる
+func (s *IntegritySigner) VerifyHashWithRotation(log domain.Log, expectedPreviousHash string) bool {
+	s.mu.Lock()
+	currentKey := s.hmacKey
+	prevKeys := make([][]byte, len(s.previousKeys))
+	copy(prevKeys, s.previousKeys)
+	s.mu.Unlock()
+
+	// 現在のキーで検証
+	if VerifyHash(log, expectedPreviousHash, currentKey) {
+		return true
+	}
+	// 旧キーで検証
+	for _, key := range prevKeys {
+		if VerifyHash(log, expectedPreviousHash, key) {
+			return true
+		}
+	}
+	return false
 }
 
 func calculateHMAC(log *domain.Log, previousHash string, key []byte) string {

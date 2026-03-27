@@ -29,6 +29,8 @@ type ServerConfig struct {
 	MaxRecvMsgSizeBytes  int    `yaml:"max_recv_msg_size_bytes"`
 	MaxConcurrentStreams uint32 `yaml:"max_concurrent_streams"`
 	GracefulTimeoutSec   int    `yaml:"graceful_timeout_sec"`
+	TLSCertFile          string `yaml:"tls_cert_file"` // TLS証明書パス（空=plaintext）
+	TLSKeyFile           string `yaml:"tls_key_file"`  // TLS秘密鍵パス
 }
 
 type SecurityConfig struct {
@@ -80,8 +82,9 @@ type GuardrailsConfig struct {
 }
 
 type StoreConfig struct {
-	Driver string `yaml:"driver"`
-	DSN    string `yaml:"dsn"`
+	Driver        string `yaml:"driver"`         // "sqlite" or "sqlite_encrypted"
+	DSN           string `yaml:"dsn"`
+	EncryptionKey string `yaml:"encryption_key"` // SQLCipher暗号化キー（env: SENTINEL_STORE_ENCRYPTION_KEY）
 }
 
 type AuthConfig struct {
@@ -267,6 +270,13 @@ func applyEnvOverrides(cfg *Config) {
 	// Anomaly overrides
 	if v := os.Getenv("SENTINEL_ANOMALY_ENABLED"); v == "true" || v == "1" {
 		cfg.Anomaly.Enabled = true
+	}
+	// Store encryption key
+	if v := os.Getenv("SENTINEL_STORE_ENCRYPTION_KEY"); v != "" {
+		cfg.Store.EncryptionKey = v
+		if cfg.Store.Driver == "" || cfg.Store.Driver == "sqlite" {
+			cfg.Store.Driver = "sqlite_encrypted"
+		}
 	}
 	// Response overrides
 	if v := os.Getenv("SENTINEL_RESPONSE_ENABLED"); v == "true" || v == "1" {

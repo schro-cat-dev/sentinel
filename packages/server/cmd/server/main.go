@@ -24,6 +24,7 @@ import (
 	"github.com/schro-cat-dev/sentinel-server/internal/webhook"
 
 	ggrpc "google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 func main() {
@@ -38,13 +39,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Store
-	st, err := store.NewSQLiteStore(cfg.Store.DSN)
+	// Store（ドライバ選択: sqlite / sqlite_encrypted）
+	st, err := store.NewStore(store.StoreConfig{
+		Driver:        cfg.Store.Driver,
+		DSN:           cfg.Store.DSN,
+		EncryptionKey: cfg.Store.EncryptionKey,
+	})
 	if err != nil {
-		slog.Error("failed to init store", "error", err)
+		slog.Error("failed to init store", "error", err, "driver", cfg.Store.Driver)
 		os.Exit(1)
 	}
 	defer st.Close()
+	slog.Info("store initialized", "driver", cfg.Store.Driver)
 
 	// Webhook notifier
 	var notifier *webhook.Notifier
@@ -121,6 +127,17 @@ func main() {
 	var opts []ggrpc.ServerOption
 	if len(interceptors) > 0 {
 		opts = append(opts, ggrpc.ChainUnaryInterceptor(interceptors...))
+	}
+
+	// TLS
+	if cfg.Server.TLSCertFile != "" && cfg.Server.TLSKeyFile != "" {
+		creds, err := credentials.NewServerTLSFromFile(cfg.Server.TLSCertFile, cfg.Server.TLSKeyFile)
+		if err != nil {
+			slog.Error("failed to load TLS credentials", "error", err)
+			os.Exit(1)
+		}
+		opts = append(opts, ggrpc.Creds(creds))
+		slog.Info("TLS enabled", "cert", cfg.Server.TLSCertFile)
 	}
 
 	sentinel, srv, lis, err := sentinelgrpc.StartServerWithSentinel(cfg.Server.Addr, pipeCfg, executor, st, notifier, opts...)
