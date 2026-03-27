@@ -172,5 +172,5 @@ spec:
 ## 注意事項
 
 - SQLite はシングルライターのため、**レプリカ数は1**を推奨。スケールアウトにはPostgreSQL等への移行が必要
-- TLS は gRPC サーバ側では未設定。本番では Envoy/Nginx 等のリバースプロキシで TLS 終端するか、サーバに証明書を設定する
+- TLS は `server.tls_cert_file` / `server.tls_key_file` でサーバ側で有効化可能。または Envoy/Nginx 等のリバースプロキシで TLS 終端する
 - データの永続化は `/data` ディレクトリにマウント。SQLite ファイルが保存される

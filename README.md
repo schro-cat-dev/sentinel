@@ -33,7 +33,7 @@ Application log arrives
     -> [Mask PII]       Context-dependent policy (email, phone, credit card, gov ID)
     -> [Verify]         Post-mask PII residual detection with fallback re-masking
     -> [Hash-chain]     HMAC-SHA256 tamper detection (constant-time comparison)
-    -> [Persist]        SQLite with WAL (parameterized queries, SQL injection safe)
+    -> [Persist]        SQLite/SQLCipher with WAL (parameterized queries, SQL injection safe)
     -> [Detect]         Ensemble detection (all rules + dynamic rules + score aggregation)
     -> [Anomaly]        Statistical frequency-based anomaly detection
     -> [Threat Response] Strategy-based: Block IP / Analyze with AI / Notify team
@@ -146,6 +146,7 @@ sentinel/
 │   │   ├── detection/            # Event detection rules (EventDetector)
 │   │   └── task/                 # Task generation + execution
 │   ├── transport/                # RemoteTransport I/F (local/remote/dual)
+│   ├── validation/               # Runtime input validator (zero-dep)
 │   ├── security/                 # Hash-chain, PII masking
 │   ├── shared/                   # Error taxonomy, Result monad
 │   └── types/                    # Domain models (Log, Task, Event)
@@ -155,6 +156,7 @@ sentinel/
 │   │   ├── security/             # Masking, signer tests
 │   │   ├── intelligence/         # Task generator, executor, severity tests
 │   │   ├── transport/            # Transport mode tests (local/remote/dual)
+│   │   ├── validation/           # Input validator tests
 │   │   └── shared/               # Result monad tests
 │   └── integration/              # Pipeline E2E tests
 ├── packages/
@@ -172,7 +174,8 @@ sentinel/
 │       │   ├── task/             # Task generator + executor
 │       │   ├── agent/            # AI agent provider(I/F) + executor + mock
 │       │   ├── grpc/             # gRPC server + interceptors + pb
-│       │   ├── store/            # SQLite persistence (logs/tasks/approvals/threat_responses)
+│       │   ├── retry/             # Exponential backoff + jitter (shared module)
+│       │   ├── store/            # SQLite/SQLCipher persistence (logs/tasks/approvals/threat_responses)
 │       │   └── webhook/          # Webhook notifier (approval notifications)
 │       ├── proto/                # Protocol Buffers definition (sentinel.proto)
 │       ├── docs/design/          # Design documents + work log
@@ -186,6 +189,11 @@ sentinel/
 
 ```yaml
 # config/sentinel.yaml
+server:
+  addr: ":50051"
+  # tls_cert_file: "/path/to/cert.pem"  # TLS有効化
+  # tls_key_file: "/path/to/key.pem"
+
 pipeline:
   service_id: "my-service"
 
@@ -193,6 +201,12 @@ security:
   enable_masking: true
   enable_hash_chain: true
   hmac_key: "at-least-32-bytes..."  # or SENTINEL_HMAC_KEY env var
+  hmac_key_version: 1               # キーローテーション用
+
+store:
+  driver: "sqlite"                   # sqlite / sqlite_encrypted
+  dsn: "file:sentinel.db?_journal=WAL"
+  # encryption_key: via SENTINEL_STORE_ENCRYPTION_KEY env var
 
 ensemble:
   enabled: true                     # or SENTINEL_ENSEMBLE_ENABLED=true
@@ -223,11 +237,17 @@ agent:
 response:
   enabled: true                     # or SENTINEL_RESPONSE_ENABLED=true
   default_strategy: "NOTIFY_ONLY"   # or SENTINEL_RESPONSE_DEFAULT_STRATEGY
+  block_mode: "IMMEDIATE"           # IMMEDIATE / REQUIRE_APPROVAL
   rules:
     - event_name: "SECURITY_INTRUSION_DETECTED"
       strategy: "BLOCK_AND_NOTIFY"
       block_action: "block_ip"
       notify_targets: ["#security"]
+
+auth:
+  enabled: false                    # or SENTINEL_API_KEYS で有効化
+  rate_limit_rps: 100
+  rate_limit_burst: 200
 
 authorization:
   enabled: true                     # or SENTINEL_AUTHZ_ENABLED=true
@@ -243,6 +263,9 @@ authorization:
       max_log_level: 5
       can_write: true
       can_read: true
+
+# masking_policies: []              # ログ種別ごとのマスクルール
+# routing_rules: []                 # 承認チェーンルーティング
 ```
 
 ---

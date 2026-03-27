@@ -71,6 +71,9 @@
 |---|---|
 | `store.go` | Store I/F（Logs/Tasks/Approvals/ThreatResponses） |
 | `sqlite.go` | SQLite実装（WALモード、パラメータ化クエリ） |
+| `factory.go` | ドライバファクトリ（`sqlite` / `sqlite_encrypted` 選択） |
+
+`sqlite_encrypted` ドライバ: SQLCipher v4 (AES-256-CBC)。`SENTINEL_STORE_ENCRYPTION_KEY` 環境変数でキー設定。
 
 ### internal/grpc/ — gRPCサーバ層
 | モジュール | 責務 |

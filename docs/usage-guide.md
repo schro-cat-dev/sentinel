@@ -107,7 +107,7 @@ Sentinel.reset(); // Clears singleton, allows re-initialization
 ```bash
 npm run build      # TypeScript compile + Rollup bundle
 npm run typecheck   # Type check only
-npm run test        # Run 177 tests (Vitest)
+npm run test        # Run 208 tests (Vitest)
 npm run lint        # ESLint
 ```
 
@@ -156,6 +156,19 @@ The server refuses to start if `SENTINEL_HMAC_KEY` is not set or is shorter than
 |----------|---------|---------|-------------|
 | `SENTINEL_HMAC_KEY` | Yes | (none) | HMAC-SHA256 key for hash chain integrity. Minimum 32 bytes. |
 | `SENTINEL_ADDR` | No | `:50051` | gRPC listen address |
+| `SENTINEL_API_KEYS` | No | (none) | API keys for authentication (comma-separated) |
+| `SENTINEL_ENSEMBLE_ENABLED` | No | `false` | Enable ensemble detection |
+| `SENTINEL_ANOMALY_ENABLED` | No | `false` | Enable anomaly detection |
+| `SENTINEL_AGENT_ENABLED` | No | `false` | Enable AI agent |
+| `SENTINEL_AGENT_PROVIDER` | No | `mock` | AI provider name |
+| `SENTINEL_AUTHZ_ENABLED` | No | `false` | Enable RBAC authorization |
+| `SENTINEL_RESPONSE_ENABLED` | No | `false` | Enable threat response |
+| `SENTINEL_RESPONSE_DEFAULT_STRATEGY` | No | `NOTIFY_ONLY` | Default response strategy |
+| `SENTINEL_STORE_ENCRYPTION_KEY` | No | (none) | SQLCipher encryption key (auto-enables sqlite_encrypted driver) |
+| `SENTINEL_SLACK_WEBHOOK_URL` | No | (none) | Slack notification webhook |
+| `SENTINEL_DISCORD_WEBHOOK_URL` | No | (none) | Discord notification webhook |
+| `SENTINEL_GMAIL_FROM` | No | (none) | Gmail sender address |
+| `SENTINEL_GMAIL_PASSWORD` | No | (none) | Gmail app password |
 
 ### gRPC API
 
@@ -202,7 +215,7 @@ message TaskResult {
 
 ```protobuf
 rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
-// Returns: { status: "SERVING", version: "0.1.0" }
+// Returns: { status: "SERVING", version: "0.3.0" }
 ```
 
 ### Test with grpcurl

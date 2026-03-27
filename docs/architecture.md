@@ -166,15 +166,23 @@ IngestResponse (protobuf)
 
 ### Module Responsibilities
 
-| Package | Files | Responsibility |
-|---------|-------|---------------|
+| Package | Key Files | Responsibility |
+|---------|-----------|---------------|
 | `internal/domain` | log.go, task.go, event.go, result.go | Domain models with validation methods. No external dependencies. |
-| `internal/engine` | normalizer.go, pipeline.go | Input validation (UTF-8, null bytes, control chars). Pipeline orchestration. |
-| `internal/security` | signer.go, masking.go | HMAC-SHA256 hash chain (mutex-protected). PII masking (regex + category). |
-| `internal/detection` | detector.go, rules.go | `DetectionRule` interface + 4 concrete rules. Pluggable via `NewEventDetectorWithRules()`. |
+| `internal/engine` | pipeline.go, normalizer.go, agent_bridge.go, routing.go | 10-stage pipeline orchestration. Input validation. Agent delegation. Approval routing. |
+| `internal/security` | signer.go, masking.go, masking_jp.go, masking_policy.go, masking_verify.go, sanitizer.go | HMAC-SHA256 hash chain (key rotation). PII masking (regex + category + Japan-specific). Policy engine. Post-mask verification. ReDoS prevention. |
+| `internal/detection` | detector.go, ensemble.go, rules.go, dynamic_rule.go, anomaly.go, dedup.go | Ensemble detection (all rules + score aggregation). Dynamic YAML rules. Statistical anomaly detection. Deduplication. |
+| `internal/response` | orchestrator.go, strategy.go, block_agent.go, block_provider.go, analysis_agent.go | Threat response orchestration (5 strategies). Block dispatch (IP/Account/AWS/GCP/Azure). Approval-gated blocking. AI analysis. |
+| `internal/notify` | notifier.go, adapters.go | Multi-channel notification (Slack/Gmail/Discord/Webhook/Log). Prefix-based routing. Retry support. |
+| `internal/middleware` | auth.go, authorizer.go, security_config.go | API key auth. RBAC authorization. Rate limiting. Security headers. Audit logging. |
 | `internal/task` | generator.go, executor.go | Rule-indexed task generation. Handler registry with RWMutex. Fail-safe for critical actions. |
-| `internal/grpc` | server.go | gRPC service. Proto conversion. PII-safe error responses. Payload size limits. |
-| `cmd/server` | main.go | Entry point. HMAC key from env. Structured logging (slog/JSON). Graceful shutdown (30s timeout). |
+| `internal/agent` | provider.go, executor.go, mock_provider.go | AI provider interface. Loop-depth tracking. Timeout enforcement. Result re-ingestion. |
+| `internal/store` | store.go, sqlite.go, factory.go | Store interface. SQLite (WAL) + SQLCipher (AES-256-CBC). Driver factory. |
+| `internal/retry` | retry.go | Exponential backoff + full jitter. Generic `DoWithResult[T]`. |
+| `internal/grpc` | server.go, interceptors.go | gRPC service (Ingest/HealthCheck/Tasks/Approval/Block). Auth + rate limit interceptors. Audit log interceptor. |
+| `internal/webhook` | notifier.go | Approval notification via webhook (HMAC-signed). |
+| `config` | config.go | YAML config loading + env var overrides + validation + defaults. |
+| `cmd/server` | main.go | Entry point. Full module wiring. TLS support. Structured logging (slog/JSON). Graceful shutdown. |
 
 ### Detection Rules (Strategy Pattern)
 
@@ -199,7 +207,7 @@ Adding a new rule:
 | `Pipeline` | Stateless except signer | Each gRPC call processes independently |
 | gRPC server | goroutine-per-request | Standard gRPC concurrency model |
 
-Verified with `go test -race` (134 tests, 0 data races).
+Verified with `go test -race` (682 tests across 13 packages, 0 data races).
 
 ---
 
@@ -229,19 +237,26 @@ Node.js built-in only: node:crypto (SHA-256)
 
 ```
 cmd/server/main.go
-  ├── internal/grpc/server.go
-  │     └── internal/engine/pipeline.go
+  ├── config/config.go                    (YAML + env overrides)
+  ├── internal/grpc/server.go             (gRPC service + interceptors)
+  │     └── internal/engine/pipeline.go   (10-stage pipeline)
   │           ├── internal/engine/normalizer.go
-  │           ├── internal/security/masking.go
-  │           ├── internal/security/signer.go
-  │           ├── internal/detection/detector.go
-  │           │     └── internal/detection/rules.go
+  │           ├── internal/middleware/authorizer.go   (RBAC)
+  │           ├── internal/security/masking.go        (+ policy + verify + JP)
+  │           ├── internal/security/signer.go         (+ key rotation)
+  │           ├── internal/detection/ensemble.go      (+ dynamic_rule + anomaly + dedup)
+  │           ├── internal/response/orchestrator.go   (+ block + analysis + notify)
   │           ├── internal/task/generator.go
-  │           └── internal/task/executor.go
-  └── internal/domain/ (all domain models)
+  │           ├── internal/task/executor.go
+  │           └── internal/engine/agent_bridge.go     (→ agent/executor)
+  ├── internal/store/factory.go           (sqlite / sqlite_encrypted)
+  ├── internal/notify/notifier.go         (Slack/Gmail/Discord/Webhook)
+  ├── internal/retry/retry.go             (exponential backoff + jitter)
+  └── internal/domain/                    (all domain models)
 
 External dependencies:
   - google.golang.org/grpc (gRPC framework)
   - google.golang.org/protobuf (Protocol Buffers)
   - github.com/google/uuid (UUID generation)
+  - github.com/nicholasgasior/gocipher (SQLCipher, optional)
 ```

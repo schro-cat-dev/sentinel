@@ -16,8 +16,8 @@ Sentinel processes application logs that may contain PII, security events, and c
 | **Concurrent state corruption** | `sync.Mutex` on hash chain, `sync.RWMutex` on handler registry | Implemented |
 | **PII in error messages** | gRPC returns generic error codes; details logged server-side only | Implemented |
 | **Critical action without handler** | `KILL_SWITCH` / `AUTOMATED_REMEDIATE` fail if no handler registered | Implemented |
-| **MitM on gRPC** | TLS/mTLS support | Not yet implemented (see Roadmap) |
-| **Service impersonation** | mTLS client certificates / API key auth | Not yet implemented (see Roadmap) |
+| **MitM on gRPC** | TLS support (`server.tls_cert_file` / `server.tls_key_file`) | Implemented |
+| **Service impersonation** | API key authentication (gRPC metadata interceptor) | Implemented |
 | **Rate-based DoS** | Per-client rate limiting | Implemented (gRPC interceptor) |
 | **Transient failure** | Exponential backoff + jitter retry (`internal/retry/`) | Implemented |
 | **Partial DB write** | `store.WithTx()` for atomic multi-step operations | Implemented |
@@ -161,14 +161,22 @@ The normalizer (`internal/engine/normalizer.go`) enforces:
 | Structured logging | `log/slog` JSON format with traceId |
 | Graceful shutdown | 30-second timeout, then force stop |
 
+### Implemented Security Features
+
+| Feature | Status | Configuration |
+|---------|--------|---------------|
+| TLS (server-side) | Implemented | `server.tls_cert_file` / `server.tls_key_file` in config YAML |
+| API key authentication | Implemented | `auth.enabled: true` + `auth.api_keys` or `SENTINEL_API_KEYS` env var |
+| Per-client rate limiting | Implemented | `auth.rate_limit_rps` / `auth.rate_limit_burst` (gRPC interceptor) |
+| RBAC authorization | Implemented | `authorization.enabled: true` with role definitions |
+| Audit logging | Implemented | `AuditLogUnaryInterceptor` records all gRPC requests |
+| Data encryption at rest | Implemented | `store.driver: sqlite_encrypted` + `SENTINEL_STORE_ENCRYPTION_KEY` |
+
 ### Not Yet Implemented (Production Roadmap)
 
 | Feature | Priority | Notes |
 |---------|---------|-------|
-| TLS (server-side) | Required for production | Load cert/key from `SENTINEL_TLS_CERT_PATH` / `SENTINEL_TLS_KEY_PATH` |
-| mTLS (mutual) | Required for production | Client certificate verification against CA pool |
-| API key authentication | Required for production | gRPC metadata interceptor |
-| Per-client rate limiting | Required for production | Token bucket per source IP/service ID |
+| mTLS (mutual) | Recommended | Client certificate verification against CA pool |
 | Request tracing | Recommended | OpenTelemetry gRPC interceptor |
 
 ---

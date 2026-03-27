@@ -132,6 +132,7 @@ anomaly:
 response:
   enabled: true
   default_strategy: "NOTIFY_ONLY"   # BLOCK_AND_NOTIFY / ANALYZE_AND_NOTIFY / NOTIFY_ONLY / BLOCK_ONLY / MONITOR
+  block_mode: "IMMEDIATE"           # IMMEDIATE（即時実行） / REQUIRE_APPROVAL（承認待ち）
   rules:
     - event_name: "SECURITY_INTRUSION_DETECTED"
       strategy: "BLOCK_AND_NOTIFY"
@@ -198,8 +199,10 @@ server:
   graceful_timeout_sec: 30
 
 store:
-  driver: "sqlite"
+  driver: "sqlite"                  # sqlite / sqlite_encrypted（SQLCipher AES-256-CBC）
   dsn: "file:sentinel.db?_journal=WAL"
+  # 暗号化ドライバの場合: SENTINEL_STORE_ENCRYPTION_KEY 環境変数でキー設定
+  # （env var設定時、自動で sqlite_encrypted に切り替え）
 ```
 
 ---
@@ -218,6 +221,7 @@ store:
 | `SENTINEL_AUTHZ_ENABLED` | RBAC認可 | `true` |
 | `SENTINEL_RESPONSE_ENABLED` | 脅威レスポンス | `true` |
 | `SENTINEL_RESPONSE_DEFAULT_STRATEGY` | デフォルト戦略 | `BLOCK_AND_NOTIFY` |
+| `SENTINEL_STORE_ENCRYPTION_KEY` | SQLCipher暗号化キー（設定時、自動で`sqlite_encrypted`に切替） | `my-encryption-key` |
 | `SENTINEL_SLACK_WEBHOOK_URL` | Slack通知 | `https://hooks.slack.com/...` |
 | `SENTINEL_DISCORD_WEBHOOK_URL` | Discord通知 | `https://discord.com/api/...` |
 | `SENTINEL_GMAIL_FROM` | Gmail送信元 | `sentinel@company.com` |

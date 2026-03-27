@@ -1,14 +1,154 @@
 .
+├── DESIGN_V1.md
 ├── dir_structure.txt
 ├── docs
+│   ├── architecture-diagrams.md
+│   ├── architecture.md
 │   ├── coop-siem-like-tools-agent.md
-│   ├── dir_structure.txt
 │   ├── instance-manage.md
-│   ├── modules-desc.txt
-│   └── task-gen.md
+│   ├── security.md
+│   ├── task-gen.md
+│   └── usage-guide.md
 ├── eslint.config.js
+├── examples
+│   └── grpc-transport.ts
 ├── package-lock.json
 ├── package.json
+├── packages
+│   └── server
+│       ├── cmd
+│       │   └── server
+│       │       └── main.go
+│       ├── config
+│       │   ├── config_test.go
+│       │   ├── config.go
+│       │   ├── security.default.json
+│       │   └── sentinel.yaml
+│       ├── docs
+│       │   ├── design
+│       │   │   ├── known-limitations.md
+│       │   │   ├── module-responsibility-map.md
+│       │   │   ├── threat-response-orchestration.md
+│       │   │   └── work-log-2026-03-27.md
+│       │   ├── docker-guide.md
+│       │   ├── extensibility-guide.md
+│       │   ├── gap-requirements.md
+│       │   ├── usage-guide.md
+│       │   └── v2-design.md
+│       ├── go.mod
+│       ├── go.sum
+│       ├── internal
+│       │   ├── agent
+│       │   │   ├── executor_test.go
+│       │   │   ├── executor.go
+│       │   │   ├── mock_provider.go
+│       │   │   └── provider.go
+│       │   ├── detection
+│       │   │   ├── anomaly_test.go
+│       │   │   ├── anomaly.go
+│       │   │   ├── dedup_test.go
+│       │   │   ├── dedup.go
+│       │   │   ├── detector_test.go
+│       │   │   ├── detector.go
+│       │   │   ├── dynamic_rule_test.go
+│       │   │   ├── dynamic_rule.go
+│       │   │   ├── ensemble_test.go
+│       │   │   ├── ensemble.go
+│       │   │   └── rules.go
+│       │   ├── domain
+│       │   │   ├── approval_test.go
+│       │   │   ├── approval.go
+│       │   │   ├── domain_test.go
+│       │   │   ├── event.go
+│       │   │   ├── log.go
+│       │   │   ├── result.go
+│       │   │   └── task.go
+│       │   ├── engine
+│       │   │   ├── agent_bridge_test.go
+│       │   │   ├── agent_bridge.go
+│       │   │   ├── benchmark_enhanced_test.go
+│       │   │   ├── benchmark_test.go
+│       │   │   ├── enhanced_pipeline_test.go
+│       │   │   ├── full_integration_test.go
+│       │   │   ├── normalizer_test.go
+│       │   │   ├── normalizer.go
+│       │   │   ├── pipeline_test.go
+│       │   │   ├── pipeline.go
+│       │   │   ├── routing.go
+│       │   │   ├── security_test.go
+│       │   │   └── threat_response_e2e_test.go
+│       │   ├── grpc
+│       │   │   ├── approval_workflow_test.go
+│       │   │   ├── e2e_comprehensive_test.go
+│       │   │   ├── enhanced_server_test.go
+│       │   │   ├── interceptors.go
+│       │   │   ├── multistep_approval_test.go
+│       │   │   ├── network_integration_test.go
+│       │   │   ├── pb
+│       │   │   │   ├── sentinel_grpc.pb.go
+│       │   │   │   └── sentinel.pb.go
+│       │   │   ├── server_test.go
+│       │   │   └── server.go
+│       │   ├── middleware
+│       │   │   ├── auth.go
+│       │   │   ├── authorizer_test.go
+│       │   │   ├── authorizer.go
+│       │   │   ├── middleware_test.go
+│       │   │   └── security_config.go
+│       │   ├── notify
+│       │   │   ├── adapters_test.go
+│       │   │   ├── adapters.go
+│       │   │   ├── mock.go
+│       │   │   ├── notifier_test.go
+│       │   │   └── notifier.go
+│       │   ├── response
+│       │   │   ├── analysis_agent_test.go
+│       │   │   ├── analysis_agent.go
+│       │   │   ├── block_agent_test.go
+│       │   │   ├── block_agent.go
+│       │   │   ├── block_provider_test.go
+│       │   │   ├── block_provider.go
+│       │   │   ├── block_ttl_test.go
+│       │   │   ├── orchestrator_test.go
+│       │   │   ├── orchestrator.go
+│       │   │   ├── strategy_test.go
+│       │   │   └── strategy.go
+│       │   ├── retry
+│       │   │   ├── retry_test.go
+│       │   │   └── retry.go
+│       │   ├── security
+│       │   │   ├── fuzz_test.go
+│       │   │   ├── key_rotation_test.go
+│       │   │   ├── masking_deep_test.go
+│       │   │   ├── masking_jp.go
+│       │   │   ├── masking_policy_test.go
+│       │   │   ├── masking_policy.go
+│       │   │   ├── masking_test.go
+│       │   │   ├── masking_verify_test.go
+│       │   │   ├── masking_verify.go
+│       │   │   ├── masking.go
+│       │   │   ├── sanitizer_test.go
+│       │   │   ├── sanitizer.go
+│       │   │   ├── signer_test.go
+│       │   │   └── signer.go
+│       │   ├── store
+│       │   │   ├── factory_test.go
+│       │   │   ├── factory.go
+│       │   │   ├── sqlite_encrypted.go
+│       │   │   ├── sqlite_test.go
+│       │   │   ├── sqlite.go
+│       │   │   └── store.go
+│       │   ├── task
+│       │   │   ├── executor_test.go
+│       │   │   ├── executor.go
+│       │   │   ├── generator_test.go
+│       │   │   └── generator.go
+│       │   └── webhook
+│       │       └── notifier.go
+│       ├── proto
+│       │   └── sentinel.proto
+│       └── testutil
+│           └── fixtures.go
 ├── readme
 │   ├── en(default).md
 │   └── ja.md
@@ -18,70 +158,23 @@
 │   ├── basic_usage.ts
 │   └── security_anomaly_ai.ts
 ├── src
-│   ├── bootstrap
-│   │   ├── di-container.ts
-│   │   └── worker-pool.ts
 │   ├── configs
-│   │   ├── detailed-config.ts
-│   │   └── global-config.ts
+│   │   ├── masking-rule.ts
+│   │   └── sentinel-config.ts
 │   ├── core
+│   │   ├── detection
+│   │   │   └── event-detector.ts
 │   │   ├── engine
 │   │   │   ├── i-interfaces.ts
 │   │   │   ├── index.ts
 │   │   │   ├── ingestion-engine.ts
 │   │   │   ├── log-normalizer.ts
-│   │   │   ├── persistence-layer.ts
-│   │   │   ├── queue-adapter.ts
-│   │   │   ├── recovery-service.ts
 │   │   │   └── types.ts
-│   │   └── system
-│   │       └── i-env-provider.ts
-│   ├── generated
-│   │   └── src
-│   │       └── proto
-│   │           └── wal.ts
-│   ├── index.ts
-│   ├── infra
-│   │   └── wal
-│   │       ├── atomic-file.ts
-│   │       ├── file-lock.ts
-│   │       └── wal-mapper.ts
-│   ├── infrastructure
-│   │   ├── persistence
-│   │   │   ├── i-storage-provider.ts
-│   │   │   ├── i-wal-repository.ts
-│   │   │   ├── wal-manager.ts
-│   │   │   └── wal-repository.ts
-│   │   ├── security
-│   │   └── system
-│   │       └── environment-metadata.ts
-│   ├── intelligence
-│   │   ├── ai
-│   │   │   ├── i-agent-provider.ts
-│   │   │   └── openai-agent-provider.ts
-│   │   ├── detector
-│   │   │   └── event-detector.ts
 │   │   └── task
-│   │       ├── i-task-repository.ts
-│   │       ├── sql-task-repository.ts
-│   │       └── task-manager.ts
-│   ├── lib
-│   │   ├── crypto
-│   │   │   ├── aesGcmEncryptionStrategy.ts
-│   │   │   ├── cryptoFactory.ts
-│   │   │   ├── cryptoTypes.ts
-│   │   │   ├── index.ts
-│   │   │   └── keyDerivation.ts
-│   │   ├── env
-│   │   │   ├── di.ts
-│   │   │   ├── factory.ts
-│   │   │   ├── index.ts
-│   │   │   ├── types.ts
-│   │   │   └── validator.ts
-│   │   └── time
-│   │       └── date-time-provider.ts
-│   ├── proto
-│   │   └── wal.proto
+│   │       ├── severity-classifier.ts
+│   │       ├── task-executor.ts
+│   │       └── task-generator.ts
+│   ├── index.ts
 │   ├── security
 │   │   ├── integrity-signer.ts
 │   │   └── masking-service.ts
@@ -91,12 +184,6 @@
 │   │   │   ├── error-protocol-kind.ts
 │   │   │   ├── http-status.ts
 │   │   │   ├── index.ts
-│   │   │   ├── infra
-│   │   │   │   ├── cache
-│   │   │   │   ├── datastore
-│   │   │   │   ├── db
-│   │   │   │   │   └── db-error-kind.ts
-│   │   │   │   └── storage
 │   │   │   └── kinds
 │   │   │       ├── application
 │   │   │       │   ├── access.ts
@@ -114,39 +201,51 @@
 │   │   │           ├── index.ts
 │   │   │           └── storage-error-kind.ts
 │   │   ├── errors
-│   │   │   ├── app
+│   │   │   ├── application
 │   │   │   │   ├── auth-error.ts
 │   │   │   │   └── validation-error.ts
 │   │   │   ├── error-payload-protocol.ts
 │   │   │   ├── index.ts
-│   │   │   └── infra
-│   │   │       ├── db-error.ts
-│   │   │       └── wal-error.ts
+│   │   │   └── persistence
 │   │   ├── functional
 │   │   │   └── result.ts
 │   │   └── utils
 │   │       ├── error-utils.ts
-│   │       ├── guard-wal-entry-raw.ts
 │   │       └── seed-to-union-types.ts
 │   ├── transport
-│   │   ├── batch-transport.ts
-│   │   ├── cloudwatch-transport.ts
-│   │   ├── datadog-transport.ts
-│   │   ├── http-transport.ts
-│   │   ├── i-log-transport.ts
-│   │   ├── index.ts
-│   │   └── transport-manager.ts
+│   │   └── transport.ts
 │   ├── types
-│   │   ├── agent.ts
 │   │   ├── event.ts
 │   │   ├── log.ts
 │   │   └── task.ts
-│   └── workers
-│       └── log.worker.ts
+│   └── validation
+│       └── log-validator.ts
 ├── tests
+│   ├── helpers
+│   │   └── fixtures.ts
+│   ├── integration
+│   │   └── pipeline.test.ts
+│   └── unit
+│       ├── core
+│       │   ├── event-detector.test.ts
+│       │   └── log-normalizer.test.ts
+│       ├── intelligence
+│       │   ├── severity-classifier.test.ts
+│       │   ├── task-executor.test.ts
+│       │   └── task-generator.test.ts
+│       ├── security
+│       │   ├── integrity-signer.test.ts
+│       │   └── masking-service.test.ts
+│       ├── shared
+│       │   └── result.test.ts
+│       ├── transport
+│       │   └── transport.test.ts
+│       └── validation
+│           └── log-validator.test.ts
 ├── tsconfig.json
 ├── types
 │   └── global.d.ts
-└── util-commands.md
+├── util-commands.md
+└── vitest.config.ts
 
-49 directories, 101 files
+60 directories, 189 files

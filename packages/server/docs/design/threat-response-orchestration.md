@@ -96,6 +96,7 @@ Pipeline.Process()
 response:
   enabled: true
   default_strategy: NOTIFY_ONLY
+  block_mode: IMMEDIATE              # IMMEDIATE / REQUIRE_APPROVAL
   rules:
     - event_name: SECURITY_INTRUSION_DETECTED
       strategy: BLOCK_AND_NOTIFY
