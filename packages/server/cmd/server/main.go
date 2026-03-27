@@ -84,6 +84,13 @@ func main() {
 		// Authorization
 		EnableAuthorization: cfg.Authorization.Enabled,
 		AuthzConfig:         convertAuthzConfig(cfg.Authorization),
+
+		// Masking policies (if configured)
+		EnableMaskingPolicy: len(cfg.MaskingPolicies) > 0,
+		MaskingPolicies:     convertMaskingPolicies(cfg.MaskingPolicies),
+
+		// Approval routing rules
+		RoutingRules: convertRoutingRules(cfg.RoutingRules),
 	}
 
 	// Executor
@@ -140,7 +147,11 @@ func main() {
 
 	// --- Post-init: Threat Response Orchestrator ---
 	if cfg.Response.Enabled {
-		enhancedBlocker := response.NewEnhancedBlockDispatcher(response.ExecModeImmediate, nil)
+		blockMode := response.ExecModeImmediate
+		if cfg.Response.BlockMode == "REQUIRE_APPROVAL" {
+			blockMode = response.ExecModeRequireApproval
+		}
+		enhancedBlocker := response.NewEnhancedBlockDispatcher(blockMode, nil)
 		enhancedBlocker.Register(response.NewIPBlockAction())
 		enhancedBlocker.Register(response.NewAccountLockAction())
 
@@ -230,7 +241,7 @@ func main() {
 		sentinel.SetBlockDispatcher(enhancedBlocker)
 		slog.Info("threat response orchestrator enabled",
 			"defaultStrategy", cfg.Response.DefaultStrategy,
-			"blockMode", "IMMEDIATE",
+			"blockMode", string(blockMode),
 		)
 	}
 
@@ -380,6 +391,54 @@ func convertResponseRules(cfgRules []config.ResponseRuleConfig) []response.Respo
 			AnalysisPrompt: r.AnalysisPrompt,
 			NotifyTargets:  r.NotifyTargets,
 			MinPriority:    r.MinPriority,
+		})
+	}
+	return rules
+}
+
+func convertMaskingPolicies(cfgPolicies []config.MaskingPolicyRuleConfig) []security.MaskingPolicyRule {
+	var policies []security.MaskingPolicyRule
+	for _, p := range cfgPolicies {
+		var logTypes []domain.LogType
+		for _, lt := range p.LogTypes {
+			logTypes = append(logTypes, domain.LogType(lt))
+		}
+		var origins []domain.Origin
+		for _, o := range p.Origins {
+			origins = append(origins, domain.Origin(o))
+		}
+		policies = append(policies, security.MaskingPolicyRule{
+			PolicyID: p.PolicyID,
+			Condition: security.MaskingPolicyCondition{
+				LogTypes: logTypes,
+				Origins:  origins,
+				MinLevel: domain.LogLevel(p.MinLevel),
+				MaxLevel: domain.LogLevel(p.MaxLevel),
+			},
+			MaskingRules:  convertMaskingRules(p.MaskingRules),
+			PreserveExtra: p.PreserveExtra,
+		})
+	}
+	return policies
+}
+
+func convertRoutingRules(cfgRules []config.ApprovalRoutingRuleConfig) []domain.ApprovalRoutingRule {
+	var rules []domain.ApprovalRoutingRule
+	for _, r := range cfgRules {
+		var chain []domain.ApprovalChainStep
+		for _, s := range r.Chain {
+			chain = append(chain, domain.ApprovalChainStep{
+				StepOrder: s.StepOrder,
+				Role:      s.Role,
+				Required:  s.Required,
+			})
+		}
+		rules = append(rules, domain.ApprovalRoutingRule{
+			RuleID:    r.RuleID,
+			MinLevel:  domain.LogLevel(r.MinLevel),
+			MaxLevel:  domain.LogLevel(r.MaxLevel),
+			EventName: r.EventName,
+			Chain:     chain,
 		})
 	}
 	return rules

@@ -19,15 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SentinelService_Ingest_FullMethodName            = "/sentinel.v1.SentinelService/Ingest"
-	SentinelService_HealthCheck_FullMethodName       = "/sentinel.v1.SentinelService/HealthCheck"
-	SentinelService_GetTaskStatus_FullMethodName     = "/sentinel.v1.SentinelService/GetTaskStatus"
-	SentinelService_ListTasks_FullMethodName         = "/sentinel.v1.SentinelService/ListTasks"
-	SentinelService_ApproveTask_FullMethodName       = "/sentinel.v1.SentinelService/ApproveTask"
-	SentinelService_RejectTask_FullMethodName        = "/sentinel.v1.SentinelService/RejectTask"
-	SentinelService_ListPendingBlocks_FullMethodName = "/sentinel.v1.SentinelService/ListPendingBlocks"
-	SentinelService_ApproveBlock_FullMethodName      = "/sentinel.v1.SentinelService/ApproveBlock"
-	SentinelService_RejectBlock_FullMethodName       = "/sentinel.v1.SentinelService/RejectBlock"
+	SentinelService_Ingest_FullMethodName             = "/sentinel.v1.SentinelService/Ingest"
+	SentinelService_HealthCheck_FullMethodName        = "/sentinel.v1.SentinelService/HealthCheck"
+	SentinelService_GetTaskStatus_FullMethodName      = "/sentinel.v1.SentinelService/GetTaskStatus"
+	SentinelService_ListTasks_FullMethodName          = "/sentinel.v1.SentinelService/ListTasks"
+	SentinelService_ApproveTask_FullMethodName        = "/sentinel.v1.SentinelService/ApproveTask"
+	SentinelService_RejectTask_FullMethodName         = "/sentinel.v1.SentinelService/RejectTask"
+	SentinelService_ListPendingBlocks_FullMethodName  = "/sentinel.v1.SentinelService/ListPendingBlocks"
+	SentinelService_ApproveBlock_FullMethodName       = "/sentinel.v1.SentinelService/ApproveBlock"
+	SentinelService_RejectBlock_FullMethodName        = "/sentinel.v1.SentinelService/RejectBlock"
+	SentinelService_GetThreatResponses_FullMethodName = "/sentinel.v1.SentinelService/GetThreatResponses"
 )
 
 // SentinelServiceClient is the client API for SentinelService service.
@@ -43,6 +44,7 @@ type SentinelServiceClient interface {
 	ListPendingBlocks(ctx context.Context, in *ListPendingBlocksRequest, opts ...grpc.CallOption) (*ListPendingBlocksResponse, error)
 	ApproveBlock(ctx context.Context, in *ApproveBlockRequest, opts ...grpc.CallOption) (*ApproveBlockResponse, error)
 	RejectBlock(ctx context.Context, in *RejectBlockRequest, opts ...grpc.CallOption) (*RejectBlockResponse, error)
+	GetThreatResponses(ctx context.Context, in *GetThreatResponsesRequest, opts ...grpc.CallOption) (*GetThreatResponsesResponse, error)
 }
 
 type sentinelServiceClient struct {
@@ -143,6 +145,16 @@ func (c *sentinelServiceClient) RejectBlock(ctx context.Context, in *RejectBlock
 	return out, nil
 }
 
+func (c *sentinelServiceClient) GetThreatResponses(ctx context.Context, in *GetThreatResponsesRequest, opts ...grpc.CallOption) (*GetThreatResponsesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetThreatResponsesResponse)
+	err := c.cc.Invoke(ctx, SentinelService_GetThreatResponses_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SentinelServiceServer is the server API for SentinelService service.
 // All implementations must embed UnimplementedSentinelServiceServer
 // for forward compatibility.
@@ -156,6 +168,7 @@ type SentinelServiceServer interface {
 	ListPendingBlocks(context.Context, *ListPendingBlocksRequest) (*ListPendingBlocksResponse, error)
 	ApproveBlock(context.Context, *ApproveBlockRequest) (*ApproveBlockResponse, error)
 	RejectBlock(context.Context, *RejectBlockRequest) (*RejectBlockResponse, error)
+	GetThreatResponses(context.Context, *GetThreatResponsesRequest) (*GetThreatResponsesResponse, error)
 	mustEmbedUnimplementedSentinelServiceServer()
 }
 
@@ -192,6 +205,9 @@ func (UnimplementedSentinelServiceServer) ApproveBlock(context.Context, *Approve
 }
 func (UnimplementedSentinelServiceServer) RejectBlock(context.Context, *RejectBlockRequest) (*RejectBlockResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RejectBlock not implemented")
+}
+func (UnimplementedSentinelServiceServer) GetThreatResponses(context.Context, *GetThreatResponsesRequest) (*GetThreatResponsesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetThreatResponses not implemented")
 }
 func (UnimplementedSentinelServiceServer) mustEmbedUnimplementedSentinelServiceServer() {}
 func (UnimplementedSentinelServiceServer) testEmbeddedByValue()                         {}
@@ -376,6 +392,24 @@ func _SentinelService_RejectBlock_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SentinelService_GetThreatResponses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetThreatResponsesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SentinelServiceServer).GetThreatResponses(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SentinelService_GetThreatResponses_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SentinelServiceServer).GetThreatResponses(ctx, req.(*GetThreatResponsesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SentinelService_ServiceDesc is the grpc.ServiceDesc for SentinelService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -418,6 +452,10 @@ var SentinelService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RejectBlock",
 			Handler:    _SentinelService_RejectBlock_Handler,
+		},
+		{
+			MethodName: "GetThreatResponses",
+			Handler:    _SentinelService_GetThreatResponses_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

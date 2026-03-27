@@ -79,14 +79,20 @@ func (d *BlockDispatcher) HasAction(actionType string) bool {
 
 // --- Built-in Block Actions ---
 
-// IPBlockAction はIPアドレスをブロックする
+// IPBlockAction はIPアドレスをブロックする（TTL対応）
 type IPBlockAction struct {
 	mu      sync.Mutex
 	blocked map[string]time.Time // IP → blocked at
+	ttl     time.Duration        // 0 = 永続
 }
 
 func NewIPBlockAction() *IPBlockAction {
 	return &IPBlockAction{blocked: make(map[string]time.Time)}
+}
+
+// NewIPBlockActionWithTTL はTTL付きIPBlockActionを生成する
+func NewIPBlockActionWithTTL(ttl time.Duration) *IPBlockAction {
+	return &IPBlockAction{blocked: make(map[string]time.Time), ttl: ttl}
 }
 
 func (a *IPBlockAction) ActionType() string { return "block_ip" }
@@ -123,19 +129,44 @@ func (a *IPBlockAction) Execute(ctx context.Context, target ThreatTarget) (*Bloc
 	}, nil
 }
 
-// IsBlocked はIPがブロック中か確認する
+// IsBlocked はIPがブロック中か確認する（TTL考慮）
 func (a *IPBlockAction) IsBlocked(ip string) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	_, ok := a.blocked[ip]
-	return ok
+	blockedAt, ok := a.blocked[ip]
+	if !ok {
+		return false
+	}
+	if a.ttl > 0 && time.Since(blockedAt) > a.ttl {
+		delete(a.blocked, ip)
+		return false
+	}
+	return true
 }
 
-// BlockedCount はブロック中のIP数を返す
+// BlockedCount はブロック中のIP数を返す（TTL期限切れは除外）
 func (a *IPBlockAction) BlockedCount() int {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return len(a.blocked)
+	if a.ttl == 0 {
+		return len(a.blocked)
+	}
+	count := 0
+	for ip, blockedAt := range a.blocked {
+		if time.Since(blockedAt) > a.ttl {
+			delete(a.blocked, ip)
+		} else {
+			count++
+		}
+	}
+	return count
+}
+
+// Unblock はIPのブロックを解除する
+func (a *IPBlockAction) Unblock(ip string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	delete(a.blocked, ip)
 }
 
 // AccountLockAction はアカウントをロックする

@@ -19,7 +19,9 @@ type Config struct {
 	Ensemble      EnsembleConfig         `yaml:"ensemble"`
 	Authorization AuthorizationConfig    `yaml:"authorization"`
 	Anomaly       AnomalyDetectionConfig `yaml:"anomaly"`
-	Response      ResponseConfig         `yaml:"response"`
+	Response        ResponseConfig              `yaml:"response"`
+	MaskingPolicies []MaskingPolicyRuleConfig   `yaml:"masking_policies"`
+	RoutingRules    []ApprovalRoutingRuleConfig `yaml:"routing_rules"`
 }
 
 type ServerConfig struct {
@@ -172,8 +174,36 @@ type MaskingPolicyConfig struct {
 // ResponseConfig は脅威レスポンス設定
 type ResponseConfig struct {
 	Enabled         bool                 `yaml:"enabled"`
-	DefaultStrategy string               `yaml:"default_strategy"` // "BLOCK_AND_NOTIFY", "ANALYZE_AND_NOTIFY", "NOTIFY_ONLY", "BLOCK_ONLY", "MONITOR"
+	DefaultStrategy string               `yaml:"default_strategy"`
+	BlockMode       string               `yaml:"block_mode"` // "IMMEDIATE" or "REQUIRE_APPROVAL" (default: IMMEDIATE)
 	Rules           []ResponseRuleConfig `yaml:"rules"`
+}
+
+// MaskingPolicyRuleConfig はマスクポリシールールの設定
+type MaskingPolicyRuleConfig struct {
+	PolicyID      string   `yaml:"policy_id"`
+	LogTypes      []string `yaml:"log_types"`
+	Origins       []string `yaml:"origins"`
+	MinLevel      int      `yaml:"min_level"`
+	MaxLevel      int      `yaml:"max_level"`
+	MaskingRules  []MaskingRuleConfig `yaml:"masking_rules"`
+	PreserveExtra []string `yaml:"preserve_extra"`
+}
+
+// ApprovalRoutingRuleConfig は承認ルーティングルールの設定
+type ApprovalRoutingRuleConfig struct {
+	RuleID    string                      `yaml:"rule_id"`
+	MinLevel  int                         `yaml:"min_level"`
+	MaxLevel  int                         `yaml:"max_level"`
+	EventName string                      `yaml:"event_name"`
+	Chain     []ApprovalChainStepConfig   `yaml:"chain"`
+}
+
+// ApprovalChainStepConfig は承認チェーンステップの設定
+type ApprovalChainStepConfig struct {
+	StepOrder int    `yaml:"step_order"`
+	Role      string `yaml:"role"`
+	Required  bool   `yaml:"required"`
 }
 
 // ResponseRuleConfig はレスポンスルール設定

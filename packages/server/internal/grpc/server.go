@@ -54,9 +54,19 @@ func (s *SentinelServer) ListPendingBlocks(ctx context.Context, req *pb.ListPend
 	if s.blockDispatcher == nil {
 		return &pb.ListPendingBlocksResponse{}, nil
 	}
+	pending := s.blockDispatcher.ListPending()
 	resp := &pb.ListPendingBlocksResponse{}
-	// in-memoryのpendingBlocksを列挙
-	// EnhancedBlockDispatcherにListPending()を追加する必要がある
+	for _, p := range pending {
+		resp.Blocks = append(resp.Blocks, &pb.PendingBlockInfo{
+			BlockId:      p.BlockID,
+			ActionType:   p.ActionType,
+			TargetIp:     p.Target.IP,
+			TargetUserId: p.Target.UserID,
+			Reason:       p.Reason,
+			Status:       p.Status,
+			CreatedAt:    p.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		})
+	}
 	return resp, nil
 }
 
@@ -101,6 +111,46 @@ func (s *SentinelServer) RejectBlock(ctx context.Context, req *pb.RejectBlockReq
 		BlockId: req.BlockId,
 		Status:  "rejected",
 	}, nil
+}
+
+// --- GetThreatResponses ---
+
+func (s *SentinelServer) GetThreatResponses(ctx context.Context, req *pb.GetThreatResponsesRequest) (*pb.GetThreatResponsesResponse, error) {
+	if req.TraceId == "" {
+		return nil, status.Error(codes.InvalidArgument, "trace_id is required")
+	}
+	if s.store == nil {
+		return &pb.GetThreatResponsesResponse{}, nil
+	}
+
+	records, err := s.store.GetThreatResponsesByTraceID(ctx, req.TraceId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	resp := &pb.GetThreatResponsesResponse{}
+	for _, r := range records {
+		resp.Responses = append(resp.Responses, &pb.ThreatResponseDetail{
+			ResponseId:      r.ResponseID,
+			TraceId:         r.TraceID,
+			EventName:       r.EventName,
+			Strategy:        r.Strategy,
+			TargetIp:        r.TargetIP,
+			TargetUserId:    r.TargetUserID,
+			Boundary:        r.Boundary,
+			BlockAction:     r.BlockAction,
+			BlockSuccess:    r.BlockSuccess,
+			BlockTarget:     r.BlockTarget,
+			Analyzed:        r.Analyzed,
+			RiskLevel:       r.RiskLevel,
+			Confidence:      r.Confidence,
+			AnalysisSummary: r.AnalysisSummary,
+			Notified:        r.Notified,
+			NotifyTarget:    r.NotifyTarget,
+			CreatedAt:       r.CreatedAt,
+		})
+	}
+	return resp, nil
 }
 
 // --- Ingest ---

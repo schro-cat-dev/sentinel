@@ -169,6 +169,19 @@ func (d *EnhancedBlockDispatcher) Mode() BlockExecutionMode {
 	return d.mode
 }
 
+// ListPending は全承認待ちブロックを返す
+func (d *EnhancedBlockDispatcher) ListPending() []PendingBlock {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	var result []PendingBlock
+	for _, p := range d.pendingBlocks {
+		if p.Status == "pending" {
+			result = append(result, p)
+		}
+	}
+	return result
+}
+
 // --- Cloud Provider Block Actions (Adapter Pattern) ---
 
 // CloudBlockConfig はクラウドプロバイダブロックアクションの設定

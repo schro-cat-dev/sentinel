@@ -1701,6 +1701,266 @@ func (x *RejectBlockResponse) GetStatus() string {
 	return ""
 }
 
+type GetThreatResponsesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TraceId       string                 `protobuf:"bytes,1,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetThreatResponsesRequest) Reset() {
+	*x = GetThreatResponsesRequest{}
+	mi := &file_sentinel_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetThreatResponsesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetThreatResponsesRequest) ProtoMessage() {}
+
+func (x *GetThreatResponsesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_sentinel_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetThreatResponsesRequest.ProtoReflect.Descriptor instead.
+func (*GetThreatResponsesRequest) Descriptor() ([]byte, []int) {
+	return file_sentinel_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *GetThreatResponsesRequest) GetTraceId() string {
+	if x != nil {
+		return x.TraceId
+	}
+	return ""
+}
+
+type ThreatResponseDetail struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	ResponseId      string                 `protobuf:"bytes,1,opt,name=response_id,json=responseId,proto3" json:"response_id,omitempty"`
+	TraceId         string                 `protobuf:"bytes,2,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	EventName       string                 `protobuf:"bytes,3,opt,name=event_name,json=eventName,proto3" json:"event_name,omitempty"`
+	Strategy        string                 `protobuf:"bytes,4,opt,name=strategy,proto3" json:"strategy,omitempty"`
+	TargetIp        string                 `protobuf:"bytes,5,opt,name=target_ip,json=targetIp,proto3" json:"target_ip,omitempty"`
+	TargetUserId    string                 `protobuf:"bytes,6,opt,name=target_user_id,json=targetUserId,proto3" json:"target_user_id,omitempty"`
+	Boundary        string                 `protobuf:"bytes,7,opt,name=boundary,proto3" json:"boundary,omitempty"`
+	BlockAction     string                 `protobuf:"bytes,8,opt,name=block_action,json=blockAction,proto3" json:"block_action,omitempty"`
+	BlockSuccess    bool                   `protobuf:"varint,9,opt,name=block_success,json=blockSuccess,proto3" json:"block_success,omitempty"`
+	BlockTarget     string                 `protobuf:"bytes,10,opt,name=block_target,json=blockTarget,proto3" json:"block_target,omitempty"`
+	Analyzed        bool                   `protobuf:"varint,11,opt,name=analyzed,proto3" json:"analyzed,omitempty"`
+	RiskLevel       string                 `protobuf:"bytes,12,opt,name=risk_level,json=riskLevel,proto3" json:"risk_level,omitempty"`
+	Confidence      float64                `protobuf:"fixed64,13,opt,name=confidence,proto3" json:"confidence,omitempty"`
+	AnalysisSummary string                 `protobuf:"bytes,14,opt,name=analysis_summary,json=analysisSummary,proto3" json:"analysis_summary,omitempty"`
+	Notified        bool                   `protobuf:"varint,15,opt,name=notified,proto3" json:"notified,omitempty"`
+	NotifyTarget    string                 `protobuf:"bytes,16,opt,name=notify_target,json=notifyTarget,proto3" json:"notify_target,omitempty"`
+	CreatedAt       string                 `protobuf:"bytes,17,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ThreatResponseDetail) Reset() {
+	*x = ThreatResponseDetail{}
+	mi := &file_sentinel_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ThreatResponseDetail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ThreatResponseDetail) ProtoMessage() {}
+
+func (x *ThreatResponseDetail) ProtoReflect() protoreflect.Message {
+	mi := &file_sentinel_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ThreatResponseDetail.ProtoReflect.Descriptor instead.
+func (*ThreatResponseDetail) Descriptor() ([]byte, []int) {
+	return file_sentinel_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ThreatResponseDetail) GetResponseId() string {
+	if x != nil {
+		return x.ResponseId
+	}
+	return ""
+}
+
+func (x *ThreatResponseDetail) GetTraceId() string {
+	if x != nil {
+		return x.TraceId
+	}
+	return ""
+}
+
+func (x *ThreatResponseDetail) GetEventName() string {
+	if x != nil {
+		return x.EventName
+	}
+	return ""
+}
+
+func (x *ThreatResponseDetail) GetStrategy() string {
+	if x != nil {
+		return x.Strategy
+	}
+	return ""
+}
+
+func (x *ThreatResponseDetail) GetTargetIp() string {
+	if x != nil {
+		return x.TargetIp
+	}
+	return ""
+}
+
+func (x *ThreatResponseDetail) GetTargetUserId() string {
+	if x != nil {
+		return x.TargetUserId
+	}
+	return ""
+}
+
+func (x *ThreatResponseDetail) GetBoundary() string {
+	if x != nil {
+		return x.Boundary
+	}
+	return ""
+}
+
+func (x *ThreatResponseDetail) GetBlockAction() string {
+	if x != nil {
+		return x.BlockAction
+	}
+	return ""
+}
+
+func (x *ThreatResponseDetail) GetBlockSuccess() bool {
+	if x != nil {
+		return x.BlockSuccess
+	}
+	return false
+}
+
+func (x *ThreatResponseDetail) GetBlockTarget() string {
+	if x != nil {
+		return x.BlockTarget
+	}
+	return ""
+}
+
+func (x *ThreatResponseDetail) GetAnalyzed() bool {
+	if x != nil {
+		return x.Analyzed
+	}
+	return false
+}
+
+func (x *ThreatResponseDetail) GetRiskLevel() string {
+	if x != nil {
+		return x.RiskLevel
+	}
+	return ""
+}
+
+func (x *ThreatResponseDetail) GetConfidence() float64 {
+	if x != nil {
+		return x.Confidence
+	}
+	return 0
+}
+
+func (x *ThreatResponseDetail) GetAnalysisSummary() string {
+	if x != nil {
+		return x.AnalysisSummary
+	}
+	return ""
+}
+
+func (x *ThreatResponseDetail) GetNotified() bool {
+	if x != nil {
+		return x.Notified
+	}
+	return false
+}
+
+func (x *ThreatResponseDetail) GetNotifyTarget() string {
+	if x != nil {
+		return x.NotifyTarget
+	}
+	return ""
+}
+
+func (x *ThreatResponseDetail) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+type GetThreatResponsesResponse struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	Responses     []*ThreatResponseDetail `protobuf:"bytes,1,rep,name=responses,proto3" json:"responses,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetThreatResponsesResponse) Reset() {
+	*x = GetThreatResponsesResponse{}
+	mi := &file_sentinel_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetThreatResponsesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetThreatResponsesResponse) ProtoMessage() {}
+
+func (x *GetThreatResponsesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_sentinel_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetThreatResponsesResponse.ProtoReflect.Descriptor instead.
+func (*GetThreatResponsesResponse) Descriptor() ([]byte, []int) {
+	return file_sentinel_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *GetThreatResponsesResponse) GetResponses() []*ThreatResponseDetail {
+	if x != nil {
+		return x.Responses
+	}
+	return nil
+}
+
 var File_sentinel_proto protoreflect.FileDescriptor
 
 const file_sentinel_proto_rawDesc = "" +
@@ -1858,7 +2118,36 @@ const file_sentinel_proto_rawDesc = "" +
 	"rejectorId\"H\n" +
 	"\x13RejectBlockResponse\x12\x19\n" +
 	"\bblock_id\x18\x01 \x01(\tR\ablockId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status2\xf6\x05\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\"6\n" +
+	"\x19GetThreatResponsesRequest\x12\x19\n" +
+	"\btrace_id\x18\x01 \x01(\tR\atraceId\"\xbd\x04\n" +
+	"\x14ThreatResponseDetail\x12\x1f\n" +
+	"\vresponse_id\x18\x01 \x01(\tR\n" +
+	"responseId\x12\x19\n" +
+	"\btrace_id\x18\x02 \x01(\tR\atraceId\x12\x1d\n" +
+	"\n" +
+	"event_name\x18\x03 \x01(\tR\teventName\x12\x1a\n" +
+	"\bstrategy\x18\x04 \x01(\tR\bstrategy\x12\x1b\n" +
+	"\ttarget_ip\x18\x05 \x01(\tR\btargetIp\x12$\n" +
+	"\x0etarget_user_id\x18\x06 \x01(\tR\ftargetUserId\x12\x1a\n" +
+	"\bboundary\x18\a \x01(\tR\bboundary\x12!\n" +
+	"\fblock_action\x18\b \x01(\tR\vblockAction\x12#\n" +
+	"\rblock_success\x18\t \x01(\bR\fblockSuccess\x12!\n" +
+	"\fblock_target\x18\n" +
+	" \x01(\tR\vblockTarget\x12\x1a\n" +
+	"\banalyzed\x18\v \x01(\bR\banalyzed\x12\x1d\n" +
+	"\n" +
+	"risk_level\x18\f \x01(\tR\triskLevel\x12\x1e\n" +
+	"\n" +
+	"confidence\x18\r \x01(\x01R\n" +
+	"confidence\x12)\n" +
+	"\x10analysis_summary\x18\x0e \x01(\tR\x0fanalysisSummary\x12\x1a\n" +
+	"\bnotified\x18\x0f \x01(\bR\bnotified\x12#\n" +
+	"\rnotify_target\x18\x10 \x01(\tR\fnotifyTarget\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x11 \x01(\tR\tcreatedAt\"]\n" +
+	"\x1aGetThreatResponsesResponse\x12?\n" +
+	"\tresponses\x18\x01 \x03(\v2!.sentinel.v1.ThreatResponseDetailR\tresponses2\xdd\x06\n" +
 	"\x0fSentinelService\x12A\n" +
 	"\x06Ingest\x12\x1a.sentinel.v1.IngestRequest\x1a\x1b.sentinel.v1.IngestResponse\x12P\n" +
 	"\vHealthCheck\x12\x1f.sentinel.v1.HealthCheckRequest\x1a .sentinel.v1.HealthCheckResponse\x12V\n" +
@@ -1869,7 +2158,8 @@ const file_sentinel_proto_rawDesc = "" +
 	"RejectTask\x12\x1e.sentinel.v1.RejectTaskRequest\x1a\x1f.sentinel.v1.RejectTaskResponse\x12b\n" +
 	"\x11ListPendingBlocks\x12%.sentinel.v1.ListPendingBlocksRequest\x1a&.sentinel.v1.ListPendingBlocksResponse\x12S\n" +
 	"\fApproveBlock\x12 .sentinel.v1.ApproveBlockRequest\x1a!.sentinel.v1.ApproveBlockResponse\x12P\n" +
-	"\vRejectBlock\x12\x1f.sentinel.v1.RejectBlockRequest\x1a .sentinel.v1.RejectBlockResponseB;Z9github.com/schro-cat-dev/sentinel-server/internal/grpc/pbb\x06proto3"
+	"\vRejectBlock\x12\x1f.sentinel.v1.RejectBlockRequest\x1a .sentinel.v1.RejectBlockResponse\x12e\n" +
+	"\x12GetThreatResponses\x12&.sentinel.v1.GetThreatResponsesRequest\x1a'.sentinel.v1.GetThreatResponsesResponseB;Z9github.com/schro-cat-dev/sentinel-server/internal/grpc/pbb\x06proto3"
 
 var (
 	file_sentinel_proto_rawDescOnce sync.Once
@@ -1883,66 +2173,72 @@ func file_sentinel_proto_rawDescGZIP() []byte {
 	return file_sentinel_proto_rawDescData
 }
 
-var file_sentinel_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_sentinel_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_sentinel_proto_goTypes = []any{
-	(*LogTag)(nil),                    // 0: sentinel.v1.LogTag
-	(*AIContext)(nil),                 // 1: sentinel.v1.AIContext
-	(*AgentBackLogEntry)(nil),         // 2: sentinel.v1.AgentBackLogEntry
-	(*IngestRequest)(nil),             // 3: sentinel.v1.IngestRequest
-	(*ThreatResponseSummary)(nil),     // 4: sentinel.v1.ThreatResponseSummary
-	(*IngestResponse)(nil),            // 5: sentinel.v1.IngestResponse
-	(*TaskResult)(nil),                // 6: sentinel.v1.TaskResult
-	(*HealthCheckRequest)(nil),        // 7: sentinel.v1.HealthCheckRequest
-	(*HealthCheckResponse)(nil),       // 8: sentinel.v1.HealthCheckResponse
-	(*GetTaskStatusRequest)(nil),      // 9: sentinel.v1.GetTaskStatusRequest
-	(*GetTaskStatusResponse)(nil),     // 10: sentinel.v1.GetTaskStatusResponse
-	(*ListTasksRequest)(nil),          // 11: sentinel.v1.ListTasksRequest
-	(*ListTasksResponse)(nil),         // 12: sentinel.v1.ListTasksResponse
-	(*ApproveTaskRequest)(nil),        // 13: sentinel.v1.ApproveTaskRequest
-	(*ApproveTaskResponse)(nil),       // 14: sentinel.v1.ApproveTaskResponse
-	(*RejectTaskRequest)(nil),         // 15: sentinel.v1.RejectTaskRequest
-	(*RejectTaskResponse)(nil),        // 16: sentinel.v1.RejectTaskResponse
-	(*ListPendingBlocksRequest)(nil),  // 17: sentinel.v1.ListPendingBlocksRequest
-	(*PendingBlockInfo)(nil),          // 18: sentinel.v1.PendingBlockInfo
-	(*ListPendingBlocksResponse)(nil), // 19: sentinel.v1.ListPendingBlocksResponse
-	(*ApproveBlockRequest)(nil),       // 20: sentinel.v1.ApproveBlockRequest
-	(*ApproveBlockResponse)(nil),      // 21: sentinel.v1.ApproveBlockResponse
-	(*RejectBlockRequest)(nil),        // 22: sentinel.v1.RejectBlockRequest
-	(*RejectBlockResponse)(nil),       // 23: sentinel.v1.RejectBlockResponse
-	nil,                               // 24: sentinel.v1.IngestRequest.DetailsEntry
+	(*LogTag)(nil),                     // 0: sentinel.v1.LogTag
+	(*AIContext)(nil),                  // 1: sentinel.v1.AIContext
+	(*AgentBackLogEntry)(nil),          // 2: sentinel.v1.AgentBackLogEntry
+	(*IngestRequest)(nil),              // 3: sentinel.v1.IngestRequest
+	(*ThreatResponseSummary)(nil),      // 4: sentinel.v1.ThreatResponseSummary
+	(*IngestResponse)(nil),             // 5: sentinel.v1.IngestResponse
+	(*TaskResult)(nil),                 // 6: sentinel.v1.TaskResult
+	(*HealthCheckRequest)(nil),         // 7: sentinel.v1.HealthCheckRequest
+	(*HealthCheckResponse)(nil),        // 8: sentinel.v1.HealthCheckResponse
+	(*GetTaskStatusRequest)(nil),       // 9: sentinel.v1.GetTaskStatusRequest
+	(*GetTaskStatusResponse)(nil),      // 10: sentinel.v1.GetTaskStatusResponse
+	(*ListTasksRequest)(nil),           // 11: sentinel.v1.ListTasksRequest
+	(*ListTasksResponse)(nil),          // 12: sentinel.v1.ListTasksResponse
+	(*ApproveTaskRequest)(nil),         // 13: sentinel.v1.ApproveTaskRequest
+	(*ApproveTaskResponse)(nil),        // 14: sentinel.v1.ApproveTaskResponse
+	(*RejectTaskRequest)(nil),          // 15: sentinel.v1.RejectTaskRequest
+	(*RejectTaskResponse)(nil),         // 16: sentinel.v1.RejectTaskResponse
+	(*ListPendingBlocksRequest)(nil),   // 17: sentinel.v1.ListPendingBlocksRequest
+	(*PendingBlockInfo)(nil),           // 18: sentinel.v1.PendingBlockInfo
+	(*ListPendingBlocksResponse)(nil),  // 19: sentinel.v1.ListPendingBlocksResponse
+	(*ApproveBlockRequest)(nil),        // 20: sentinel.v1.ApproveBlockRequest
+	(*ApproveBlockResponse)(nil),       // 21: sentinel.v1.ApproveBlockResponse
+	(*RejectBlockRequest)(nil),         // 22: sentinel.v1.RejectBlockRequest
+	(*RejectBlockResponse)(nil),        // 23: sentinel.v1.RejectBlockResponse
+	(*GetThreatResponsesRequest)(nil),  // 24: sentinel.v1.GetThreatResponsesRequest
+	(*ThreatResponseDetail)(nil),       // 25: sentinel.v1.ThreatResponseDetail
+	(*GetThreatResponsesResponse)(nil), // 26: sentinel.v1.GetThreatResponsesResponse
+	nil,                                // 27: sentinel.v1.IngestRequest.DetailsEntry
 }
 var file_sentinel_proto_depIdxs = []int32{
 	0,  // 0: sentinel.v1.IngestRequest.tags:type_name -> sentinel.v1.LogTag
 	1,  // 1: sentinel.v1.IngestRequest.ai_context:type_name -> sentinel.v1.AIContext
 	2,  // 2: sentinel.v1.IngestRequest.agent_back_log:type_name -> sentinel.v1.AgentBackLogEntry
-	24, // 3: sentinel.v1.IngestRequest.details:type_name -> sentinel.v1.IngestRequest.DetailsEntry
+	27, // 3: sentinel.v1.IngestRequest.details:type_name -> sentinel.v1.IngestRequest.DetailsEntry
 	6,  // 4: sentinel.v1.IngestResponse.tasks_generated:type_name -> sentinel.v1.TaskResult
 	4,  // 5: sentinel.v1.IngestResponse.threat_responses:type_name -> sentinel.v1.ThreatResponseSummary
 	10, // 6: sentinel.v1.ListTasksResponse.tasks:type_name -> sentinel.v1.GetTaskStatusResponse
 	18, // 7: sentinel.v1.ListPendingBlocksResponse.blocks:type_name -> sentinel.v1.PendingBlockInfo
-	3,  // 8: sentinel.v1.SentinelService.Ingest:input_type -> sentinel.v1.IngestRequest
-	7,  // 9: sentinel.v1.SentinelService.HealthCheck:input_type -> sentinel.v1.HealthCheckRequest
-	9,  // 10: sentinel.v1.SentinelService.GetTaskStatus:input_type -> sentinel.v1.GetTaskStatusRequest
-	11, // 11: sentinel.v1.SentinelService.ListTasks:input_type -> sentinel.v1.ListTasksRequest
-	13, // 12: sentinel.v1.SentinelService.ApproveTask:input_type -> sentinel.v1.ApproveTaskRequest
-	15, // 13: sentinel.v1.SentinelService.RejectTask:input_type -> sentinel.v1.RejectTaskRequest
-	17, // 14: sentinel.v1.SentinelService.ListPendingBlocks:input_type -> sentinel.v1.ListPendingBlocksRequest
-	20, // 15: sentinel.v1.SentinelService.ApproveBlock:input_type -> sentinel.v1.ApproveBlockRequest
-	22, // 16: sentinel.v1.SentinelService.RejectBlock:input_type -> sentinel.v1.RejectBlockRequest
-	5,  // 17: sentinel.v1.SentinelService.Ingest:output_type -> sentinel.v1.IngestResponse
-	8,  // 18: sentinel.v1.SentinelService.HealthCheck:output_type -> sentinel.v1.HealthCheckResponse
-	10, // 19: sentinel.v1.SentinelService.GetTaskStatus:output_type -> sentinel.v1.GetTaskStatusResponse
-	12, // 20: sentinel.v1.SentinelService.ListTasks:output_type -> sentinel.v1.ListTasksResponse
-	14, // 21: sentinel.v1.SentinelService.ApproveTask:output_type -> sentinel.v1.ApproveTaskResponse
-	16, // 22: sentinel.v1.SentinelService.RejectTask:output_type -> sentinel.v1.RejectTaskResponse
-	19, // 23: sentinel.v1.SentinelService.ListPendingBlocks:output_type -> sentinel.v1.ListPendingBlocksResponse
-	21, // 24: sentinel.v1.SentinelService.ApproveBlock:output_type -> sentinel.v1.ApproveBlockResponse
-	23, // 25: sentinel.v1.SentinelService.RejectBlock:output_type -> sentinel.v1.RejectBlockResponse
-	17, // [17:26] is the sub-list for method output_type
-	8,  // [8:17] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	25, // 8: sentinel.v1.GetThreatResponsesResponse.responses:type_name -> sentinel.v1.ThreatResponseDetail
+	3,  // 9: sentinel.v1.SentinelService.Ingest:input_type -> sentinel.v1.IngestRequest
+	7,  // 10: sentinel.v1.SentinelService.HealthCheck:input_type -> sentinel.v1.HealthCheckRequest
+	9,  // 11: sentinel.v1.SentinelService.GetTaskStatus:input_type -> sentinel.v1.GetTaskStatusRequest
+	11, // 12: sentinel.v1.SentinelService.ListTasks:input_type -> sentinel.v1.ListTasksRequest
+	13, // 13: sentinel.v1.SentinelService.ApproveTask:input_type -> sentinel.v1.ApproveTaskRequest
+	15, // 14: sentinel.v1.SentinelService.RejectTask:input_type -> sentinel.v1.RejectTaskRequest
+	17, // 15: sentinel.v1.SentinelService.ListPendingBlocks:input_type -> sentinel.v1.ListPendingBlocksRequest
+	20, // 16: sentinel.v1.SentinelService.ApproveBlock:input_type -> sentinel.v1.ApproveBlockRequest
+	22, // 17: sentinel.v1.SentinelService.RejectBlock:input_type -> sentinel.v1.RejectBlockRequest
+	24, // 18: sentinel.v1.SentinelService.GetThreatResponses:input_type -> sentinel.v1.GetThreatResponsesRequest
+	5,  // 19: sentinel.v1.SentinelService.Ingest:output_type -> sentinel.v1.IngestResponse
+	8,  // 20: sentinel.v1.SentinelService.HealthCheck:output_type -> sentinel.v1.HealthCheckResponse
+	10, // 21: sentinel.v1.SentinelService.GetTaskStatus:output_type -> sentinel.v1.GetTaskStatusResponse
+	12, // 22: sentinel.v1.SentinelService.ListTasks:output_type -> sentinel.v1.ListTasksResponse
+	14, // 23: sentinel.v1.SentinelService.ApproveTask:output_type -> sentinel.v1.ApproveTaskResponse
+	16, // 24: sentinel.v1.SentinelService.RejectTask:output_type -> sentinel.v1.RejectTaskResponse
+	19, // 25: sentinel.v1.SentinelService.ListPendingBlocks:output_type -> sentinel.v1.ListPendingBlocksResponse
+	21, // 26: sentinel.v1.SentinelService.ApproveBlock:output_type -> sentinel.v1.ApproveBlockResponse
+	23, // 27: sentinel.v1.SentinelService.RejectBlock:output_type -> sentinel.v1.RejectBlockResponse
+	26, // 28: sentinel.v1.SentinelService.GetThreatResponses:output_type -> sentinel.v1.GetThreatResponsesResponse
+	19, // [19:29] is the sub-list for method output_type
+	9,  // [9:19] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_sentinel_proto_init() }
@@ -1956,7 +2252,7 @@ func file_sentinel_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sentinel_proto_rawDesc), len(file_sentinel_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   25,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

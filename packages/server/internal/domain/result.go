@@ -21,6 +21,20 @@ type IngestionResult struct {
 	ThreatResponses  []ThreatResponseSummary
 }
 
+// PendingBlockRecord は永続化用の承認待ちブロック記録
+type PendingBlockRecord struct {
+	BlockID      string
+	ActionType   string
+	TargetIP     string
+	TargetUserID string
+	Boundary     string
+	Reason       string
+	Status       string // "pending", "approved", "rejected"
+	ResolvedBy   string
+	ResolvedAt   string // RFC3339 or empty
+	CreatedAt    string // RFC3339
+}
+
 // ThreatResponseStoreRecord は永続化用の脅威レスポンス記録
 type ThreatResponseStoreRecord struct {
 	ResponseID   string

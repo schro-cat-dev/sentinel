@@ -132,7 +132,22 @@ CREATE INDEX IF NOT EXISTS idx_tasks_created ON tasks(created_at);
 CREATE INDEX IF NOT EXISTS idx_logs_trace ON logs(trace_id);
 CREATE INDEX IF NOT EXISTS idx_step_records_approval ON approval_step_records(approval_id);
 CREATE INDEX IF NOT EXISTS idx_modifications_task ON task_modifications(task_id);
+CREATE TABLE IF NOT EXISTS pending_blocks (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	block_id TEXT UNIQUE NOT NULL,
+	action_type TEXT NOT NULL,
+	target_ip TEXT,
+	target_user_id TEXT,
+	boundary TEXT,
+	reason TEXT,
+	status TEXT NOT NULL DEFAULT 'pending',
+	resolved_by TEXT,
+	resolved_at TEXT,
+	created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_threat_responses_trace ON threat_responses(trace_id);
+CREATE INDEX IF NOT EXISTS idx_pending_blocks_status ON pending_blocks(status);
 `
 
 type SQLiteStore struct {
@@ -457,6 +472,57 @@ func (s *SQLiteStore) InsertThreatResponse(ctx context.Context, record domain.Th
 		record.Notified, record.NotifyTarget, record.CreatedAt,
 	)
 	return err
+}
+
+// === Pending Blocks ===
+
+func (s *SQLiteStore) SavePendingBlock(ctx context.Context, block domain.PendingBlockRecord) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO pending_blocks (block_id, action_type, target_ip, target_user_id, boundary, reason, status, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		block.BlockID, block.ActionType, block.TargetIP, block.TargetUserID,
+		block.Boundary, block.Reason, block.Status, block.CreatedAt,
+	)
+	return err
+}
+
+func (s *SQLiteStore) GetPendingBlock(ctx context.Context, blockID string) (*domain.PendingBlockRecord, error) {
+	row := s.db.QueryRowContext(ctx,
+		`SELECT block_id, action_type, target_ip, target_user_id, boundary, reason, status, COALESCE(resolved_by,''), COALESCE(resolved_at,''), created_at
+		 FROM pending_blocks WHERE block_id = ?`, blockID)
+	var r domain.PendingBlockRecord
+	if err := row.Scan(&r.BlockID, &r.ActionType, &r.TargetIP, &r.TargetUserID,
+		&r.Boundary, &r.Reason, &r.Status, &r.ResolvedBy, &r.ResolvedAt, &r.CreatedAt); err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+func (s *SQLiteStore) UpdatePendingBlock(ctx context.Context, blockID, status, resolvedBy string) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE pending_blocks SET status = ?, resolved_by = ?, resolved_at = datetime('now') WHERE block_id = ?`,
+		status, resolvedBy, blockID)
+	return err
+}
+
+func (s *SQLiteStore) ListPendingBlocks(ctx context.Context) ([]domain.PendingBlockRecord, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT block_id, action_type, target_ip, target_user_id, boundary, reason, status, COALESCE(resolved_by,''), COALESCE(resolved_at,''), created_at
+		 FROM pending_blocks WHERE status = 'pending' ORDER BY created_at`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var records []domain.PendingBlockRecord
+	for rows.Next() {
+		var r domain.PendingBlockRecord
+		if err := rows.Scan(&r.BlockID, &r.ActionType, &r.TargetIP, &r.TargetUserID,
+			&r.Boundary, &r.Reason, &r.Status, &r.ResolvedBy, &r.ResolvedAt, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		records = append(records, r)
+	}
+	return records, nil
 }
 
 func (s *SQLiteStore) GetThreatResponsesByTraceID(ctx context.Context, traceID string) ([]domain.ThreatResponseStoreRecord, error) {

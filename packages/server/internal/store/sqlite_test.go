@@ -326,6 +326,82 @@ func TestStore_GetThreatResponsesByTraceID_Empty(t *testing.T) {
 	}
 }
 
+// === Pending Block Tests ===
+
+func TestStore_PendingBlock_CRUD(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	block := domain.PendingBlockRecord{
+		BlockID: "blk-001", ActionType: "block_ip",
+		TargetIP: "10.0.0.1", TargetUserID: "", Boundary: "auth-svc",
+		Reason: "brute force", Status: "pending",
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+
+	// Save
+	err := s.SavePendingBlock(ctx, block)
+	if err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	// Get
+	got, err := s.GetPendingBlock(ctx, "blk-001")
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.BlockID != "blk-001" {
+		t.Error("wrong block_id")
+	}
+	if got.Status != "pending" {
+		t.Error("wrong status")
+	}
+
+	// Update (approve)
+	err = s.UpdatePendingBlock(ctx, "blk-001", "approved", "admin-1")
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	got, _ = s.GetPendingBlock(ctx, "blk-001")
+	if got.Status != "approved" {
+		t.Errorf("expected approved, got %s", got.Status)
+	}
+	if got.ResolvedBy != "admin-1" {
+		t.Error("wrong resolved_by")
+	}
+
+	// List (should be empty since status is approved)
+	pending, _ := s.ListPendingBlocks(ctx)
+	if len(pending) != 0 {
+		t.Errorf("approved block should not appear in pending list, got %d", len(pending))
+	}
+}
+
+func TestStore_ListPendingBlocks(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	for i := 0; i < 3; i++ {
+		s.SavePendingBlock(ctx, domain.PendingBlockRecord{
+			BlockID: "blk-" + string(rune('A'+i)), ActionType: "block_ip",
+			Status: "pending", CreatedAt: time.Now().UTC().Format(time.RFC3339),
+		})
+	}
+
+	pending, _ := s.ListPendingBlocks(ctx)
+	if len(pending) != 3 {
+		t.Errorf("expected 3, got %d", len(pending))
+	}
+}
+
+func TestStore_GetPendingBlock_NotFound(t *testing.T) {
+	s := newTestStore(t)
+	_, err := s.GetPendingBlock(context.Background(), "nonexistent")
+	if err == nil {
+		t.Error("expected error for not found")
+	}
+}
+
 func TestStore_MultipleThreatResponses(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()

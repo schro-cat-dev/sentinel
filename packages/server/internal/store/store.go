@@ -50,5 +50,11 @@ type Store interface {
 	InsertThreatResponse(ctx context.Context, record domain.ThreatResponseStoreRecord) error
 	GetThreatResponsesByTraceID(ctx context.Context, traceID string) ([]domain.ThreatResponseStoreRecord, error)
 
+	// --- Pending Blocks (approval workflow) ---
+	SavePendingBlock(ctx context.Context, block domain.PendingBlockRecord) error
+	GetPendingBlock(ctx context.Context, blockID string) (*domain.PendingBlockRecord, error)
+	UpdatePendingBlock(ctx context.Context, blockID, status, resolvedBy string) error
+	ListPendingBlocks(ctx context.Context) ([]domain.PendingBlockRecord, error)
+
 	Close() error
 }

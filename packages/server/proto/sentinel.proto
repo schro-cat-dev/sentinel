@@ -187,6 +187,36 @@ message RejectBlockResponse {
   string status = 2;
 }
 
+// --- Threat Response Query ---
+
+message GetThreatResponsesRequest {
+  string trace_id = 1;
+}
+
+message ThreatResponseDetail {
+  string response_id = 1;
+  string trace_id = 2;
+  string event_name = 3;
+  string strategy = 4;
+  string target_ip = 5;
+  string target_user_id = 6;
+  string boundary = 7;
+  string block_action = 8;
+  bool block_success = 9;
+  string block_target = 10;
+  bool analyzed = 11;
+  string risk_level = 12;
+  double confidence = 13;
+  string analysis_summary = 14;
+  bool notified = 15;
+  string notify_target = 16;
+  string created_at = 17;
+}
+
+message GetThreatResponsesResponse {
+  repeated ThreatResponseDetail responses = 1;
+}
+
 // --- Service ---
 
 service SentinelService {
@@ -199,4 +229,5 @@ service SentinelService {
   rpc ListPendingBlocks(ListPendingBlocksRequest) returns (ListPendingBlocksResponse);
   rpc ApproveBlock(ApproveBlockRequest) returns (ApproveBlockResponse);
   rpc RejectBlock(RejectBlockRequest) returns (RejectBlockResponse);
+  rpc GetThreatResponses(GetThreatResponsesRequest) returns (GetThreatResponsesResponse);
 }
