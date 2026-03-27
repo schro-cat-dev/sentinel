@@ -9,6 +9,7 @@ import { TaskExecutor, TaskDispatchHandler } from "./core/task/task-executor";
 import { Log } from "./types/log";
 import { IngestionResult } from "./core/engine/types";
 import { TransportConfig, RemoteTransport } from "./transport/transport";
+import { validateLogInput, ValidationError } from "./validation/log-validator";
 
 /**
  * SentinelOptions はSentinel初期化時のオプション
@@ -95,6 +96,9 @@ export class Sentinel {
      * - "dual":   ローカル処理 + リモート送信の両方
      */
     public async ingest(log: Partial<Log>): Promise<IngestionResult> {
+        // 入力検証（SDK公開API境界）
+        validateLogInput(log);
+
         const mode = this.transportConfig.mode;
 
         if (mode === "remote" && this.transportConfig.transport) {
@@ -156,3 +160,4 @@ export type {
 export type { SystemEventName, DetectionResult } from "./types/event";
 export type { TaskDispatchHandler } from "./core/task/task-executor";
 export type { RemoteTransport, TransportMode, TransportConfig } from "./transport/transport";
+export { validateLogInput, ValidationError } from "./validation/log-validator";

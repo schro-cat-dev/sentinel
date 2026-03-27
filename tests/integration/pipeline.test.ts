@@ -266,7 +266,7 @@ describe("Sentinel v1 Pipeline Integration", () => {
     describe("edge cases", () => {
         it("rejects empty message", async () => {
             const sentinel = Sentinel.initialize(config);
-            await expect(sentinel.ingest({ message: "" })).rejects.toThrow("message is required");
+            await expect(sentinel.ingest({ message: "" })).rejects.toThrow("cannot be empty");
         });
 
         it("handles rapid concurrent ingestion", async () => {

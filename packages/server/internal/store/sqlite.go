@@ -154,6 +154,21 @@ type SQLiteStore struct {
 	db *sql.DB
 }
 
+// WithTx はトランザクション内で複数操作を原子的に実行する
+func (s *SQLiteStore) WithTx(ctx context.Context, fn func(tx interface{}) error) error {
+	sqlTx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	if err := fn(sqlTx); err != nil {
+		if rbErr := sqlTx.Rollback(); rbErr != nil {
+			return fmt.Errorf("rollback failed (%v) after: %w", rbErr, err)
+		}
+		return err
+	}
+	return sqlTx.Commit()
+}
+
 func NewSQLiteStore(dsn string) (*SQLiteStore, error) {
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {

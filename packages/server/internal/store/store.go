@@ -56,5 +56,9 @@ type Store interface {
 	UpdatePendingBlock(ctx context.Context, blockID, status, resolvedBy string) error
 	ListPendingBlocks(ctx context.Context) ([]domain.PendingBlockRecord, error)
 
+	// --- Transactions ---
+	// WithTx はトランザクション内で複数操作を原子的に実行する（Store実装がサポートしない場合はfnを直接実行）
+	WithTx(ctx context.Context, fn func(tx interface{}) error) error
+
 	Close() error
 }

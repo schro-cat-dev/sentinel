@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+
+	"github.com/schro-cat-dev/sentinel-server/internal/retry"
 )
 
 // Notification は通知メッセージの統一構造
@@ -29,9 +31,10 @@ type Notifier interface {
 
 // MultiNotifier は複数のNotifierに同時配信するディスパッチャ
 type MultiNotifier struct {
-	mu        sync.RWMutex
-	notifiers map[string]Notifier   // type → notifier
-	routing   map[string][]string   // channel prefix → notifier types
+	mu          sync.RWMutex
+	notifiers   map[string]Notifier   // type → notifier
+	routing     map[string][]string   // channel prefix → notifier types
+	retryCfg    retry.Config          // リトライ設定
 }
 
 // NewMultiNotifier はMultiNotifierを生成する
@@ -39,7 +42,15 @@ func NewMultiNotifier() *MultiNotifier {
 	return &MultiNotifier{
 		notifiers: make(map[string]Notifier),
 		routing:   make(map[string][]string),
+		retryCfg:  retry.DefaultConfig(),
 	}
+}
+
+// SetRetryConfig はリトライ設定を変更する
+func (m *MultiNotifier) SetRetryConfig(cfg retry.Config) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.retryCfg = cfg
 }
 
 // Register はNotifierを登録する
@@ -65,13 +76,17 @@ func (m *MultiNotifier) Send(ctx context.Context, n Notification) error {
 	sent := false
 	var lastErr error
 
-	// ルーティングベースの配信
+	// ルーティングベースの配信（リトライ付き）
 	for prefix, types := range m.routing {
 		if len(n.Channel) >= len(prefix) && n.Channel[:len(prefix)] == prefix {
 			for _, t := range types {
 				if notifier, ok := m.notifiers[t]; ok {
-					if err := notifier.Send(ctx, n); err != nil {
-						slog.Error("notification failed",
+					nRef := notifier
+					err := retry.Do(ctx, m.retryCfg, func() error {
+						return nRef.Send(ctx, n)
+					})
+					if err != nil {
+						slog.Error("notification failed after retries",
 							"type", t, "channel", n.Channel, "error", err,
 						)
 						lastErr = err
@@ -86,9 +101,13 @@ func (m *MultiNotifier) Send(ctx context.Context, n Notification) error {
 	// ルーティングにマッチしない場合は全Notifierに配信
 	if !sent {
 		for _, notifier := range m.notifiers {
-			if err := notifier.Send(ctx, n); err != nil {
-				slog.Error("notification failed",
-					"type", notifier.Type(), "channel", n.Channel, "error", err,
+			nRef := notifier
+			err := retry.Do(ctx, m.retryCfg, func() error {
+				return nRef.Send(ctx, n)
+			})
+			if err != nil {
+				slog.Error("notification failed after retries",
+					"type", nRef.Type(), "channel", n.Channel, "error", err,
 				)
 				lastErr = err
 			} else {

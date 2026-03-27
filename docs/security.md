@@ -18,7 +18,12 @@ Sentinel processes application logs that may contain PII, security events, and c
 | **Critical action without handler** | `KILL_SWITCH` / `AUTOMATED_REMEDIATE` fail if no handler registered | Implemented |
 | **MitM on gRPC** | TLS/mTLS support | Not yet implemented (see Roadmap) |
 | **Service impersonation** | mTLS client certificates / API key auth | Not yet implemented (see Roadmap) |
-| **Rate-based DoS** | Per-client rate limiting | Not yet implemented (see Roadmap) |
+| **Rate-based DoS** | Per-client rate limiting | Implemented (gRPC interceptor) |
+| **Transient failure** | Exponential backoff + jitter retry (`internal/retry/`) | Implemented |
+| **Partial DB write** | `store.WithTx()` for atomic multi-step operations | Implemented |
+| **Invalid SDK input** | Runtime validator at `ingest()` boundary | Implemented |
+| **RBAC bypass** | Per-client log type/level authorization | Implemented |
+| **Threat auto-response** | Strategy-based block/analyze/notify orchestration | Implemented |
 
 ---
 
@@ -225,6 +230,61 @@ Server-side structured logs (JSON via `log/slog`) include:
 
 ---
 
+## Validation Boundaries
+
+入力検証は SDK と Server の**2箇所**で行われる。各レイヤーの責務は明確に分離されている。
+
+| 検証項目 | SDK (TypeScript) | Server (Go) |
+|---|---|---|
+| message 必須 | `log-validator.ts`: 空/null byte/65536超 | `normalizer.go`: 空/null byte/UTF-8/65536超 |
+| message サニタイズ | なし（そのまま渡す） | `sanitizer.go`: 制御文字除去 |
+| type ホワイトリスト | `log-validator.ts`: 7種チェック | `sanitizer.go`: `allowedLogTypes` |
+| level 範囲 | `log-validator.ts`: 1-6整数 | `log.go`: `IsValidLogLevel` |
+| origin ホワイトリスト | `log-validator.ts`: SYSTEM/AI_AGENT | `sanitizer.go`: `allowedOrigins` |
+| tags 数/長さ | `log-validator.ts`: 100件/key128/value1024 | `normalizer.go`: 100件上限 |
+| resourceIds 数 | `log-validator.ts`: 100件 | `normalizer.go`: 100件上限 |
+| PII マスキング | `MaskingService` | `MaskingService` + `MaskingPolicyEngine` + `MaskingVerifier` |
+| ReDoS 防止 | なし | `sanitizer.go`: `ValidateRegexSafety` |
+| RBAC 認可 | なし（SDKはクライアント側） | `authorizer.go`: ロール→権限 |
+
+**設計原則**: SDK は「明らかに不正な入力を早期に弾く」。Server は「全フィールドを厳密に検証・サニタイズする」。
+
+---
+
+## Retry & Resilience
+
+HTTP通知・AI実行等の外部通信は一時障害で失敗しうる。`internal/retry/` パッケージで統一対応。
+
+```
+delay = random(0, min(maxDelay, baseDelay * multiplier^attempt))
+```
+
+| 対象 | リトライ | 設定 |
+|---|---|---|
+| 通知送信（Slack/Gmail/Discord/Webhook） | `MultiNotifier` 内で `retry.Do()` | MaxAttempts=3, BaseDelay=100ms, MaxDelay=5s |
+| AI分析エージェント | `Guardrails.MaxRetries`（今後適用予定） | タスクルールで設定 |
+| DB永続化 | リトライなし（SQLite WAL でほぼ失敗しない） | — |
+
+**Jitter**: Full jitter（`random(0, backoff)`）で thundering herd を回避。
+
+---
+
+## Data Atomicity
+
+`store.WithTx()` で多段DB操作を原子的に実行可能。
+
+```go
+store.WithTx(ctx, func(tx interface{}) error {
+    // tx を使って複数操作
+    // エラー時は自動ROLLBACK
+    return nil
+})
+```
+
+**注意**: 現在 Pipeline.Process() 内のDB操作は個別実行。クリティカルパス（ApproveTask等）で `WithTx` を使用することを推奨。
+
+---
+
 ## Compliance Considerations
 
 | Standard | Relevant Controls | Sentinel Coverage |
@@ -239,6 +299,6 @@ Server-side structured logs (JSON via `log/slog`) include:
 | Requirement | Gap |
 |-------------|-----|
 | GDPR Right to Erasure (Art. 17) | No mechanism to find/delete logs by actor ID |
-| SOC 2 CC6.3 (role-based access) | No RBAC on gRPC endpoints |
+| SOC 2 CC6.3 (role-based access) | RBAC implemented (`middleware/authorizer.go`) |
 | ISO 27001 A.10.1 (cryptographic controls policy) | Key rotation not automated |
-| PCI DSS Req. 10.5 (secure audit trails) | Logs stored in memory only, not persisted |
+| PCI DSS Req. 10.5 (secure audit trails) | Logs persisted to SQLite (WAL mode). Threat responses also persisted. |
