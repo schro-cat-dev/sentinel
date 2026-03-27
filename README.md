@@ -2,6 +2,8 @@
 
 **Intelligent Log-to-Task Automation Platform with Threat Response**
 
+> **Docs**: [使い方](packages/server/docs/usage-guide.md) | [拡張ガイド](packages/server/docs/extensibility-guide.md) | [Docker導入](packages/server/docs/docker-guide.md) | [セキュリティレベル設定](packages/server/docs/usage-guide.md#セキュリティレベル設定) | [設計仕様](packages/server/docs/design/) | [既知の制約](packages/server/docs/design/known-limitations.md)
+
 Sentinel detects events from application logs and automatically generates remediation tasks based on configurable rules. Beyond collection, it provides a pluggable framework for threat analysis (via AI agents), blocking (IP/account, with cloud provider adapter interfaces for AWS/GCP/Azure), and multi-channel notification (Slack/Gmail/Discord/Webhook adapter interfaces).
 
 The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **Go backend server** communicating over gRPC.
@@ -277,12 +279,15 @@ go test ./... -race -v -count=1
 
 | Document | Content |
 |----------|---------|
-| [docs/architecture.md](docs/architecture.md) | Module responsibilities, design principles |
-| [docs/security.md](docs/security.md) | HMAC, PII masking, threat model |
-| [docs/usage-guide.md](docs/usage-guide.md) | Setup, configuration reference |
-| [packages/server/docs/design/module-responsibility-map.md](packages/server/docs/design/module-responsibility-map.md) | モジュール責務マップ + データフロー |
-| [packages/server/docs/design/threat-response-orchestration.md](packages/server/docs/design/threat-response-orchestration.md) | 脅威レスポンス設計仕様書 |
-| [packages/server/docs/design/work-log-2026-03-27.md](packages/server/docs/design/work-log-2026-03-27.md) | v2実装 作業ログ |
+| [Server 使い方ガイド](packages/server/docs/usage-guide.md) | 設定詳細、環境変数、gRPC API、セキュリティレベル別推奨設定、SDK連携 |
+| [拡張ガイド](packages/server/docs/extensibility-guide.md) | 検知ルール/ブロック手段/通知/AI/ストレージの拡張方法 |
+| [Docker導入ガイド](packages/server/docs/docker-guide.md) | Dockerfile、docker-compose、Kubernetes manifest |
+| [既知の制約 (N/A)](packages/server/docs/design/known-limitations.md) | 未対応項目・Mock/I/Fのみの機能一覧 |
+| [モジュール責務マップ](packages/server/docs/design/module-responsibility-map.md) | パッケージ構成 + 10ステージデータフロー |
+| [脅威レスポンス設計](packages/server/docs/design/threat-response-orchestration.md) | 戦略パターン/ブロック/通知の設計仕様 |
+| [v2 作業ログ](packages/server/docs/design/work-log-2026-03-27.md) | 全実装フェーズの詳細記録 |
+| [docs/architecture.md](docs/architecture.md) | v1 アーキテクチャ |
+| [docs/security.md](docs/security.md) | HMAC、PII masking、脅威モデル |
 
 ---
 
