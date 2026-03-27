@@ -3,9 +3,12 @@ server:
   max_recv_msg_size_bytes: 1048576
   max_concurrent_streams: 1000
   graceful_timeout_sec: 30
+  # tls_cert_file: "/path/to/cert.pem"   # TLS有効化（空=plaintext）
+  # tls_key_file: "/path/to/key.pem"
 
 security:
   # hmac_key: override via SENTINEL_HMAC_KEY env var (required, min 32 bytes)
+  hmac_key_version: 1
   enable_masking: true
   enable_hash_chain: true
   preserve_fields:
@@ -48,9 +51,9 @@ pipeline:
       event_name: SECURITY_INTRUSION_DETECTED
       severity: HIGH
       action_type: AI_ANALYZE
-      execution_level: SEMI_AUTO
+      execution_level: AUTO
       priority: 1
-      description: "AI analysis of security intrusion (requires approval)"
+      description: "AI analysis of security intrusion"
       guardrails:
         require_human_approval: false
         timeout_ms: 60000
@@ -71,8 +74,9 @@ pipeline:
         max_retries: 0
 
 store:
-  driver: sqlite
+  driver: sqlite                    # sqlite / sqlite_encrypted
   dsn: "file:sentinel.db?_journal=WAL"
+  # encryption_key: override via SENTINEL_STORE_ENCRYPTION_KEY env var
 
 auth:
   enabled: false
@@ -85,3 +89,79 @@ webhook:
   url: ""
   timeout_sec: 10
   # secret: HMAC secret for webhook payload signing
+
+# --- Enhanced Modules (all opt-in) ---
+
+ensemble:
+  enabled: false                    # or SENTINEL_ENSEMBLE_ENABLED=true
+  aggregator: "max"                 # max / avg / weighted_sum
+  threshold: 0.5
+  dedup_window_sec: 0               # 0=無効
+  dynamic_rules: []
+  # dynamic_rules:
+  #   - rule_id: "brute-force"
+  #     event_name: "SECURITY_INTRUSION_DETECTED"
+  #     priority: "HIGH"
+  #     score: 0.95
+  #     payload_builder: "security_intrusion"
+  #     conditions:
+  #       log_types: ["SECURITY"]
+  #       min_level: 4
+  #       message_pattern: "(?i)brute\\s*force"
+
+anomaly:
+  enabled: false                    # or SENTINEL_ANOMALY_ENABLED=true
+  window_size_sec: 60
+  baseline_window_sec: 600
+  threshold_pct: 300.0
+  min_baseline: 3.0
+
+agent:
+  enabled: false                    # or SENTINEL_AGENT_ENABLED=true
+  provider: "mock"                  # or SENTINEL_AGENT_PROVIDER
+  max_loop_depth: 5
+  timeout_sec: 60
+  allowed_actions: ["AI_ANALYZE"]
+  min_severity: "HIGH"
+
+response:
+  enabled: false                    # or SENTINEL_RESPONSE_ENABLED=true
+  default_strategy: "NOTIFY_ONLY"   # or SENTINEL_RESPONSE_DEFAULT_STRATEGY
+  block_mode: "IMMEDIATE"           # IMMEDIATE / REQUIRE_APPROVAL
+  rules: []
+  # rules:
+  #   - event_name: "SECURITY_INTRUSION_DETECTED"
+  #     strategy: "BLOCK_AND_NOTIFY"
+  #     block_action: "block_ip"
+  #     notify_targets: ["#security"]
+
+authorization:
+  enabled: false                    # or SENTINEL_AUTHZ_ENABLED=true
+  default_role: "viewer"
+  roles: {}
+  client_roles: {}
+  # roles:
+  #   admin:
+  #     can_write: true
+  #     can_read: true
+  #     can_approve: true
+  #     can_admin: true
+
+masking_policies: []
+# masking_policies:
+#   - policy_id: "sec-strict"
+#     log_types: ["SECURITY"]
+#     masking_rules:
+#       - type: PII_TYPE
+#         category: EMAIL
+
+routing_rules: []
+# routing_rules:
+#   - rule_id: "comp-route"
+#     min_level: 1
+#     max_level: 6
+#     event_name: "COMPLIANCE_VIOLATION"
+#     chain:
+#       - step_order: 1
+#         role: "team_lead"
+#         required: true

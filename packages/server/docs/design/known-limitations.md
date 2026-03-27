@@ -38,9 +38,11 @@
 
 | 項目 | 現状 |
 |---|---|
-| SDK→Server ネットワーク統合テスト | なし（両方同時起動が必要） |
-| 負荷テスト / ベンチマーク | 新モジュール未カバー |
-| Fuzzing | 未実装 |
+| Go テスト | 682テスト、`-race` 全PASS、13パッケージ |
+| TypeScript テスト | 208テスト、全PASS、11テストファイル |
+| ネットワーク統合テスト | 実装済み（`network_integration_test.go` 12テスト: gRPCサーバ起動→クライアント接続→全シナリオ） |
+| ベンチマーク | 実装済み（`benchmark_enhanced_test.go` Ensemble/Anomaly/Masking 5ベンチマーク） |
+| Fuzzing | 実装済み（`fuzz_test.go` ValidateString/SanitizeString/ValidateRegexSafety/MaskString/ContainsPII） |
 
 ---
 
