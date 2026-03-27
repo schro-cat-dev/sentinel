@@ -147,6 +147,46 @@ message RejectTaskResponse {
   string status = 2;
 }
 
+// --- Pending Block Management ---
+
+message ListPendingBlocksRequest {}
+
+message PendingBlockInfo {
+  string block_id = 1;
+  string action_type = 2;
+  string target_ip = 3;
+  string target_user_id = 4;
+  string reason = 5;
+  string status = 6;
+  string created_at = 7;
+}
+
+message ListPendingBlocksResponse {
+  repeated PendingBlockInfo blocks = 1;
+}
+
+message ApproveBlockRequest {
+  string block_id = 1;
+  string approver_id = 2;
+}
+
+message ApproveBlockResponse {
+  string block_id = 1;
+  bool success = 2;
+  string target = 3;
+  string error = 4;
+}
+
+message RejectBlockRequest {
+  string block_id = 1;
+  string rejector_id = 2;
+}
+
+message RejectBlockResponse {
+  string block_id = 1;
+  string status = 2;
+}
+
 // --- Service ---
 
 service SentinelService {
@@ -156,4 +196,7 @@ service SentinelService {
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
   rpc ApproveTask(ApproveTaskRequest) returns (ApproveTaskResponse);
   rpc RejectTask(RejectTaskRequest) returns (RejectTaskResponse);
+  rpc ListPendingBlocks(ListPendingBlocksRequest) returns (ListPendingBlocksResponse);
+  rpc ApproveBlock(ApproveBlockRequest) returns (ApproveBlockResponse);
+  rpc RejectBlock(RejectBlockRequest) returns (RejectBlockResponse);
 }

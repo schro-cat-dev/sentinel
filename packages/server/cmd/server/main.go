@@ -16,6 +16,7 @@ import (
 	"github.com/schro-cat-dev/sentinel-server/internal/engine"
 	sentinelgrpc "github.com/schro-cat-dev/sentinel-server/internal/grpc"
 	"github.com/schro-cat-dev/sentinel-server/internal/middleware"
+	"github.com/schro-cat-dev/sentinel-server/internal/notify"
 	"github.com/schro-cat-dev/sentinel-server/internal/response"
 	"github.com/schro-cat-dev/sentinel-server/internal/security"
 	"github.com/schro-cat-dev/sentinel-server/internal/store"
@@ -181,20 +182,52 @@ func main() {
 			return st.InsertThreatResponse(ctx, storeRecord)
 		}))
 
-		// 通知: Webhook notifier があれば接続
-		if notifier != nil {
-			orchOpts = append(orchOpts, response.WithNotifyFunc(func(ctx context.Context, record response.ThreatResponseRecord) error {
-				slog.Info("threat notification sent",
-					"responseId", record.ResponseID,
-					"eventName", record.EventName,
-					"strategy", record.Strategy,
-				)
-				return nil
+		// 通知: MultiNotifier を構築して接続
+		multiNotifier := notify.NewMultiNotifier()
+		multiNotifier.Register(notify.NewLogNotifier()) // fallback: 常にログ出力
+
+		if cfg.Webhook.Enabled && cfg.Webhook.URL != "" {
+			multiNotifier.Register(notify.NewWebhookNotifier(notify.WebhookConfig{
+				URL: cfg.Webhook.URL, TimeoutSec: cfg.Webhook.TimeoutSec, Secret: cfg.Webhook.Secret,
 			}))
+			multiNotifier.SetRouting("https://", []string{"webhook"})
 		}
+		// Slack: SENTINEL_SLACK_WEBHOOK_URL 環境変数で設定
+		if slackURL := os.Getenv("SENTINEL_SLACK_WEBHOOK_URL"); slackURL != "" {
+			multiNotifier.Register(notify.NewSlackNotifier(notify.SlackConfig{WebhookURL: slackURL}))
+			multiNotifier.SetRouting("#", []string{"slack"})
+			slog.Info("slack notifier registered")
+		}
+		// Discord: SENTINEL_DISCORD_WEBHOOK_URL 環境変数で設定
+		if discordURL := os.Getenv("SENTINEL_DISCORD_WEBHOOK_URL"); discordURL != "" {
+			multiNotifier.Register(notify.NewDiscordNotifier(notify.DiscordConfig{WebhookURL: discordURL}))
+			slog.Info("discord notifier registered")
+		}
+		// Gmail: SENTINEL_GMAIL_FROM + SENTINEL_GMAIL_PASSWORD 環境変数で設定
+		if gmailFrom := os.Getenv("SENTINEL_GMAIL_FROM"); gmailFrom != "" {
+			multiNotifier.Register(notify.NewGmailNotifier(notify.GmailConfig{
+				From: gmailFrom, Password: os.Getenv("SENTINEL_GMAIL_PASSWORD"),
+			}))
+			multiNotifier.SetRouting("@", []string{"gmail"})
+			slog.Info("gmail notifier registered")
+		}
+
+		orchOpts = append(orchOpts, response.WithNotifyFunc(func(ctx context.Context, record response.ThreatResponseRecord) error {
+			n := notify.Notification{
+				Channel:   record.NotifyTarget,
+				Subject:   "Sentinel: " + string(record.EventName),
+				Body:      "Strategy: " + string(record.Strategy),
+				Severity:  threatSeverity(record),
+				TraceID:   record.TraceID,
+				EventName: string(record.EventName),
+				Fields:    buildNotifyFields(record),
+			}
+			return multiNotifier.Send(ctx, n)
+		}))
 
 		orch := response.NewThreatResponseOrchestrator(respCfg, enhancedBlocker.BlockDispatcher, analyzer, orchOpts...)
 		sentinel.Pipeline().SetThreatOrchestrator(orch)
+		sentinel.SetBlockDispatcher(enhancedBlocker)
 		slog.Info("threat response orchestrator enabled",
 			"defaultStrategy", cfg.Response.DefaultStrategy,
 			"blockMode", "IMMEDIATE",
@@ -350,4 +383,40 @@ func convertResponseRules(cfgRules []config.ResponseRuleConfig) []response.Respo
 		})
 	}
 	return rules
+}
+
+func threatSeverity(record response.ThreatResponseRecord) string {
+	if record.Block != nil && record.Block.Success {
+		return "critical"
+	}
+	if record.Analysis != nil && record.Analysis.RiskLevel != "" {
+		return record.Analysis.RiskLevel
+	}
+	return "medium"
+}
+
+func buildNotifyFields(record response.ThreatResponseRecord) map[string]string {
+	fields := map[string]string{
+		"response_id": record.ResponseID,
+		"strategy":    string(record.Strategy),
+	}
+	if record.Target.IP != "" {
+		fields["target_ip"] = record.Target.IP
+	}
+	if record.Target.UserID != "" {
+		fields["target_user"] = record.Target.UserID
+	}
+	if record.Block != nil {
+		fields["block_action"] = record.Block.ActionType
+		if record.Block.Success {
+			fields["block_status"] = "blocked"
+		} else {
+			fields["block_status"] = "failed: " + record.Block.Error
+		}
+	}
+	if record.Analysis != nil && record.Analysis.Error == "" {
+		fields["risk_level"] = record.Analysis.RiskLevel
+		fields["analysis"] = record.Analysis.Summary
+	}
+	return fields
 }

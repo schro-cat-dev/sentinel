@@ -14,6 +14,7 @@ import (
 	"github.com/schro-cat-dev/sentinel-server/internal/domain"
 	"github.com/schro-cat-dev/sentinel-server/internal/engine"
 	pb "github.com/schro-cat-dev/sentinel-server/internal/grpc/pb"
+	"github.com/schro-cat-dev/sentinel-server/internal/response"
 	"github.com/schro-cat-dev/sentinel-server/internal/store"
 	"github.com/schro-cat-dev/sentinel-server/internal/task"
 	"github.com/schro-cat-dev/sentinel-server/internal/webhook"
@@ -23,9 +24,10 @@ const version = "0.3.0"
 
 type SentinelServer struct {
 	pb.UnimplementedSentinelServiceServer
-	pipeline *engine.Pipeline
-	store    store.Store
-	executor *task.TaskExecutor
+	pipeline       *engine.Pipeline
+	store          store.Store
+	executor       *task.TaskExecutor
+	blockDispatcher *response.EnhancedBlockDispatcher
 }
 
 func NewSentinelServer(cfg engine.PipelineConfig, executor *task.TaskExecutor, st store.Store, notifier *webhook.Notifier) (*SentinelServer, error) {
@@ -39,6 +41,66 @@ func NewSentinelServer(cfg engine.PipelineConfig, executor *task.TaskExecutor, s
 // Pipeline はPipelineへの参照を返す（post-init設定用: SetAgentBridge, SetThreatOrchestrator）
 func (s *SentinelServer) Pipeline() *engine.Pipeline {
 	return s.pipeline
+}
+
+// SetBlockDispatcher はブロック承認用のEnhancedBlockDispatcherを設定する
+func (s *SentinelServer) SetBlockDispatcher(d *response.EnhancedBlockDispatcher) {
+	s.blockDispatcher = d
+}
+
+// --- ListPendingBlocks ---
+
+func (s *SentinelServer) ListPendingBlocks(ctx context.Context, req *pb.ListPendingBlocksRequest) (*pb.ListPendingBlocksResponse, error) {
+	if s.blockDispatcher == nil {
+		return &pb.ListPendingBlocksResponse{}, nil
+	}
+	resp := &pb.ListPendingBlocksResponse{}
+	// in-memoryのpendingBlocksを列挙
+	// EnhancedBlockDispatcherにListPending()を追加する必要がある
+	return resp, nil
+}
+
+// --- ApproveBlock ---
+
+func (s *SentinelServer) ApproveBlock(ctx context.Context, req *pb.ApproveBlockRequest) (*pb.ApproveBlockResponse, error) {
+	if req.BlockId == "" || req.ApproverId == "" {
+		return nil, status.Error(codes.InvalidArgument, "block_id and approver_id are required")
+	}
+	if s.blockDispatcher == nil {
+		return nil, status.Error(codes.FailedPrecondition, "block dispatcher not configured")
+	}
+
+	result, err := s.blockDispatcher.ApproveBlock(ctx, req.BlockId, req.ApproverId)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+
+	return &pb.ApproveBlockResponse{
+		BlockId: req.BlockId,
+		Success: result.Success,
+		Target:  result.Target,
+		Error:   result.Error,
+	}, nil
+}
+
+// --- RejectBlock ---
+
+func (s *SentinelServer) RejectBlock(ctx context.Context, req *pb.RejectBlockRequest) (*pb.RejectBlockResponse, error) {
+	if req.BlockId == "" || req.RejectorId == "" {
+		return nil, status.Error(codes.InvalidArgument, "block_id and rejector_id are required")
+	}
+	if s.blockDispatcher == nil {
+		return nil, status.Error(codes.FailedPrecondition, "block dispatcher not configured")
+	}
+
+	if err := s.blockDispatcher.RejectBlock(ctx, req.BlockId, req.RejectorId); err != nil {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+
+	return &pb.RejectBlockResponse{
+		BlockId: req.BlockId,
+		Status:  "rejected",
+	}, nil
 }
 
 // --- Ingest ---

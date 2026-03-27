@@ -19,12 +19,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SentinelService_Ingest_FullMethodName        = "/sentinel.v1.SentinelService/Ingest"
-	SentinelService_HealthCheck_FullMethodName   = "/sentinel.v1.SentinelService/HealthCheck"
-	SentinelService_GetTaskStatus_FullMethodName = "/sentinel.v1.SentinelService/GetTaskStatus"
-	SentinelService_ListTasks_FullMethodName     = "/sentinel.v1.SentinelService/ListTasks"
-	SentinelService_ApproveTask_FullMethodName   = "/sentinel.v1.SentinelService/ApproveTask"
-	SentinelService_RejectTask_FullMethodName    = "/sentinel.v1.SentinelService/RejectTask"
+	SentinelService_Ingest_FullMethodName            = "/sentinel.v1.SentinelService/Ingest"
+	SentinelService_HealthCheck_FullMethodName       = "/sentinel.v1.SentinelService/HealthCheck"
+	SentinelService_GetTaskStatus_FullMethodName     = "/sentinel.v1.SentinelService/GetTaskStatus"
+	SentinelService_ListTasks_FullMethodName         = "/sentinel.v1.SentinelService/ListTasks"
+	SentinelService_ApproveTask_FullMethodName       = "/sentinel.v1.SentinelService/ApproveTask"
+	SentinelService_RejectTask_FullMethodName        = "/sentinel.v1.SentinelService/RejectTask"
+	SentinelService_ListPendingBlocks_FullMethodName = "/sentinel.v1.SentinelService/ListPendingBlocks"
+	SentinelService_ApproveBlock_FullMethodName      = "/sentinel.v1.SentinelService/ApproveBlock"
+	SentinelService_RejectBlock_FullMethodName       = "/sentinel.v1.SentinelService/RejectBlock"
 )
 
 // SentinelServiceClient is the client API for SentinelService service.
@@ -37,6 +40,9 @@ type SentinelServiceClient interface {
 	ListTasks(ctx context.Context, in *ListTasksRequest, opts ...grpc.CallOption) (*ListTasksResponse, error)
 	ApproveTask(ctx context.Context, in *ApproveTaskRequest, opts ...grpc.CallOption) (*ApproveTaskResponse, error)
 	RejectTask(ctx context.Context, in *RejectTaskRequest, opts ...grpc.CallOption) (*RejectTaskResponse, error)
+	ListPendingBlocks(ctx context.Context, in *ListPendingBlocksRequest, opts ...grpc.CallOption) (*ListPendingBlocksResponse, error)
+	ApproveBlock(ctx context.Context, in *ApproveBlockRequest, opts ...grpc.CallOption) (*ApproveBlockResponse, error)
+	RejectBlock(ctx context.Context, in *RejectBlockRequest, opts ...grpc.CallOption) (*RejectBlockResponse, error)
 }
 
 type sentinelServiceClient struct {
@@ -107,6 +113,36 @@ func (c *sentinelServiceClient) RejectTask(ctx context.Context, in *RejectTaskRe
 	return out, nil
 }
 
+func (c *sentinelServiceClient) ListPendingBlocks(ctx context.Context, in *ListPendingBlocksRequest, opts ...grpc.CallOption) (*ListPendingBlocksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPendingBlocksResponse)
+	err := c.cc.Invoke(ctx, SentinelService_ListPendingBlocks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sentinelServiceClient) ApproveBlock(ctx context.Context, in *ApproveBlockRequest, opts ...grpc.CallOption) (*ApproveBlockResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ApproveBlockResponse)
+	err := c.cc.Invoke(ctx, SentinelService_ApproveBlock_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sentinelServiceClient) RejectBlock(ctx context.Context, in *RejectBlockRequest, opts ...grpc.CallOption) (*RejectBlockResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RejectBlockResponse)
+	err := c.cc.Invoke(ctx, SentinelService_RejectBlock_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SentinelServiceServer is the server API for SentinelService service.
 // All implementations must embed UnimplementedSentinelServiceServer
 // for forward compatibility.
@@ -117,6 +153,9 @@ type SentinelServiceServer interface {
 	ListTasks(context.Context, *ListTasksRequest) (*ListTasksResponse, error)
 	ApproveTask(context.Context, *ApproveTaskRequest) (*ApproveTaskResponse, error)
 	RejectTask(context.Context, *RejectTaskRequest) (*RejectTaskResponse, error)
+	ListPendingBlocks(context.Context, *ListPendingBlocksRequest) (*ListPendingBlocksResponse, error)
+	ApproveBlock(context.Context, *ApproveBlockRequest) (*ApproveBlockResponse, error)
+	RejectBlock(context.Context, *RejectBlockRequest) (*RejectBlockResponse, error)
 	mustEmbedUnimplementedSentinelServiceServer()
 }
 
@@ -144,6 +183,15 @@ func (UnimplementedSentinelServiceServer) ApproveTask(context.Context, *ApproveT
 }
 func (UnimplementedSentinelServiceServer) RejectTask(context.Context, *RejectTaskRequest) (*RejectTaskResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RejectTask not implemented")
+}
+func (UnimplementedSentinelServiceServer) ListPendingBlocks(context.Context, *ListPendingBlocksRequest) (*ListPendingBlocksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPendingBlocks not implemented")
+}
+func (UnimplementedSentinelServiceServer) ApproveBlock(context.Context, *ApproveBlockRequest) (*ApproveBlockResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ApproveBlock not implemented")
+}
+func (UnimplementedSentinelServiceServer) RejectBlock(context.Context, *RejectBlockRequest) (*RejectBlockResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RejectBlock not implemented")
 }
 func (UnimplementedSentinelServiceServer) mustEmbedUnimplementedSentinelServiceServer() {}
 func (UnimplementedSentinelServiceServer) testEmbeddedByValue()                         {}
@@ -274,6 +322,60 @@ func _SentinelService_RejectTask_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SentinelService_ListPendingBlocks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPendingBlocksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SentinelServiceServer).ListPendingBlocks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SentinelService_ListPendingBlocks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SentinelServiceServer).ListPendingBlocks(ctx, req.(*ListPendingBlocksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SentinelService_ApproveBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApproveBlockRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SentinelServiceServer).ApproveBlock(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SentinelService_ApproveBlock_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SentinelServiceServer).ApproveBlock(ctx, req.(*ApproveBlockRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SentinelService_RejectBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RejectBlockRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SentinelServiceServer).RejectBlock(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SentinelService_RejectBlock_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SentinelServiceServer).RejectBlock(ctx, req.(*RejectBlockRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SentinelService_ServiceDesc is the grpc.ServiceDesc for SentinelService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -304,6 +406,18 @@ var SentinelService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RejectTask",
 			Handler:    _SentinelService_RejectTask_Handler,
+		},
+		{
+			MethodName: "ListPendingBlocks",
+			Handler:    _SentinelService_ListPendingBlocks_Handler,
+		},
+		{
+			MethodName: "ApproveBlock",
+			Handler:    _SentinelService_ApproveBlock_Handler,
+		},
+		{
+			MethodName: "RejectBlock",
+			Handler:    _SentinelService_RejectBlock_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

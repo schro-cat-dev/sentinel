@@ -1305,6 +1305,402 @@ func (x *RejectTaskResponse) GetStatus() string {
 	return ""
 }
 
+type ListPendingBlocksRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPendingBlocksRequest) Reset() {
+	*x = ListPendingBlocksRequest{}
+	mi := &file_sentinel_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPendingBlocksRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPendingBlocksRequest) ProtoMessage() {}
+
+func (x *ListPendingBlocksRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_sentinel_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPendingBlocksRequest.ProtoReflect.Descriptor instead.
+func (*ListPendingBlocksRequest) Descriptor() ([]byte, []int) {
+	return file_sentinel_proto_rawDescGZIP(), []int{17}
+}
+
+type PendingBlockInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BlockId       string                 `protobuf:"bytes,1,opt,name=block_id,json=blockId,proto3" json:"block_id,omitempty"`
+	ActionType    string                 `protobuf:"bytes,2,opt,name=action_type,json=actionType,proto3" json:"action_type,omitempty"`
+	TargetIp      string                 `protobuf:"bytes,3,opt,name=target_ip,json=targetIp,proto3" json:"target_ip,omitempty"`
+	TargetUserId  string                 `protobuf:"bytes,4,opt,name=target_user_id,json=targetUserId,proto3" json:"target_user_id,omitempty"`
+	Reason        string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PendingBlockInfo) Reset() {
+	*x = PendingBlockInfo{}
+	mi := &file_sentinel_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PendingBlockInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PendingBlockInfo) ProtoMessage() {}
+
+func (x *PendingBlockInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_sentinel_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PendingBlockInfo.ProtoReflect.Descriptor instead.
+func (*PendingBlockInfo) Descriptor() ([]byte, []int) {
+	return file_sentinel_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *PendingBlockInfo) GetBlockId() string {
+	if x != nil {
+		return x.BlockId
+	}
+	return ""
+}
+
+func (x *PendingBlockInfo) GetActionType() string {
+	if x != nil {
+		return x.ActionType
+	}
+	return ""
+}
+
+func (x *PendingBlockInfo) GetTargetIp() string {
+	if x != nil {
+		return x.TargetIp
+	}
+	return ""
+}
+
+func (x *PendingBlockInfo) GetTargetUserId() string {
+	if x != nil {
+		return x.TargetUserId
+	}
+	return ""
+}
+
+func (x *PendingBlockInfo) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *PendingBlockInfo) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *PendingBlockInfo) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+type ListPendingBlocksResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Blocks        []*PendingBlockInfo    `protobuf:"bytes,1,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPendingBlocksResponse) Reset() {
+	*x = ListPendingBlocksResponse{}
+	mi := &file_sentinel_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPendingBlocksResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPendingBlocksResponse) ProtoMessage() {}
+
+func (x *ListPendingBlocksResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_sentinel_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPendingBlocksResponse.ProtoReflect.Descriptor instead.
+func (*ListPendingBlocksResponse) Descriptor() ([]byte, []int) {
+	return file_sentinel_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ListPendingBlocksResponse) GetBlocks() []*PendingBlockInfo {
+	if x != nil {
+		return x.Blocks
+	}
+	return nil
+}
+
+type ApproveBlockRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BlockId       string                 `protobuf:"bytes,1,opt,name=block_id,json=blockId,proto3" json:"block_id,omitempty"`
+	ApproverId    string                 `protobuf:"bytes,2,opt,name=approver_id,json=approverId,proto3" json:"approver_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApproveBlockRequest) Reset() {
+	*x = ApproveBlockRequest{}
+	mi := &file_sentinel_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApproveBlockRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApproveBlockRequest) ProtoMessage() {}
+
+func (x *ApproveBlockRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_sentinel_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApproveBlockRequest.ProtoReflect.Descriptor instead.
+func (*ApproveBlockRequest) Descriptor() ([]byte, []int) {
+	return file_sentinel_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ApproveBlockRequest) GetBlockId() string {
+	if x != nil {
+		return x.BlockId
+	}
+	return ""
+}
+
+func (x *ApproveBlockRequest) GetApproverId() string {
+	if x != nil {
+		return x.ApproverId
+	}
+	return ""
+}
+
+type ApproveBlockResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BlockId       string                 `protobuf:"bytes,1,opt,name=block_id,json=blockId,proto3" json:"block_id,omitempty"`
+	Success       bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
+	Target        string                 `protobuf:"bytes,3,opt,name=target,proto3" json:"target,omitempty"`
+	Error         string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApproveBlockResponse) Reset() {
+	*x = ApproveBlockResponse{}
+	mi := &file_sentinel_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApproveBlockResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApproveBlockResponse) ProtoMessage() {}
+
+func (x *ApproveBlockResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_sentinel_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApproveBlockResponse.ProtoReflect.Descriptor instead.
+func (*ApproveBlockResponse) Descriptor() ([]byte, []int) {
+	return file_sentinel_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ApproveBlockResponse) GetBlockId() string {
+	if x != nil {
+		return x.BlockId
+	}
+	return ""
+}
+
+func (x *ApproveBlockResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ApproveBlockResponse) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+func (x *ApproveBlockResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type RejectBlockRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BlockId       string                 `protobuf:"bytes,1,opt,name=block_id,json=blockId,proto3" json:"block_id,omitempty"`
+	RejectorId    string                 `protobuf:"bytes,2,opt,name=rejector_id,json=rejectorId,proto3" json:"rejector_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RejectBlockRequest) Reset() {
+	*x = RejectBlockRequest{}
+	mi := &file_sentinel_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RejectBlockRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RejectBlockRequest) ProtoMessage() {}
+
+func (x *RejectBlockRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_sentinel_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RejectBlockRequest.ProtoReflect.Descriptor instead.
+func (*RejectBlockRequest) Descriptor() ([]byte, []int) {
+	return file_sentinel_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *RejectBlockRequest) GetBlockId() string {
+	if x != nil {
+		return x.BlockId
+	}
+	return ""
+}
+
+func (x *RejectBlockRequest) GetRejectorId() string {
+	if x != nil {
+		return x.RejectorId
+	}
+	return ""
+}
+
+type RejectBlockResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BlockId       string                 `protobuf:"bytes,1,opt,name=block_id,json=blockId,proto3" json:"block_id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RejectBlockResponse) Reset() {
+	*x = RejectBlockResponse{}
+	mi := &file_sentinel_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RejectBlockResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RejectBlockResponse) ProtoMessage() {}
+
+func (x *RejectBlockResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_sentinel_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RejectBlockResponse.ProtoReflect.Descriptor instead.
+func (*RejectBlockResponse) Descriptor() ([]byte, []int) {
+	return file_sentinel_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *RejectBlockResponse) GetBlockId() string {
+	if x != nil {
+		return x.BlockId
+	}
+	return ""
+}
+
+func (x *RejectBlockResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
 var File_sentinel_proto protoreflect.FileDescriptor
 
 const file_sentinel_proto_rawDesc = "" +
@@ -1433,7 +1829,36 @@ const file_sentinel_proto_rawDesc = "" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\"E\n" +
 	"\x12RejectTaskResponse\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status2\xeb\x03\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\"\x1a\n" +
+	"\x18ListPendingBlocksRequest\"\xe0\x01\n" +
+	"\x10PendingBlockInfo\x12\x19\n" +
+	"\bblock_id\x18\x01 \x01(\tR\ablockId\x12\x1f\n" +
+	"\vaction_type\x18\x02 \x01(\tR\n" +
+	"actionType\x12\x1b\n" +
+	"\ttarget_ip\x18\x03 \x01(\tR\btargetIp\x12$\n" +
+	"\x0etarget_user_id\x18\x04 \x01(\tR\ftargetUserId\x12\x16\n" +
+	"\x06reason\x18\x05 \x01(\tR\x06reason\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\a \x01(\tR\tcreatedAt\"R\n" +
+	"\x19ListPendingBlocksResponse\x125\n" +
+	"\x06blocks\x18\x01 \x03(\v2\x1d.sentinel.v1.PendingBlockInfoR\x06blocks\"Q\n" +
+	"\x13ApproveBlockRequest\x12\x19\n" +
+	"\bblock_id\x18\x01 \x01(\tR\ablockId\x12\x1f\n" +
+	"\vapprover_id\x18\x02 \x01(\tR\n" +
+	"approverId\"y\n" +
+	"\x14ApproveBlockResponse\x12\x19\n" +
+	"\bblock_id\x18\x01 \x01(\tR\ablockId\x12\x18\n" +
+	"\asuccess\x18\x02 \x01(\bR\asuccess\x12\x16\n" +
+	"\x06target\x18\x03 \x01(\tR\x06target\x12\x14\n" +
+	"\x05error\x18\x04 \x01(\tR\x05error\"P\n" +
+	"\x12RejectBlockRequest\x12\x19\n" +
+	"\bblock_id\x18\x01 \x01(\tR\ablockId\x12\x1f\n" +
+	"\vrejector_id\x18\x02 \x01(\tR\n" +
+	"rejectorId\"H\n" +
+	"\x13RejectBlockResponse\x12\x19\n" +
+	"\bblock_id\x18\x01 \x01(\tR\ablockId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status2\xf6\x05\n" +
 	"\x0fSentinelService\x12A\n" +
 	"\x06Ingest\x12\x1a.sentinel.v1.IngestRequest\x1a\x1b.sentinel.v1.IngestResponse\x12P\n" +
 	"\vHealthCheck\x12\x1f.sentinel.v1.HealthCheckRequest\x1a .sentinel.v1.HealthCheckResponse\x12V\n" +
@@ -1441,7 +1866,10 @@ const file_sentinel_proto_rawDesc = "" +
 	"\tListTasks\x12\x1d.sentinel.v1.ListTasksRequest\x1a\x1e.sentinel.v1.ListTasksResponse\x12P\n" +
 	"\vApproveTask\x12\x1f.sentinel.v1.ApproveTaskRequest\x1a .sentinel.v1.ApproveTaskResponse\x12M\n" +
 	"\n" +
-	"RejectTask\x12\x1e.sentinel.v1.RejectTaskRequest\x1a\x1f.sentinel.v1.RejectTaskResponseB;Z9github.com/schro-cat-dev/sentinel-server/internal/grpc/pbb\x06proto3"
+	"RejectTask\x12\x1e.sentinel.v1.RejectTaskRequest\x1a\x1f.sentinel.v1.RejectTaskResponse\x12b\n" +
+	"\x11ListPendingBlocks\x12%.sentinel.v1.ListPendingBlocksRequest\x1a&.sentinel.v1.ListPendingBlocksResponse\x12S\n" +
+	"\fApproveBlock\x12 .sentinel.v1.ApproveBlockRequest\x1a!.sentinel.v1.ApproveBlockResponse\x12P\n" +
+	"\vRejectBlock\x12\x1f.sentinel.v1.RejectBlockRequest\x1a .sentinel.v1.RejectBlockResponseB;Z9github.com/schro-cat-dev/sentinel-server/internal/grpc/pbb\x06proto3"
 
 var (
 	file_sentinel_proto_rawDescOnce sync.Once
@@ -1455,52 +1883,66 @@ func file_sentinel_proto_rawDescGZIP() []byte {
 	return file_sentinel_proto_rawDescData
 }
 
-var file_sentinel_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_sentinel_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_sentinel_proto_goTypes = []any{
-	(*LogTag)(nil),                // 0: sentinel.v1.LogTag
-	(*AIContext)(nil),             // 1: sentinel.v1.AIContext
-	(*AgentBackLogEntry)(nil),     // 2: sentinel.v1.AgentBackLogEntry
-	(*IngestRequest)(nil),         // 3: sentinel.v1.IngestRequest
-	(*ThreatResponseSummary)(nil), // 4: sentinel.v1.ThreatResponseSummary
-	(*IngestResponse)(nil),        // 5: sentinel.v1.IngestResponse
-	(*TaskResult)(nil),            // 6: sentinel.v1.TaskResult
-	(*HealthCheckRequest)(nil),    // 7: sentinel.v1.HealthCheckRequest
-	(*HealthCheckResponse)(nil),   // 8: sentinel.v1.HealthCheckResponse
-	(*GetTaskStatusRequest)(nil),  // 9: sentinel.v1.GetTaskStatusRequest
-	(*GetTaskStatusResponse)(nil), // 10: sentinel.v1.GetTaskStatusResponse
-	(*ListTasksRequest)(nil),      // 11: sentinel.v1.ListTasksRequest
-	(*ListTasksResponse)(nil),     // 12: sentinel.v1.ListTasksResponse
-	(*ApproveTaskRequest)(nil),    // 13: sentinel.v1.ApproveTaskRequest
-	(*ApproveTaskResponse)(nil),   // 14: sentinel.v1.ApproveTaskResponse
-	(*RejectTaskRequest)(nil),     // 15: sentinel.v1.RejectTaskRequest
-	(*RejectTaskResponse)(nil),    // 16: sentinel.v1.RejectTaskResponse
-	nil,                           // 17: sentinel.v1.IngestRequest.DetailsEntry
+	(*LogTag)(nil),                    // 0: sentinel.v1.LogTag
+	(*AIContext)(nil),                 // 1: sentinel.v1.AIContext
+	(*AgentBackLogEntry)(nil),         // 2: sentinel.v1.AgentBackLogEntry
+	(*IngestRequest)(nil),             // 3: sentinel.v1.IngestRequest
+	(*ThreatResponseSummary)(nil),     // 4: sentinel.v1.ThreatResponseSummary
+	(*IngestResponse)(nil),            // 5: sentinel.v1.IngestResponse
+	(*TaskResult)(nil),                // 6: sentinel.v1.TaskResult
+	(*HealthCheckRequest)(nil),        // 7: sentinel.v1.HealthCheckRequest
+	(*HealthCheckResponse)(nil),       // 8: sentinel.v1.HealthCheckResponse
+	(*GetTaskStatusRequest)(nil),      // 9: sentinel.v1.GetTaskStatusRequest
+	(*GetTaskStatusResponse)(nil),     // 10: sentinel.v1.GetTaskStatusResponse
+	(*ListTasksRequest)(nil),          // 11: sentinel.v1.ListTasksRequest
+	(*ListTasksResponse)(nil),         // 12: sentinel.v1.ListTasksResponse
+	(*ApproveTaskRequest)(nil),        // 13: sentinel.v1.ApproveTaskRequest
+	(*ApproveTaskResponse)(nil),       // 14: sentinel.v1.ApproveTaskResponse
+	(*RejectTaskRequest)(nil),         // 15: sentinel.v1.RejectTaskRequest
+	(*RejectTaskResponse)(nil),        // 16: sentinel.v1.RejectTaskResponse
+	(*ListPendingBlocksRequest)(nil),  // 17: sentinel.v1.ListPendingBlocksRequest
+	(*PendingBlockInfo)(nil),          // 18: sentinel.v1.PendingBlockInfo
+	(*ListPendingBlocksResponse)(nil), // 19: sentinel.v1.ListPendingBlocksResponse
+	(*ApproveBlockRequest)(nil),       // 20: sentinel.v1.ApproveBlockRequest
+	(*ApproveBlockResponse)(nil),      // 21: sentinel.v1.ApproveBlockResponse
+	(*RejectBlockRequest)(nil),        // 22: sentinel.v1.RejectBlockRequest
+	(*RejectBlockResponse)(nil),       // 23: sentinel.v1.RejectBlockResponse
+	nil,                               // 24: sentinel.v1.IngestRequest.DetailsEntry
 }
 var file_sentinel_proto_depIdxs = []int32{
 	0,  // 0: sentinel.v1.IngestRequest.tags:type_name -> sentinel.v1.LogTag
 	1,  // 1: sentinel.v1.IngestRequest.ai_context:type_name -> sentinel.v1.AIContext
 	2,  // 2: sentinel.v1.IngestRequest.agent_back_log:type_name -> sentinel.v1.AgentBackLogEntry
-	17, // 3: sentinel.v1.IngestRequest.details:type_name -> sentinel.v1.IngestRequest.DetailsEntry
+	24, // 3: sentinel.v1.IngestRequest.details:type_name -> sentinel.v1.IngestRequest.DetailsEntry
 	6,  // 4: sentinel.v1.IngestResponse.tasks_generated:type_name -> sentinel.v1.TaskResult
 	4,  // 5: sentinel.v1.IngestResponse.threat_responses:type_name -> sentinel.v1.ThreatResponseSummary
 	10, // 6: sentinel.v1.ListTasksResponse.tasks:type_name -> sentinel.v1.GetTaskStatusResponse
-	3,  // 7: sentinel.v1.SentinelService.Ingest:input_type -> sentinel.v1.IngestRequest
-	7,  // 8: sentinel.v1.SentinelService.HealthCheck:input_type -> sentinel.v1.HealthCheckRequest
-	9,  // 9: sentinel.v1.SentinelService.GetTaskStatus:input_type -> sentinel.v1.GetTaskStatusRequest
-	11, // 10: sentinel.v1.SentinelService.ListTasks:input_type -> sentinel.v1.ListTasksRequest
-	13, // 11: sentinel.v1.SentinelService.ApproveTask:input_type -> sentinel.v1.ApproveTaskRequest
-	15, // 12: sentinel.v1.SentinelService.RejectTask:input_type -> sentinel.v1.RejectTaskRequest
-	5,  // 13: sentinel.v1.SentinelService.Ingest:output_type -> sentinel.v1.IngestResponse
-	8,  // 14: sentinel.v1.SentinelService.HealthCheck:output_type -> sentinel.v1.HealthCheckResponse
-	10, // 15: sentinel.v1.SentinelService.GetTaskStatus:output_type -> sentinel.v1.GetTaskStatusResponse
-	12, // 16: sentinel.v1.SentinelService.ListTasks:output_type -> sentinel.v1.ListTasksResponse
-	14, // 17: sentinel.v1.SentinelService.ApproveTask:output_type -> sentinel.v1.ApproveTaskResponse
-	16, // 18: sentinel.v1.SentinelService.RejectTask:output_type -> sentinel.v1.RejectTaskResponse
-	13, // [13:19] is the sub-list for method output_type
-	7,  // [7:13] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	18, // 7: sentinel.v1.ListPendingBlocksResponse.blocks:type_name -> sentinel.v1.PendingBlockInfo
+	3,  // 8: sentinel.v1.SentinelService.Ingest:input_type -> sentinel.v1.IngestRequest
+	7,  // 9: sentinel.v1.SentinelService.HealthCheck:input_type -> sentinel.v1.HealthCheckRequest
+	9,  // 10: sentinel.v1.SentinelService.GetTaskStatus:input_type -> sentinel.v1.GetTaskStatusRequest
+	11, // 11: sentinel.v1.SentinelService.ListTasks:input_type -> sentinel.v1.ListTasksRequest
+	13, // 12: sentinel.v1.SentinelService.ApproveTask:input_type -> sentinel.v1.ApproveTaskRequest
+	15, // 13: sentinel.v1.SentinelService.RejectTask:input_type -> sentinel.v1.RejectTaskRequest
+	17, // 14: sentinel.v1.SentinelService.ListPendingBlocks:input_type -> sentinel.v1.ListPendingBlocksRequest
+	20, // 15: sentinel.v1.SentinelService.ApproveBlock:input_type -> sentinel.v1.ApproveBlockRequest
+	22, // 16: sentinel.v1.SentinelService.RejectBlock:input_type -> sentinel.v1.RejectBlockRequest
+	5,  // 17: sentinel.v1.SentinelService.Ingest:output_type -> sentinel.v1.IngestResponse
+	8,  // 18: sentinel.v1.SentinelService.HealthCheck:output_type -> sentinel.v1.HealthCheckResponse
+	10, // 19: sentinel.v1.SentinelService.GetTaskStatus:output_type -> sentinel.v1.GetTaskStatusResponse
+	12, // 20: sentinel.v1.SentinelService.ListTasks:output_type -> sentinel.v1.ListTasksResponse
+	14, // 21: sentinel.v1.SentinelService.ApproveTask:output_type -> sentinel.v1.ApproveTaskResponse
+	16, // 22: sentinel.v1.SentinelService.RejectTask:output_type -> sentinel.v1.RejectTaskResponse
+	19, // 23: sentinel.v1.SentinelService.ListPendingBlocks:output_type -> sentinel.v1.ListPendingBlocksResponse
+	21, // 24: sentinel.v1.SentinelService.ApproveBlock:output_type -> sentinel.v1.ApproveBlockResponse
+	23, // 25: sentinel.v1.SentinelService.RejectBlock:output_type -> sentinel.v1.RejectBlockResponse
+	17, // [17:26] is the sub-list for method output_type
+	8,  // [8:17] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_sentinel_proto_init() }
@@ -1514,7 +1956,7 @@ func file_sentinel_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sentinel_proto_rawDesc), len(file_sentinel_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
