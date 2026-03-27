@@ -7,16 +7,18 @@ import (
 
 // Deduplicator は時間ウィンドウ内の重複イベントを抑制する
 type Deduplicator struct {
-	mu     sync.Mutex
-	seen   map[string]time.Time // key → last seen time
-	window time.Duration
+	mu      sync.Mutex
+	seen    map[string]time.Time // key → last seen time
+	window  time.Duration
+	maxSize int // 最大エントリ数（0=無制限、デフォルト10000）
 }
 
 // NewDeduplicator は指定ウィンドウの重複抑制フィルターを生成する
 func NewDeduplicator(window time.Duration) *Deduplicator {
 	return &Deduplicator{
-		seen:   make(map[string]time.Time),
-		window: window,
+		seen:    make(map[string]time.Time),
+		window:  window,
+		maxSize: 10000,
 	}
 }
 
@@ -27,15 +29,27 @@ func (d *Deduplicator) IsDuplicate(key string) bool {
 
 	now := time.Now()
 
-	// 期限切れエントリの掃除（最大100件）
-	cleaned := 0
+	// 期限切れエントリの全件掃除
 	for k, ts := range d.seen {
 		if now.Sub(ts) > d.window {
 			delete(d.seen, k)
-			cleaned++
-			if cleaned >= 100 {
-				break
+		}
+	}
+
+	// maxSizeガード: サイズ超過時は最も古いエントリを削除
+	if d.maxSize > 0 && len(d.seen) >= d.maxSize {
+		var oldestKey string
+		var oldestTime time.Time
+		first := true
+		for k, ts := range d.seen {
+			if first || ts.Before(oldestTime) {
+				oldestKey = k
+				oldestTime = ts
+				first = false
 			}
+		}
+		if oldestKey != "" {
+			delete(d.seen, oldestKey)
 		}
 	}
 

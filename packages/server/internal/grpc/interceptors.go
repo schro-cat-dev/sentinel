@@ -77,3 +77,28 @@ func ClientIDFromContext(ctx context.Context) string {
 	id, _ := ctx.Value(clientIDKey).(string)
 	return id
 }
+
+// AuditLogUnaryInterceptor は全gRPCリクエストのアクセスログを記録する
+func AuditLogUnaryInterceptor() ggrpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *ggrpc.UnaryServerInfo, handler ggrpc.UnaryHandler) (interface{}, error) {
+		clientID := ClientIDFromContext(ctx)
+		if clientID == "" {
+			clientID = "anonymous"
+		}
+
+		resp, err := handler(ctx, req)
+
+		status := "ok"
+		if err != nil {
+			status = "error"
+		}
+
+		slog.Info("audit",
+			"method", info.FullMethod,
+			"clientId", clientID,
+			"status", status,
+		)
+
+		return resp, err
+	}
+}

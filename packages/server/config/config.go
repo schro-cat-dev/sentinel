@@ -33,6 +33,7 @@ type ServerConfig struct {
 
 type SecurityConfig struct {
 	HMACKey           string   `yaml:"hmac_key"`
+	HMACKeyVersion    int      `yaml:"hmac_key_version"` // キーバージョン（ローテーション用、デフォルト1）
 	EnableMasking     bool     `yaml:"enable_masking"`
 	EnableHashChain   bool     `yaml:"enable_hash_chain"`
 	PreserveFields    []string `yaml:"preserve_fields"`

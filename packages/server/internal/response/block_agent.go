@@ -92,7 +92,26 @@ func NewIPBlockAction() *IPBlockAction {
 
 // NewIPBlockActionWithTTL はTTL付きIPBlockActionを生成する
 func NewIPBlockActionWithTTL(ttl time.Duration) *IPBlockAction {
-	return &IPBlockAction{blocked: make(map[string]time.Time), ttl: ttl}
+	a := &IPBlockAction{blocked: make(map[string]time.Time), ttl: ttl}
+	if ttl > 0 {
+		go a.cleanupLoop(ttl)
+	}
+	return a
+}
+
+// cleanupLoop は定期的に期限切れエントリを削除する
+func (a *IPBlockAction) cleanupLoop(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for range ticker.C {
+		a.mu.Lock()
+		for ip, blockedAt := range a.blocked {
+			if time.Since(blockedAt) > a.ttl {
+				delete(a.blocked, ip)
+			}
+		}
+		a.mu.Unlock()
+	}
 }
 
 func (a *IPBlockAction) ActionType() string { return "block_ip" }

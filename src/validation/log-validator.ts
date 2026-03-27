@@ -97,6 +97,23 @@ export function validateLogInput(input: Partial<Log>): void {
         }
     }
 
+    // details (string in SDK, map in Go — validate length)
+    if (input.details !== undefined && input.details !== null) {
+        if (typeof input.details === "string" && input.details.length > MAX_MESSAGE_LENGTH) {
+            throw new ValidationError("details", `exceeds max length ${MAX_MESSAGE_LENGTH}`);
+        }
+    }
+
+    // agentBackLog
+    if (input.agentBackLog !== undefined && input.agentBackLog !== null) {
+        if (!Array.isArray(input.agentBackLog)) {
+            throw new ValidationError("agentBackLog", "must be array");
+        }
+        if (input.agentBackLog.length > MAX_TAG_COUNT) {
+            throw new ValidationError("agentBackLog", `exceeds max count ${MAX_TAG_COUNT}`);
+        }
+    }
+
     // aiContext
     if (input.aiContext !== undefined && input.aiContext !== null) {
         const ai = input.aiContext;

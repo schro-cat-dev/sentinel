@@ -195,6 +195,14 @@ func (s *SentinelServer) Ingest(ctx context.Context, req *pb.IngestRequest) (*pb
 // --- HealthCheck ---
 
 func (s *SentinelServer) HealthCheck(ctx context.Context, req *pb.HealthCheckRequest) (*pb.HealthCheckResponse, error) {
+	// Deep health check: verify store connectivity
+	if s.store != nil {
+		if _, err := s.store.GetLogByTraceID(ctx, "__health_check__"); err != nil {
+			// GetLogByTraceID returns nil,nil for not-found, but error means DB issue
+			slog.Warn("health check: store degraded", "error", err)
+			return &pb.HealthCheckResponse{Status: "DEGRADED", Version: version}, nil
+		}
+	}
 	return &pb.HealthCheckResponse{Status: "SERVING", Version: version}, nil
 }
 

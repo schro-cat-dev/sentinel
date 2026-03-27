@@ -102,18 +102,25 @@ func main() {
 	})
 
 	// gRPC interceptors
-	var opts []ggrpc.ServerOption
+	var interceptors []ggrpc.UnaryServerInterceptor
+
+	// アクセスログ（常に有効）
+	interceptors = append(interceptors, sentinelgrpc.AuditLogUnaryInterceptor())
+
 	if cfg.Auth.Enabled {
 		keyMap := make(map[string]bool, len(cfg.Auth.APIKeys))
 		for _, k := range cfg.Auth.APIKeys {
 			keyMap[k] = true
 		}
-		opts = append(opts,
-			ggrpc.ChainUnaryInterceptor(
-				sentinelgrpc.AuthUnaryInterceptor(keyMap),
-				sentinelgrpc.RateLimitUnaryInterceptor(cfg.Auth.RateLimitRPS, cfg.Auth.RateLimitBurst),
-			),
+		interceptors = append(interceptors,
+			sentinelgrpc.AuthUnaryInterceptor(keyMap),
+			sentinelgrpc.RateLimitUnaryInterceptor(cfg.Auth.RateLimitRPS, cfg.Auth.RateLimitBurst),
 		)
+	}
+
+	var opts []ggrpc.ServerOption
+	if len(interceptors) > 0 {
+		opts = append(opts, ggrpc.ChainUnaryInterceptor(interceptors...))
 	}
 
 	sentinel, srv, lis, err := sentinelgrpc.StartServerWithSentinel(cfg.Server.Addr, pipeCfg, executor, st, notifier, opts...)

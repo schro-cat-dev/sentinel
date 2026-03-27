@@ -17,6 +17,8 @@ type IngestionResult struct {
 	TraceID          string
 	HashChainValid   bool
 	Masked           bool
+	Degraded         bool     // 永続化失敗等で完全な処理ができなかった場合true
+	Warnings         []string // 非致命的な問題の一覧
 	TasksGenerated   []TaskResult
 	ThreatResponses  []ThreatResponseSummary
 }

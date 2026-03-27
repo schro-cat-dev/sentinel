@@ -61,6 +61,9 @@ type PipelineConfig struct {
 
 	// AgentBridgeConfig はエージェントブリッジ設定
 	AgentBridge AgentBridgeConfig
+
+	// FailOnPersistError はtrue時に永続化失敗でエラーを返す（デフォルトfalse=degraded mode）
+	FailOnPersistError bool
 }
 
 // Pipeline はログ処理パイプライン全体を統合する
@@ -279,9 +282,16 @@ func (p *Pipeline) Process(ctx context.Context, raw domain.Log) (domain.Ingestio
 	}
 
 	// 4. Persist log (if store available)
+	degraded := false
+	var warnings []string
 	if p.store != nil {
 		if _, err := p.store.InsertLog(ctx, log); err != nil {
 			slog.Error("failed to persist log", "traceId", log.TraceID, "error", err)
+			if p.config.FailOnPersistError {
+				return domain.IngestionResult{}, fmt.Errorf("persist log: %w", err)
+			}
+			degraded = true
+			warnings = append(warnings, "log persistence failed: "+err.Error())
 		}
 	}
 
@@ -352,6 +362,11 @@ func (p *Pipeline) Process(ctx context.Context, raw domain.Log) (domain.Ingestio
 			if p.store != nil {
 				if err := p.store.InsertTask(ctx, t, result.Status); err != nil {
 					slog.Error("failed to persist task", "taskId", t.TaskID, "error", err)
+					if p.config.FailOnPersistError {
+						return domain.IngestionResult{}, fmt.Errorf("persist task: %w", err)
+					}
+					degraded = true
+					warnings = append(warnings, "task persistence failed: "+err.Error())
 				}
 
 				// Create approval request for blocked tasks (with routing + content hash)
@@ -419,6 +434,8 @@ func (p *Pipeline) Process(ctx context.Context, raw domain.Log) (domain.Ingestio
 		TraceID:         log.TraceID,
 		HashChainValid:  hashChainValid,
 		Masked:          masked,
+		Degraded:        degraded,
+		Warnings:        warnings,
 		TasksGenerated:  taskResults,
 		ThreatResponses: threatSummaries,
 	}, nil

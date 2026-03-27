@@ -67,18 +67,29 @@ func (n *LogNormalizer) Normalize(raw domain.Log) (domain.Log, error) {
 	if len(log.ResourceIDs) > security.MaxResourceIDs {
 		log.ResourceIDs = log.ResourceIDs[:security.MaxResourceIDs]
 	}
-	// Details数制限
-	if log.Details != nil && len(log.Details) > security.MaxDetailsCount {
-		trimmed := make(map[string]string, security.MaxDetailsCount)
-		count := 0
-		for k, v := range log.Details {
-			if count >= security.MaxDetailsCount {
-				break
+	// Details数制限 + 値の長さ検証
+	if log.Details != nil {
+		if len(log.Details) > security.MaxDetailsCount {
+			trimmed := make(map[string]string, security.MaxDetailsCount)
+			count := 0
+			for k, v := range log.Details {
+				if count >= security.MaxDetailsCount {
+					break
+				}
+				trimmed[k] = v
+				count++
 			}
-			trimmed[k] = v
-			count++
+			log.Details = trimmed
 		}
-		log.Details = trimmed
+		for k, v := range log.Details {
+			if err := security.ValidateString("details.key", k, security.MaxTagKeyLength); err != nil {
+				return domain.Log{}, err
+			}
+			if len(v) > security.MaxFieldLength {
+				log.Details[k] = v[:security.MaxFieldLength]
+			}
+			log.Details[k] = security.SanitizeString(log.Details[k])
+		}
 	}
 
 	// Input sanitize
