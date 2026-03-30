@@ -82,15 +82,9 @@ export class Sentinel {
 
     /**
      * インスタンスリセット（テスト用）
+     * instance = null で十分。再initialize時にコンストラクタが全コンポーネントを新規生成する。
      */
     public static reset(): void {
-        Sentinel.instance = null;
-    }
-
-    /**
-     * 内部状態を含む完全なリセット（テスト用）
-     */
-    public static fullReset(): void {
         Sentinel.instance = null;
     }
 

@@ -44,41 +44,51 @@ Sentinel is split into two components that can operate independently or together
 ```
 Sentinel.ingest(partialLog)
   │
-  ▼
+  ├── validateLogInput()             src/validation/log-validator.ts
+  │     message required, type/string, null byte, length, tags, resourceIds
+  │
+  ├── [remote mode] → normalizeOnly() → MaskingService.mask(log全体) → transport.send()
+  │
+  ▼  [local/dual mode — async mutex protected]
 LogNormalizer.normalize()          src/core/engine/log-normalizer.ts
   │  Validates message (empty, length, type, level)
   │  Generates traceId if missing
   │  Sets defaults (serviceId, timestamp, boundary)
   ▼
-MaskingService.mask()              src/security/masking-service.ts
+MaskingService.mask(log全体)       src/security/masking-service.ts
+  │  ログオブジェクト全体を再帰マスク (message + input + details + tags)
   │  REGEX pattern matching
   │  PII_TYPE detection (email, credit card, phone, government ID)
-  │  KEY_MATCH for sensitive object keys
+  │  KEY_MATCH for sensitive object keys (case-insensitive)
   │  Circular reference protection (WeakSet)
   │  Configurable depth limit (default 10)
-  ▼
-IntegritySigner.calculateHash()    src/security/integrity-signer.ts
-  │  SHA-256 deterministic serialization
-  │  Keys sorted alphabetically
-  │  hash/signature fields excluded from input
-  │  previousHash chaining (in-memory)
   ▼
 EventDetector.detect()             src/core/detection/event-detector.ts
   │  AI_AGENT origin logs skipped (loop prevention)
   │  Priority order: isCritical > SECURITY > COMPLIANCE > SLA
-  │  Returns: eventName + priority + typed payload
+  │  Returns: eventName + priority + SafeLogSubset (PII-safe fields only)
   ▼
 TaskGenerator.generate()           src/core/task/task-generator.ts
   │  Event name → rule index lookup
   │  Severity classification (log context + event type)
   │  Severity threshold filtering (rule.severity <= actual)
   │  Priority sorting (ascending)
+  │  __proto__/constructor filtered from executionParams/guardrails
   ▼
 TaskExecutor.dispatch()            src/core/task/task-executor.ts
   │  Guardrail check: requireHumanApproval → blocked
   │  Execution level: AUTO → dispatch, MANUAL → block, MONITOR → skip
   │  Handler invocation by actionType
   │  Default handler fallback
+  ▼
+IntegritySigner.calculateHash()    src/security/integrity-signer.ts
+  │  SHA-256 deterministic serialization (NaN/Infinity rejected)
+  │  Keys sorted alphabetically
+  │  hash/signature fields excluded from input
+  │  previousHash chaining (in-memory, async mutex serialized)
+  │  Verification via timingSafeEqual (constant-time)
+  ▼
+onLogProcessed callback (try-catch wrapped)
   ▼
 IngestionResult returned
 ```

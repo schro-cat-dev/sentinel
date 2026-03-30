@@ -16,11 +16,11 @@ The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
-| Client SDK | TypeScript (zero dependencies) | Implemented | 208 tests (Vitest) |
+| Client SDK | TypeScript (zero dependencies) | Implemented | 302 tests (Vitest) — 208 unit/integration + 94 security |
 | Backend Server | Go 1.22+ / gRPC | Implemented | 682 tests (`-race` verified, fuzz tested) |
 | gRPC Communication | Protocol Buffers v3 | Implemented | Server-side E2E verified (SDK→Server gRPC client is user-injected via Transport I/F) |
 
-**Total: 890 tests, 0 FAIL**
+**Total: 984 tests, 0 FAIL**
 
 ---
 
@@ -32,7 +32,7 @@ Application log arrives
     -> [Normalize]      Validate, defaults, sanitize (null bytes, control chars, UTF-8)
     -> [Mask PII]       Context-dependent policy (email, phone, credit card, gov ID)
     -> [Verify]         Post-mask PII residual detection with fallback re-masking
-    -> [Hash-chain]     HMAC-SHA256 tamper detection (constant-time comparison)
+    -> [Hash-chain]     HMAC-SHA256 tamper detection (constant-time comparison, async mutex)
     -> [Persist]        SQLite/SQLCipher with WAL (parameterized queries, SQL injection safe)
     -> [Detect]         Ensemble detection (all rules + dynamic rules + score aggregation)
     -> [Anomaly]        Statistical frequency-based anomaly detection
@@ -150,14 +150,22 @@ sentinel/
 │   ├── security/                 # Hash-chain, PII masking
 │   ├── shared/                   # Error taxonomy, Result monad
 │   └── types/                    # Domain models (Log, Task, Event)
-├── tests/                        # TS tests (208 cases)
-│   ├── unit/                     # Unit tests
+├── tests/                        # TS tests (302 cases)
+│   ├── unit/                     # Unit tests (208 cases)
 │   │   ├── core/                 # Detection, normalizer tests
 │   │   ├── security/             # Masking, signer tests
 │   │   ├── intelligence/         # Task generator, executor, severity tests
 │   │   ├── transport/            # Transport mode tests (local/remote/dual)
 │   │   ├── validation/           # Input validator tests
 │   │   └── shared/               # Result monad tests
+│   ├── security/                 # Security tests (94 cases)
+│   │   ├── redos.test.ts         # ReDoS resistance (CWE-1333)
+│   │   ├── prototype-pollution   # Prototype pollution (CWE-1321)
+│   │   ├── input-validation-*    # Validation bypass (CWE-20/626)
+│   │   ├── masking-bypass        # PII masking evasion (CWE-200)
+│   │   ├── integrity-chain       # Hash chain tamper/replay (CWE-354)
+│   │   ├── information-leakage   # Info leak prevention (CWE-209)
+│   │   └── new-findings-v2       # Timing, race condition, transport masking
 │   └── integration/              # Pipeline E2E tests
 ├── packages/
 │   └── server/                   # Go Backend Server
@@ -285,7 +293,7 @@ authorization:
 ## Testing
 
 ```bash
-# TypeScript SDK (208 tests)
+# TypeScript SDK (302 tests: 208 unit/integration + 94 security)
 npm test
 
 # Go Server (682 tests)

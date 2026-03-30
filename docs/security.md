@@ -8,12 +8,12 @@ Sentinel processes application logs that may contain PII, security events, and c
 |--------|-----------|--------|
 | **Log tampering** | HMAC-SHA256 hash chain with secret key | Implemented |
 | **PII exposure in logs** | Multi-pattern masking (regex, category, key-match) | Implemented |
-| **Timing attacks on hash verification** | `crypto/subtle.ConstantTimeCompare` (Go) | Implemented |
+| **Timing attacks on hash verification** | `crypto/subtle.ConstantTimeCompare` (Go), `crypto.timingSafeEqual` (TS SDK) | Implemented |
 | **Replay attacks** | Hash chain links each log to its predecessor | Implemented |
 | **Log injection (null bytes, control chars)** | Input validation rejects invalid UTF-8, null bytes; strips control characters | Implemented |
 | **Unauthorized log submission** | gRPC with payload size limits (1MB) | Implemented (size limits) |
 | **Secret key exposure** | Environment variable required, no defaults, minimum 32 bytes | Implemented |
-| **Concurrent state corruption** | `sync.Mutex` on hash chain, `sync.RWMutex` on handler registry | Implemented |
+| **Concurrent state corruption** | `sync.Mutex` on hash chain (Go), async mutex on `IngestionEngine.handle()` (TS SDK), `sync.RWMutex` on handler registry | Implemented |
 | **PII in error messages** | gRPC returns generic error codes; details logged server-side only | Implemented |
 | **Critical action without handler** | `KILL_SWITCH` / `AUTOMATED_REMEDIATE` fail if no handler registered | Implemented |
 | **MitM on gRPC** | TLS support (`server.tls_cert_file` / `server.tls_key_file`) | Implemented |
@@ -49,7 +49,7 @@ Where:
 | **Ordering** | Each hash depends on the previous, enforcing sequential order |
 | **Authenticity** | HMAC requires the secret key; without it, valid hashes cannot be forged |
 | **Determinism** | Same log + same previousHash + same key = same hash (keys sorted, undefined → null) |
-| **Constant-time verification** | Go uses `crypto/subtle.ConstantTimeCompare` to prevent timing side channels |
+| **Constant-time verification** | Go uses `crypto/subtle.ConstantTimeCompare`, TS SDK uses `crypto.timingSafeEqual` |
 
 ### What is NOT guaranteed
 
@@ -86,8 +86,8 @@ The Go server validates the key at startup:
 | Category | Pattern | Example Input | Masked Output |
 |----------|---------|---------------|---------------|
 | `EMAIL` | `[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}` | `admin@example.com` | `[MASKED_EMAIL]` |
-| `CREDIT_CARD` | `\b(?:\d[ -]*?){13,19}\b` | `4111 1111 1111 1111` | `[MASKED_CREDIT_CARD]` |
-| `PHONE` | `(\+81\|0)\d{1,4}[- ]?\d{1,4}[- ]?\d{4}` | `090-1234-5678` | `[MASKED_PHONE]` |
+| `CREDIT_CARD` | `\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{1,7}\b` | `4111 1111 1111 1111` | `[MASKED_CREDIT_CARD]` |
+| `PHONE` | `(\+81\|0)[- ]?\d{1,4}[- ]?\d{1,4}[- ]?\d{4}` | `090-1234-5678`, `+81-90-1234-5678` | `[MASKED_PHONE]` |
 | `GOVERNMENT_ID` | `\b\d{12}\b` | `123456789012` | `[MASKED_GOVERNMENT_ID]` |
 
 ### Masking Scope
@@ -97,9 +97,11 @@ The Go server validates the key at startup:
 - `log.ActorID` — masked unless `"actorId"` is in `preserveFields`
 - `log.Tags[].Category` — masked unless the tag's `Key` is in `preserveFields`
 
-**TypeScript SDK** masks:
-- `log.message` — via string-level rules (REGEX, PII_TYPE)
-- Object-level masking via `KEY_MATCH` rules
+**TypeScript SDK** masks (v2 hardened):
+- `log` object 全体を再帰的にマスク — message, input, details, tags 含む全フィールド
+- String fields via `REGEX`, `PII_TYPE` rules
+- Object keys via `KEY_MATCH` rules (case-insensitive)
+- `normalizeOnly()` (remote/dual mode transport送信用) もマスキング適用済み
 
 ### Rule Types
 
@@ -121,10 +123,10 @@ preserveFields: ["traceId", "spanId"]
 
 | Limitation | Detail |
 |-----------|--------|
-| Phone patterns | Currently Japan-format only (+81/0XX). International formats not covered. |
+| Phone patterns | Japan-format (+81/0XX) supported. Other international formats not covered. |
 | Credit card validation | Pattern-based only. No Luhn algorithm check. |
 | Unicode normalization | Different Unicode representations of the same character may bypass regex. |
-| Nested PII | `KEY_MATCH` works recursively on objects, but string-level PII within nested string fields depends on rule order. |
+| Custom REGEX safety | User-provided `REGEX` rule patterns are not validated for ReDoS. Users are responsible for pattern safety. |
 
 ---
 
@@ -244,7 +246,7 @@ Server-side structured logs (JSON via `log/slog`) include:
 
 | 検証項目 | SDK (TypeScript) | Server (Go) |
 |---|---|---|
-| message 必須 | `log-validator.ts`: 空/null byte/65536超 | `normalizer.go`: 空/null byte/UTF-8/65536超 |
+| message 必須 | `log-validator.ts`: 必須/空/null byte/65536超 | `normalizer.go`: 空/null byte/UTF-8/65536超 |
 | message サニタイズ | なし（そのまま渡す） | `sanitizer.go`: 制御文字除去 |
 | type ホワイトリスト | `log-validator.ts`: 7種チェック | `sanitizer.go`: `allowedLogTypes` |
 | level 範囲 | `log-validator.ts`: 1-6整数 | `log.go`: `IsValidLogLevel` |
@@ -252,7 +254,7 @@ Server-side structured logs (JSON via `log/slog`) include:
 | tags 数/長さ | `log-validator.ts`: 100件/key128/value1024 | `normalizer.go`: 100件上限 |
 | resourceIds 数 | `log-validator.ts`: 100件 | `normalizer.go`: 100件上限 |
 | PII マスキング | `MaskingService` | `MaskingService` + `MaskingPolicyEngine` + `MaskingVerifier` |
-| ReDoS 防止 | なし | `sanitizer.go`: `ValidateRegexSafety` |
+| ReDoS 防止 | 組込みパターンはReDoS-safe。ユーザーREGEXは未検証 | `sanitizer.go`: `ValidateRegexSafety` |
 | RBAC 認可 | なし（SDKはクライアント側） | `authorizer.go`: ロール→権限 |
 
 **設計原則**: SDK は「明らかに不正な入力を早期に弾く」。Server は「全フィールドを厳密に検証・サニタイズする」。
