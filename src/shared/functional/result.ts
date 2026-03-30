@@ -87,7 +87,9 @@ export const safe = async <T, E extends Error = Error>(
         notify?: (error: E) => void;
     } = {},
 ): Promise<Result<T, E>> => {
-    const { retries = 0, notify } = config;
+    const MAX_RETRIES = 10;
+    const { retries: rawRetries = 0, notify } = config;
+    const retries = Math.min(Math.max(0, rawRetries), MAX_RETRIES);
 
     for (let i = 0; i <= retries; i++) {
         try {

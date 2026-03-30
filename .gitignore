@@ -16,3 +16,6 @@ Thumbs.db
 .env
 
 .claude
+
+# Security scan outputs (local only)
+.security/

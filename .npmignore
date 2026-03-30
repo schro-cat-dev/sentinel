@@ -27,4 +27,8 @@ node_modules/
 .DS_Store
 .env
 
+# Source maps (internal paths leak prevention)
+dist/**/*.map
+*.map
+
 # Note: README.md、LICENSE、dist/ は非除外

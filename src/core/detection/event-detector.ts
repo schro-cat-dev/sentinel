@@ -35,7 +35,16 @@ export class EventDetector {
                 payload: {
                     ip: EventDetector.extractIp(log),
                     severity: log.level,
-                    rawLog: log,
+                    rawLog: {
+                        traceId: log.traceId,
+                        type: log.type,
+                        level: log.level,
+                        timestamp: log.timestamp,
+                        boundary: log.boundary,
+                        serviceId: log.serviceId,
+                        message: log.message,
+                        isCritical: log.isCritical,
+                    },
                 },
             };
         }

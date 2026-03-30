@@ -126,8 +126,8 @@ describe("validateLogInput", () => {
         }
     });
 
-    // --- undefined message passes (normalizer will catch) ---
-    it("passes undefined message through to normalizer", () => {
-        expect(() => validateLogInput({})).not.toThrow();
+    // --- undefined message is now rejected at validator boundary (NEW-11 fix) ---
+    it("rejects undefined message", () => {
+        expect(() => validateLogInput({})).toThrow(ValidationError);
     });
 });

@@ -42,10 +42,25 @@ export interface SentinelConfig {
  */
 export const createDefaultConfig = (
     overrides: Partial<SentinelConfig> & Pick<SentinelConfig, "projectName" | "serviceId">,
-): SentinelConfig => ({
-    environment: "development",
-    masking: { enabled: false, rules: [], preserveFields: ["traceId", "spanId"] },
-    security: { enableHashChain: true },
-    taskRules: [],
-    ...overrides,
-});
+): SentinelConfig => {
+    const defaults = {
+        environment: "development" as const,
+        masking: { enabled: false, rules: [] as MaskingRule[], preserveFields: ["traceId", "spanId"] },
+        security: { enableHashChain: true },
+        taskRules: [] as TaskRule[],
+    };
+
+    return {
+        ...defaults,
+        ...overrides,
+        // Deep-merge nested objects to prevent silent security feature override (NEW-09)
+        masking: {
+            ...defaults.masking,
+            ...overrides.masking,
+        },
+        security: {
+            ...defaults.security,
+            ...overrides.security,
+        },
+    };
+};

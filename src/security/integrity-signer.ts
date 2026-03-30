@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { Log } from "../types/log";
 
 type JsonPrimitive = string | number | boolean | null;
@@ -52,7 +52,10 @@ export class IntegritySigner {
     public static verifyHash(log: Log, expectedPreviousHash: string): boolean {
         if (!log.hash) return false;
         const computed = IntegritySigner.calculateHash(log, expectedPreviousHash);
-        return computed === log.hash;
+        const a = Buffer.from(computed, "utf8");
+        const b = Buffer.from(log.hash, "utf8");
+        if (a.length !== b.length) return false;
+        return timingSafeEqual(a, b);
     }
 
     /**
@@ -90,7 +93,8 @@ export class IntegritySigner {
     private static isJsonValue(val: unknown): val is JsonValue {
         if (val === null) return true;
         const type = typeof val;
-        if (type === "string" || type === "number" || type === "boolean") return true;
+        if (type === "string" || type === "boolean") return true;
+        if (type === "number") return Number.isFinite(val as number);
 
         if (Array.isArray(val)) {
             return val.every((item) => IntegritySigner.isJsonValue(item));

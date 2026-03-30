@@ -88,6 +88,13 @@ export class Sentinel {
     }
 
     /**
+     * 内部状態を含む完全なリセット（テスト用）
+     */
+    public static fullReset(): void {
+        Sentinel.instance = null;
+    }
+
+    /**
      * ログ投入
      *
      * TransportMode に応じて処理先を切り替える:

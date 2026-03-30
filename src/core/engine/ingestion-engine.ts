@@ -19,6 +19,9 @@ export class IngestionEngine implements IIngestionCoordinator {
     private readonly taskExecutor: TaskExecutor;
     private readonly config: SentinelConfig;
 
+    // Async mutex: serializes hash chain operations to prevent race conditions (NEW-02)
+    private chainLock: Promise<void> = Promise.resolve();
+
     constructor(deps: {
         config: SentinelConfig;
         normalizer: LogNormalizer;
@@ -38,42 +41,57 @@ export class IngestionEngine implements IIngestionCoordinator {
     }
 
     /**
-     * ログを正規化のみ行う（リモート送信用）
+     * ログを正規化 + マスキングのみ行う（リモート送信用）
+     * NEW-05: transport送信前にマスキングを適用
      */
     normalizeOnly(raw: Partial<Log>): Log {
-        return this.normalizer.normalize(raw);
+        const log = this.normalizer.normalize(raw);
+        if (this.config.masking.enabled) {
+            return MaskingService.mask(
+                log,
+                this.config.masking.rules,
+                this.config.masking.preserveFields,
+            ) as Log;
+        }
+        return log;
     }
 
     async handle(raw: Partial<Log>): Promise<IngestionResult> {
-        // 1. Normalize
-        const log = this.normalizer.normalize(raw);
+        // NEW-02: Serialize hash chain operations via async mutex
+        let releaseLock: () => void;
+        const acquired = new Promise<void>((resolve) => {
+            releaseLock = resolve;
+        });
+        const previousLock = this.chainLock;
+        this.chainLock = acquired;
+        await previousLock;
 
-        // 2. Mask PII (if enabled)
+        try {
+            return await this.handleInternal(raw);
+        } finally {
+            releaseLock!();
+        }
+    }
+
+    private async handleInternal(raw: Partial<Log>): Promise<IngestionResult> {
+        // 1. Normalize
+        let log = this.normalizer.normalize(raw);
+
+        // 2. Mask PII (if enabled) — NEW-03: ログ全体をマスク対象に
         let masked = false;
         if (this.config.masking.enabled) {
-            const maskedMessage = MaskingService.mask(
-                log.message,
+            log = MaskingService.mask(
+                log,
                 this.config.masking.rules,
                 this.config.masking.preserveFields,
-            ) as string;
-            log.message = maskedMessage;
+            ) as Log;
             masked = true;
         }
 
-        // 3. Hash-chain (if enabled)
-        let hashChainValid = false;
-        if (this.config.security.enableHashChain) {
-            const previousHash = this.signer.getPreviousHash();
-            log.previousHash = previousHash;
-            log.hash = IntegritySigner.calculateHash(log, previousHash);
-            this.signer.updateChain(log.hash);
-            hashChainValid = true;
-        }
-
-        // 4. Detect events
+        // 3. Detect events (before hash chain, so detection uses masked data)
         const detection = this.detector.detect(log);
 
-        // 5. Generate + dispatch tasks
+        // 4. Generate tasks (before hash chain to avoid ghost entries on failure)
         const tasksGenerated: TaskResult[] = [];
         if (detection) {
             const tasks = this.taskGenerator.generate(detection, log);
@@ -83,8 +101,22 @@ export class IngestionEngine implements IIngestionCoordinator {
             }
         }
 
-        // 6. Emit to handlers
-        this.config.onLogProcessed?.(log);
+        // 5. Hash-chain (NEW-08: moved to AFTER side effects to prevent ghost entries)
+        let hashChainValid = false;
+        if (this.config.security.enableHashChain) {
+            const previousHash = this.signer.getPreviousHash();
+            log.previousHash = previousHash;
+            log.hash = IntegritySigner.calculateHash(log, previousHash);
+            this.signer.updateChain(log.hash);
+            hashChainValid = true;
+        }
+
+        // 6. Emit to handlers (after hash chain, wrapped in try-catch for safety)
+        try {
+            this.config.onLogProcessed?.(log);
+        } catch {
+            // Callback errors must not propagate — hash chain is already committed
+        }
 
         return {
             traceId: log.traceId,

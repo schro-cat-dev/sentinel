@@ -8,14 +8,14 @@ interface MaskingContext {
 
 export class MaskingService {
     private static readonly PII_PATTERNS: Record<string, RegExp> = {
-        CREDIT_CARD: /\b(?:\d[ -]*?){13,19}\b/g,
-        PHONE: /(\+81|0)\d{1,4}[- ]?\d{1,4}[- ]?\d{4}/g,
+        CREDIT_CARD: /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{1,7}\b/g,
+        PHONE: /(\+81|0)[- ]?\d{1,4}[- ]?\d{1,4}[- ]?\d{4}/g,
         EMAIL: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
         GOVERNMENT_ID: /\b\d{12}\b/g,
         JAPAN_ACCOUNT: /\d{3}[-]\d{7}|\d{4}[-]\d{7}/g,
         POSTAL_CODE: /(?:〒?\s?)?\d{3}[-]?\d{4}/g,
         DRIVER_LICENSE: /\b[1-9]\d{5,7}[0-9\\*]\d{2,4}\b/g,
-        HEALTH_INSURANCE: /[A-Z0-9]{8,10}/g,
+        HEALTH_INSURANCE: /\b\d{2}\s?\d{2}\s?\d{6}\b/g,
     } as const;
 
     public static mask(
@@ -102,10 +102,13 @@ export class MaskingService {
                     continue;
                 }
 
+                const lowerKey = key.toLowerCase();
                 const keyMatchRule = rules.find(
                     (rule) =>
                         rule.type === "KEY_MATCH" &&
-                        rule.sensitiveKeys?.includes(key),
+                        rule.sensitiveKeys?.some(
+                            (sk) => sk.toLowerCase() === lowerKey,
+                        ),
                 ) as Extract<MaskingRule, { type: "KEY_MATCH" }> | undefined;
 
                 if (keyMatchRule) {
@@ -179,7 +182,6 @@ export class MaskingService {
             } catch (error) {
                 console.warn(
                     `Masking rule failed: ${String(rule.type)}`,
-                    error,
                 );
                 continue;
             }

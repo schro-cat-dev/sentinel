@@ -31,7 +31,10 @@ export class ValidationError extends Error {
  */
 export function validateLogInput(input: Partial<Log>): void {
     // message: 必須、非空、最大長
-    if (input.message !== undefined && input.message !== null) {
+    if (input.message === undefined || input.message === null) {
+        throw new ValidationError("message", "is required");
+    }
+    {
         if (typeof input.message !== "string") {
             throw new ValidationError("message", "must be a string");
         }
@@ -104,13 +107,10 @@ export function validateLogInput(input: Partial<Log>): void {
         }
     }
 
-    // agentBackLog
+    // agentBackLog (single object per Log type definition)
     if (input.agentBackLog !== undefined && input.agentBackLog !== null) {
-        if (!Array.isArray(input.agentBackLog)) {
-            throw new ValidationError("agentBackLog", "must be array");
-        }
-        if (input.agentBackLog.length > MAX_TAG_COUNT) {
-            throw new ValidationError("agentBackLog", `exceeds max count ${MAX_TAG_COUNT}`);
+        if (typeof input.agentBackLog !== "object" || Array.isArray(input.agentBackLog)) {
+            throw new ValidationError("agentBackLog", "must be an object");
         }
     }
 

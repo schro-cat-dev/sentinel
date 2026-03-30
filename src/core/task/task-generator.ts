@@ -83,8 +83,16 @@ export class TaskGenerator {
             executionLevel: rule.executionLevel,
             priority: rule.priority,
             description: rule.description,
-            executionParams: { ...rule.executionParams },
-            guardrails: { ...rule.guardrails },
+            executionParams: Object.fromEntries(
+                Object.entries(rule.executionParams).filter(
+                    ([k]) => k !== "__proto__" && k !== "constructor",
+                ),
+            ) as typeof rule.executionParams,
+            guardrails: Object.fromEntries(
+                Object.entries(rule.guardrails).filter(
+                    ([k]) => k !== "__proto__" && k !== "constructor",
+                ),
+            ) as typeof rule.guardrails,
             sourceLog: {
                 traceId: log.traceId,
                 message: log.message,
