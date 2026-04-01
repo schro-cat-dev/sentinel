@@ -611,16 +611,12 @@ describe("State Manipulation: Config Immutability", () => {
         Sentinel.reset();
     });
 
-    it("modifying config object after initialize DOES affect behavior (no defensive copy)", () => {
+    it("modifying config object after initialize does NOT affect behavior (deep freeze)", () => {
         const config = createTestConfig({ serviceId: "original" });
-        const sentinel = Sentinel.initialize(config);
+        Sentinel.initialize(config);
 
-        // Mutate the config object
-        config.serviceId = "mutated";
-
-        // FINDING: Sentinel stores config by reference, no defensive deep copy.
-        // External mutation leaks into internal state.
-        expect(sentinel.getConfig().serviceId).toBe("mutated");
+        // Config is frozen — mutation throws
+        expect(() => { config.serviceId = "mutated"; }).toThrow();
     });
 
     it("getConfig returns object that reflects original config", () => {
@@ -646,40 +642,37 @@ describe("State Manipulation: Config Immutability", () => {
         expect(returned).not.toBeNull();
     });
 
-    it("security config CAN be silently disabled after init (no defensive copy -- FINDING)", () => {
+    it("security config CANNOT be silently disabled after init (deep freeze)", () => {
         const config = createTestConfig({
             security: { enableHashChain: true },
         });
-        const sentinel = Sentinel.initialize(config);
+        Sentinel.initialize(config);
 
-        // Mutate nested security config
-        (config.security as { enableHashChain: boolean }).enableHashChain = false;
-
-        // FINDING: config is stored by reference; nested mutation leaks through
-        expect(sentinel.getConfig().security.enableHashChain).toBe(false);
+        // Frozen — nested mutation throws
+        expect(() => {
+            (config.security as { enableHashChain: boolean }).enableHashChain = false;
+        }).toThrow();
     });
 
-    it("masking config CAN be silently disabled after init (no defensive copy -- FINDING)", () => {
+    it("masking config CANNOT be silently disabled after init (deep freeze)", () => {
         const config = createTestConfig({
             masking: { enabled: true, rules: [], preserveFields: [] },
         });
-        const sentinel = Sentinel.initialize(config);
+        Sentinel.initialize(config);
 
-        config.masking.enabled = false;
-
-        // FINDING: config is stored by reference; nested mutation leaks through
-        expect(sentinel.getConfig().masking.enabled).toBe(false);
+        // Frozen — nested mutation throws
+        expect(() => { config.masking.enabled = false; }).toThrow();
     });
 
-    it("taskRules array CAN be modified after init (no defensive copy -- FINDING)", () => {
+    it("taskRules array CANNOT be modified after init (deep freeze)", () => {
         const rule = createTestTaskRule({});
         const config = createTestConfig({ taskRules: [rule] });
-        const sentinel = Sentinel.initialize(config);
+        Sentinel.initialize(config);
 
-        config.taskRules.push(createTestTaskRule({ ruleId: "injected" }));
-
-        // FINDING: taskRules array is shared reference; external push leaks through
-        expect(sentinel.getConfig().taskRules.length).toBe(2);
+        // Frozen — array mutation throws
+        expect(() => {
+            config.taskRules.push(createTestTaskRule({ ruleId: "injected" }));
+        }).toThrow();
     });
 
     it("createDefaultConfig produces consistent defaults", () => {

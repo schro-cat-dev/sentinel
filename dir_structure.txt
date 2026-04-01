@@ -82,7 +82,8 @@
 │   │   │   ├── whitelist-security-level.test.ts # セキュリティレベル: strict/standard/permissive/off (18)
 │   │   │   ├── whitelist-routing-e2e.test.ts    # E2Eルーティング: 全パイプラインステージ到達 (20)
 │   │   │   ├── pollution-guard.test.ts          # 汚染防御: hasOwnPropertyガード, messagePattern型検証 (11)
-│   │   │   └── audit-fixes.test.ts             # 監査修正: race condition, re-init警告, shutdown cleanup (7)
+│   │   │   ├── audit-fixes.test.ts             # 監査修正: race condition, re-init警告, shutdown cleanup (7)
+│   │   │   └── instance-lifecycle.test.ts      # インスタンスライフサイクル: freeze, idempotent shutdown, handler limit (9)
 │   │   ├── transport/
 │   │   │   └── transport.test.ts                # Transport: local/remote/dual 基本動作 (7)
 │   │   ├── shared/
@@ -116,6 +117,10 @@
 │   │   ├── intrusion-detection.md               # 不正アクセス検知設計（方針A実装済, 方針BはGoサーバ責務）
 │   │   ├── whitelist-management.md              # モジュラーホワイトリスト管理方針・2階層構造
 │   │   └── whitelist-security-levels.md         # セキュリティレベル運用ガイド（strict/standard/permissive/off）
+│   ├── quality-benchmark/                       # 品質ベンチマーク（Google PRR水準）
+│   │   ├── standards.md                         # 10カテゴリ49項目のMUST/SHOULD/NICE基準
+│   │   ├── checklist-results.md                 # 全項目のPASS/FAIL結果と修正記録
+│   │   └── instance-management-audit.md         # インスタンス管理の詳細監査報告
 │   ├── usage-guide.md                           # SDK使い方ガイド, 設定詳細
 │   ├── task-gen.md                              # タスク生成設計
 │   ├── coop-siem-like-tools-agent.md            # SIEM連携・AIエージェント連携設計

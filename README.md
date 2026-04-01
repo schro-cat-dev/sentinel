@@ -16,11 +16,11 @@ The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
-| Client SDK | TypeScript (zero dependencies) | Implemented | 2,038 tests (Vitest) — unit 220 + security 1,203 + config 347 + integration 18 + E2E 15 + advanced 96 + detection 22 + whitelist 99 + audit 18 |
+| Client SDK | TypeScript (zero dependencies) | Implemented | 2,047 tests (Vitest) — unit 220 + security 1,203 + config 347 + integration 18 + E2E 15 + advanced 96 + detection 22 + whitelist 99 + audit 27 |
 | Backend Server | Go 1.22+ / gRPC | Implemented | 689 tests (`-race` verified, fuzz tested) |
 | gRPC Communication | Protocol Buffers v3 | Implemented | E2E verified (SDK→Server 15 tests via real gRPC connection) |
 
-**Total: 2,727 tests, 0 FAIL**
+**Total: 2,736 tests, 0 FAIL**
 
 ---
 
@@ -369,6 +369,14 @@ go test ./... -race -count=1
 | [Observability](docs/analysis/non-functional/observability.md) | 可観測性・ログ・メトリクス |
 | [Compatibility](docs/analysis/non-functional/compatibility.md) | ESM/CJS・Node.js互換性 |
 | [Dead Code Inventory](docs/analysis/dead-code/inventory.md) | 未使用コードの棚卸し |
+
+### 品質ベンチマーク
+
+| Document | Content |
+|----------|---------|
+| [Quality Standards](docs/quality-benchmark/standards.md) | Google PRR水準の10カテゴリ49項目ベンチマーク基準 |
+| [Checklist Results](docs/quality-benchmark/checklist-results.md) | 全項目のPASS/FAIL結果・修正記録 |
+| [Instance Management Audit](docs/quality-benchmark/instance-management-audit.md) | インスタンスライフサイクル・可変状態・並行性の詳細監査 |
 | [Improvement Backlog](docs/analysis/roadmap/improvement-backlog.md) | 37件の優先度付き改善バックログ（35完了） |
 
 ### Go Server

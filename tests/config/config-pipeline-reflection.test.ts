@@ -19,16 +19,13 @@ afterEach(() => Sentinel.reset());
 // ================================================================
 describe("masking.enabled reflection", () => {
     it("enabled=true masks PII in message", async () => {
+        let captured: Log | null = null;
         const sentinel = Sentinel.initialize(createDefaultConfig({
             projectName: "p", serviceId: "s",
             masking: { enabled: true, rules: [{ type: "PII_TYPE", category: "EMAIL" }], preserveFields: ["traceId"] },
             security: { enableHashChain: false },
+            onLogProcessed: (log) => { captured = { ...log }; },
         }));
-
-        let captured: Log | null = null;
-        sentinel.onTaskAction("SYSTEM_NOTIFICATION", vi.fn());
-        const config = sentinel.getConfig();
-        (config as SentinelConfig).onLogProcessed = (log) => { captured = { ...log }; };
 
         await sentinel.ingest({ message: "Contact alice@secret.com", level: 3 });
         expect(captured).not.toBeNull();

@@ -8,4 +8,6 @@ export interface IngestionResult {
     masked: boolean;
     /** 検知されたイベント情報（検知なしの場合null） */
     detection: { eventName: SystemEventName; priority: "HIGH" | "MEDIUM" | "LOW" } | null;
+    /** dual-mode transport失敗時のエラーメッセージ（成功時はundefined） */
+    transportError?: string;
 }

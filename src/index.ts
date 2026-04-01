@@ -37,9 +37,10 @@ export class Sentinel {
     private readonly transportConfig: TransportConfig;
     private readonly whitelistRegistry?: WhitelistRegistry;
     private initialized = false;
+    private isShutdown = false;
 
     private constructor(config: SentinelConfig, registry?: WhitelistRegistry, options?: SentinelOptions) {
-        this.config = config;
+        this.config = Sentinel.deepFreeze(config);
         this.whitelistRegistry = registry;
         this.transportConfig = options?.transport ?? { mode: "local" };
 
@@ -108,12 +109,16 @@ export class Sentinel {
      * Transport接続を閉じ、インスタンスをクリアする。
      */
     public async shutdown(): Promise<void> {
+        if (this.isShutdown) return;
+        this.isShutdown = true;
+
         try {
             await this.transportConfig.transport?.close?.();
         } catch {
             // transport close errors are best-effort
         }
         this.taskExecutor.clearHandlers();
+        this.engine.resetState();
         Sentinel.instance = null;
     }
 
@@ -150,6 +155,7 @@ export class Sentinel {
                 await this.sendWithTimeout(this.engine.getLastProcessedLog()!);
             } catch (e) {
                 const error = e instanceof Error ? e : new Error(String(e));
+                localResult.transportError = error.message;
                 try { this.config.onError?.(error, "transport.dual"); } catch { /* */ }
             }
         }
@@ -158,11 +164,25 @@ export class Sentinel {
     }
 
     /**
-     * タスクアクションハンドラの登録
+     * タスクアクションハンドラの登録。
+     * 戻り値の関数を呼ぶとこのハンドラのみ解除される。
      */
-    public onTaskAction(actionType: string, handler: TaskDispatchHandler): void {
+    public onTaskAction(actionType: string, handler: TaskDispatchHandler): () => void {
         this.whitelistRegistry?.validate("actionType", actionType);
         this.taskExecutor.registerHandler(actionType, handler);
+        this.warnIfTooManyHandlers(actionType);
+        return () => this.taskExecutor.unregisterHandler(actionType, handler);
+    }
+
+    private warnIfTooManyHandlers(actionType: string): void {
+        const MAX_HANDLERS_PER_ACTION = 10;
+        const count = this.taskExecutor.getHandlerCount(actionType);
+        if (count > MAX_HANDLERS_PER_ACTION) {
+            this.config.logger?.warn(
+                `${count} handlers registered for actionType "${actionType}". This may indicate a leak. Use removeHandlers() to clean up.`,
+                { source: "sentinel" },
+            );
+        }
     }
 
     /**
@@ -178,6 +198,19 @@ export class Sentinel {
      */
     public getConfig(): Readonly<SentinelConfig> {
         return this.config;
+    }
+
+    /**
+     * 設定オブジェクトをdeep freezeして外部からの変更を防ぐ
+     */
+    private static deepFreeze<T extends object>(obj: T): T {
+        Object.freeze(obj);
+        for (const value of Object.values(obj)) {
+            if (value && typeof value === "object" && !Object.isFrozen(value)) {
+                Sentinel.deepFreeze(value as object);
+            }
+        }
+        return obj;
     }
 
     /**

@@ -39,6 +39,14 @@ export class IngestionEngine implements IIngestionCoordinator {
         this.taskExecutor = deps.taskExecutor;
     }
 
+    /**
+     * 内部状態をリセットする（shutdown時に呼ばれる）
+     */
+    resetState(): void {
+        this.signer.resetChain();
+        this.lastProcessedLog = null;
+    }
+
     getLastProcessedLog(): Log | null {
         if (!this.lastProcessedLog) return null;
         return { ...this.lastProcessedLog };
@@ -137,7 +145,12 @@ export class IngestionEngine implements IIngestionCoordinator {
             fn();
         } catch (e) {
             const error = e instanceof Error ? e : new Error(String(e));
-            try { this.config.onError?.(error, context); } catch { /* */ }
+            try {
+                this.config.onError?.(error, context);
+            } catch (onErrorErr) {
+                // onError自体の例外をstderrにfallback出力（完全無視を防ぐ）
+                console.error(`[Sentinel] onError handler threw:`, onErrorErr);
+            }
         }
     }
 }

@@ -911,15 +911,11 @@ describe("Security: Advanced Config Injection Attacks", () => {
             expect(result).toBeDefined();
         });
 
-        it("mutating original config after initialize does not affect Sentinel", async () => {
+        it("mutating original config after initialize throws (deep freeze)", () => {
             const config = createTestConfig({ security: { enableHashChain: true } });
-            const s = Sentinel.initialize(config);
-            // Mutate original
-            config.security.enableHashChain = false;
-            // Sentinel stores reference, so this may actually affect it
-            // This test documents the behavior
-            const result = await s.ingest({ message: "test" });
-            expect(result).toBeDefined();
+            Sentinel.initialize(config);
+            // Config is frozen — mutation throws
+            expect(() => { config.security.enableHashChain = false; }).toThrow();
         });
 
         it("getConfig() called multiple times returns same shape", () => {

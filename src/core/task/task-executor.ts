@@ -45,10 +45,28 @@ export class TaskExecutor {
     }
 
     /**
+     * 特定のハンドラを解除する
+     */
+    public unregisterHandler(actionType: string, handler: TaskDispatchHandler): void {
+        const existing = this.handlers.get(actionType);
+        if (!existing) return;
+        const idx = existing.indexOf(handler);
+        if (idx !== -1) existing.splice(idx, 1);
+        if (existing.length === 0) this.handlers.delete(actionType);
+    }
+
+    /**
      * 指定アクションタイプのハンドラを全て解除 (MEM-01)
      */
     public removeHandlers(actionType: string): void {
         this.handlers.delete(actionType);
+    }
+
+    /**
+     * 指定アクションタイプのハンドラ数を取得
+     */
+    public getHandlerCount(actionType: string): number {
+        return this.handlers.get(actionType)?.length ?? 0;
     }
 
     /**
