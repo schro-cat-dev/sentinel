@@ -19,11 +19,25 @@ export class MaskingService {
         HEALTH_INSURANCE: /\b\d{2}\s?\d{2}\s?\d{6}\b/g,
     } as const;
 
-    public static mask(
-        data: unknown,
+    /**
+     * データ構造を再帰的にマスキングする。
+     * 入力と同じ構造を返す（ジェネリクスで呼び出し側のキャスト不要）。
+     * 内部的にはunknownを経由するが、構造を保持するため型パラメータTで返す。
+     */
+    public static mask<T>(
+        data: T,
         rules: readonly MaskingRule[] = [],
         preserveFields: readonly string[] = [],
         options: { maxDepth?: number; maxArrayLength?: number; logger?: SentinelLogger } = {},
+    ): T {
+        return MaskingService.maskValue(data, rules, preserveFields, options) as T;
+    }
+
+    private static maskValue(
+        data: unknown,
+        rules: readonly MaskingRule[],
+        preserveFields: readonly string[],
+        options: { maxDepth?: number; maxArrayLength?: number; logger?: SentinelLogger },
     ): unknown {
         if (data === null || data === undefined) return data;
         if (typeof data !== "object") {

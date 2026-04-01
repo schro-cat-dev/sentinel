@@ -119,7 +119,7 @@ export class IngestionEngine implements IIngestionCoordinator {
                 this.config.masking.rules,
                 this.config.masking.preserveFields,
                 { logger: this.config.logger },
-            ) as Log;
+            );
         }
         return log;
     }
@@ -137,7 +137,7 @@ export class IngestionEngine implements IIngestionCoordinator {
                 log,
                 this.config.masking.rules,
                 this.config.masking.preserveFields,
-            ) as Log;
+            );
             masked = true;
         }
 

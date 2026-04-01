@@ -56,7 +56,7 @@ export interface TaskRequest {
 
 /** 構造化ロガーインターフェース（log destination用） */
 export interface ErrorRoutingLogger {
-    info(message: string, meta?: Record<string, unknown>): void;
+    info(message: string, meta?: Record<string, string | number | boolean | null>): void;
 }
 
 export interface ErrorRoutingConfig {

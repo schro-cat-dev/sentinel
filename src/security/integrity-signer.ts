@@ -61,7 +61,7 @@ export class IntegritySigner {
     /**
      * 決定論的なシリアライズ
      */
-    private static deterministicStringify(val: unknown): string {
+    private static deterministicStringify(val: JsonValue | Readonly<Record<string, unknown>>): string {
         if (!IntegritySigner.isJsonValue(val)) {
             return "null";
         }
@@ -92,15 +92,14 @@ export class IntegritySigner {
 
     private static isJsonValue(val: unknown): val is JsonValue {
         if (val === null) return true;
-        const type = typeof val;
-        if (type === "string" || type === "boolean") return true;
-        if (type === "number") return Number.isFinite(val as number);
+        if (typeof val === "string" || typeof val === "boolean") return true;
+        if (typeof val === "number") return Number.isFinite(val);
 
         if (Array.isArray(val)) {
-            return val.every((item) => IntegritySigner.isJsonValue(item));
+            return val.every((item: unknown) => IntegritySigner.isJsonValue(item));
         }
 
-        if (type === "object") {
+        if (typeof val === "object") {
             if (Object.prototype.toString.call(val) !== "[object Object]") return false;
             return Object.values(val as JsonObject).every((item) =>
                 IntegritySigner.isJsonValue(item),

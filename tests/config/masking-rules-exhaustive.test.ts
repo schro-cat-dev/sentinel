@@ -178,6 +178,84 @@ describe("MaskingService — PII_TYPE rules", () => {
             expect(result).toBe(input);
         });
     });
+    // -----------------------------------------------------------------------
+    // JAPAN_ACCOUNT
+    // -----------------------------------------------------------------------
+    describe("JAPAN_ACCOUNT", () => {
+        const rules: MaskingRule[] = [{ type: "PII_TYPE", category: "JAPAN_ACCOUNT" }];
+
+        it("masks 3-digit branch + 7-digit account (001-1234567)", () => {
+            const result = MaskingService.mask("口座: 001-1234567", rules);
+            expect(result).toBe("口座: [MASKED_JAPAN_ACCOUNT]");
+        });
+
+        it("masks 4-digit branch + 7-digit account (0012-1234567)", () => {
+            const result = MaskingService.mask("口座: 0012-1234567", rules);
+            expect(result).toBe("口座: [MASKED_JAPAN_ACCOUNT]");
+        });
+
+        it("does not mask number without hyphen", () => {
+            const result = MaskingService.mask("number: 0011234567", rules);
+            expect(result).toBe("number: 0011234567");
+        });
+    });
+
+    // -----------------------------------------------------------------------
+    // POSTAL_CODE
+    // -----------------------------------------------------------------------
+    describe("POSTAL_CODE", () => {
+        const rules: MaskingRule[] = [{ type: "PII_TYPE", category: "POSTAL_CODE" }];
+
+        it("masks Japanese postal code with hyphen (123-4567)", () => {
+            const result = MaskingService.mask("〒123-4567", rules);
+            expect(result).toBe("[MASKED_POSTAL_CODE]");
+        });
+
+        it("masks postal code without 〒 prefix", () => {
+            const result = MaskingService.mask("郵便番号: 100-0001", rules);
+            expect(result).toBe("郵便番号: [MASKED_POSTAL_CODE]");
+        });
+
+        it("masks postal code without hyphen (1234567)", () => {
+            const result = MaskingService.mask("zip: 1234567", rules);
+            expect(result).toBe("zip: [MASKED_POSTAL_CODE]");
+        });
+    });
+
+    // -----------------------------------------------------------------------
+    // DRIVER_LICENSE
+    // -----------------------------------------------------------------------
+    describe("DRIVER_LICENSE", () => {
+        const rules: MaskingRule[] = [{ type: "PII_TYPE", category: "DRIVER_LICENSE" }];
+
+        it("masks Japanese driver license number (12桁: 1234567890123)", () => {
+            // Pattern: [1-9]d{5,7}[0-9*]d{2,4}
+            const result = MaskingService.mask("免許: 123456789012", rules);
+            expect(result).toBe("免許: [MASKED_DRIVER_LICENSE]");
+        });
+
+        it("does not mask number starting with 0", () => {
+            const result = MaskingService.mask("number: 012345678901", rules);
+            expect(result).toBe("number: 012345678901");
+        });
+    });
+
+    // -----------------------------------------------------------------------
+    // HEALTH_INSURANCE
+    // -----------------------------------------------------------------------
+    describe("HEALTH_INSURANCE", () => {
+        const rules: MaskingRule[] = [{ type: "PII_TYPE", category: "HEALTH_INSURANCE" }];
+
+        it("masks health insurance number (2+2+6 digits)", () => {
+            const result = MaskingService.mask("保険証: 12 34 567890", rules);
+            expect(result).toBe("保険証: [MASKED_HEALTH_INSURANCE]");
+        });
+
+        it("masks without spaces (1234567890)", () => {
+            const result = MaskingService.mask("保険: 1234567890", rules);
+            expect(result).toBe("保険: [MASKED_HEALTH_INSURANCE]");
+        });
+    });
 });
 
 // ---------------------------------------------------------------------------

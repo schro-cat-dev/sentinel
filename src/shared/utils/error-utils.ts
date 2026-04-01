@@ -67,7 +67,7 @@ export const maskPiiContext = (
 
 /** 安全なcontext変換（循環参照対策・完全型安全） */
 export const safeContext = (
-    data: Record<string, unknown>,
+    data: Record<string, SafeValue | object | undefined>,
 ): Record<string, SafeValue> => {
     const result: Record<string, SafeValue> = {};
 

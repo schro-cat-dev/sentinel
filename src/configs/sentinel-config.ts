@@ -8,8 +8,8 @@ import { DetectionRule } from "../types/event";
  * 未指定時はproduction環境で抑制、それ以外でconsole出力。
  */
 export interface SentinelLogger {
-    warn(message: string, context?: Record<string, unknown>): void;
-    error(message: string, context?: Record<string, unknown>): void;
+    warn(message: string, context?: Record<string, string | number | boolean>): void;
+    error(message: string, context?: Record<string, string | number | boolean>): void;
 }
 
 /**

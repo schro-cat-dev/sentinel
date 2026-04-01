@@ -213,7 +213,7 @@ export function validateLogInput(
     }
 }
 
-function validateStringField(value: unknown, field: string, maxLength: number): void {
+function validateStringField(value: string | undefined | null, field: string, maxLength: number): void {
     if (value === undefined || value === null) return;
     if (typeof value !== "string") {
         throw new ValidationError(field, "must be a string");

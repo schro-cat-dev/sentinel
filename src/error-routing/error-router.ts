@@ -63,7 +63,7 @@ export class ErrorRouter {
                 case "log":
                     this.config.logger?.info(
                         `[ErrorRouter:log] ${error.kind}: ${error.message}`,
-                        { severity: error.severity, context: error.meta.context, traceId: error.meta.traceId },
+                        { severity: error.severity, traceId: error.meta.traceId ?? null },
                     );
                     break;
                 case "task":

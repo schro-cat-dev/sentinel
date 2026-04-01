@@ -346,6 +346,10 @@ go test ./... -race -count=1
 | [Intrusion Detection](docs/design/intrusion-detection.md) | 不正アクセス検知設計・カスタムルール・責務分担 |
 | [Error Routing](docs/design/error-routing/) | エラールーティング層設計（分類→ルーティング→実行、外部サービス連携） |
 | [Threat Model](docs/design/threat-model.md) | 脅威モデル概要（7カテゴリ32脅威、STRIDE+ATT&CK+OWASP） |
+| [Config Security Audit](docs/design/config-security-audit/) | YAML/Config セキュリティ監査（11件、RegExpフラグ、ホワイトリスト拡張） |
+| [Gap Remediation](docs/design/gap-remediation/) | 設計↔実装ギャップ修正（ErrorRouter接続、ConsoleAuditSink、サンプル更新） |
+| [Runtime Verification](docs/design/runtime-verification/) | ランタイム動作検証（deepFreeze、async callback、logicalClock） |
+| [Final Remediation](docs/design/final-remediation/) | 最終30件修正（テスト誤魔化し、バリデーション穴、ロジックバグ） |
 | [Security Levels](docs/design/whitelist-security-levels.md) | ホワイトリストセキュリティレベル（strict/standard/permissive/off）運用ガイド |
 
 ### テスト
