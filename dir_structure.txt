@@ -83,7 +83,9 @@
 │   │   │   ├── whitelist-routing-e2e.test.ts    # E2Eルーティング: 全パイプラインステージ到達 (20)
 │   │   │   ├── pollution-guard.test.ts          # 汚染防御: hasOwnPropertyガード, messagePattern型検証 (11)
 │   │   │   ├── audit-fixes.test.ts             # 監査修正: race condition, re-init警告, shutdown cleanup (7)
-│   │   │   └── instance-lifecycle.test.ts      # インスタンスライフサイクル: freeze, idempotent shutdown, handler limit (9)
+│   │   │   ├── instance-lifecycle.test.ts      # インスタンスライフサイクル: freeze, idempotent shutdown, handler limit (9)
+│   │   │   ├── quality-improvements.test.ts   # 品質改善: transportError通知, dispose関数 (6)
+│   │   │   └── metrics-hooks.test.ts          # メトリクスフック: onIngest, onDetection, onTaskDispatch (6)
 │   │   ├── transport/
 │   │   │   └── transport.test.ts                # Transport: local/remote/dual 基本動作 (7)
 │   │   ├── shared/

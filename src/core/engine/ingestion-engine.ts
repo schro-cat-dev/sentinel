@@ -86,6 +86,14 @@ export class IngestionEngine implements IIngestionCoordinator {
         // 3. Detect events
         const detection = this.detector.detect(log);
 
+        // 3.5 Metrics: detection
+        if (detection) {
+            this.emitSafe(() => this.config.metrics?.onDetection?.({
+                eventName: detection.eventName,
+                priority: detection.priority,
+            }));
+        }
+
         // 4. Generate + dispatch tasks (outside lock — user handlers may be slow)
         const tasksGenerated: TaskResult[] = [];
         if (detection) {
@@ -94,6 +102,7 @@ export class IngestionEngine implements IIngestionCoordinator {
                 this.emitSafe(() => this.config.onTaskGenerated?.(task));
                 const result = await this.taskExecutor.dispatch(task);
                 this.emitSafe(() => this.config.onTaskDispatched?.(result));
+                this.emitSafe(() => this.config.metrics?.onTaskDispatch?.(result));
                 tasksGenerated.push(result);
             }
         }
@@ -110,8 +119,9 @@ export class IngestionEngine implements IIngestionCoordinator {
             hashChainValid = true;
         }
 
-        // 6. Callbacks
+        // 6. Callbacks + metrics
         this.emitSafe(() => this.config.onLogProcessed?.(log));
+        this.emitSafe(() => this.config.metrics?.onIngest?.());
 
         this.lastProcessedLog = log;
 

@@ -73,6 +73,25 @@ pipeline:
         timeout_ms: 86400000
         max_retries: 0
 
+# --- Custom Detection Rules (TS SDK互換) ---
+# SDK側のdetectionRulesと同じ形式。サーバ側でも静的パターンマッチ検知が可能。
+# ensemble.dynamic_rules はスコアベースの高度な検知用（別機能）。
+detection_rules: []
+# detection_rules:
+#   - rule_id: custom-brute-force
+#     event_name: SECURITY_INTRUSION_DETECTED
+#     priority: HIGH
+#     conditions:
+#       log_types: [SECURITY]
+#       min_level: 4
+#       message_pattern: "(?i)brute.*force|failed.*login"
+#   - rule_id: custom-data-exfil
+#     event_name: COMPLIANCE_VIOLATION
+#     priority: MEDIUM
+#     conditions:
+#       log_types: [BUSINESS-AUDIT]
+#       message_pattern: "(?i)bulk.*export|mass.*download"
+
 store:
   driver: sqlite                    # sqlite / sqlite_encrypted
   dsn: "file:sentinel.db?_journal=WAL"

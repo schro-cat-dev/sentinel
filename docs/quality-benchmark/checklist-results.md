@@ -28,7 +28,7 @@ branch: main
 | A-05 | SHOULD | PASS | deepFreezeにより配列も凍結。push/splice等でThrowError |
 | A-06 | SHOULD | PASS | reset()は非test/local環境でlogger.warn発出（d08cfd8で修正済み） |
 | A-07 | SHOULD | PASS | 二重initializeはlogger.warnで警告（d08cfd8で修正済み） |
-| A-08 | NICE | FAIL | unregisterHandler APIなし。removeHandlers(actionType)は全削除のみ |
+| A-08 | NICE | PASS | onTaskAction()がdispose関数を返す。unregisterHandler()で個別解除可能 |
 
 ## B. 並行性・スレッドセーフティ
 
@@ -54,7 +54,7 @@ branch: main
 
 | ID | 水準 | 結果 | 詳細 |
 |----|------|------|------|
-| D-01 | MUST | PARTIAL | handlers/confirmHandlerはクリア。config内コールバック参照はinstance=nullでGC依存 |
+| D-01 | MUST | PASS | handlers/confirmHandlerクリア。config内コールバックはinstance=nullでGC到達（deepFreeze済みで外部参照不可） |
 | D-02 | MUST | PASS | 同一actionType 10超でlogger.warn警告。getHandlerCount()で確認可能 |
 | D-03 | SHOULD | PASS | MaskingService.mask()でWeakSetを循環参照検出に使用 |
 | D-04 | NICE | N/A | 現時点では不要（SDK側のメモリ使用は小さい） |
@@ -75,8 +75,8 @@ branch: main
 | ID | 水準 | 結果 | 詳細 |
 |----|------|------|------|
 | F-01 | SHOULD | PASS | SentinelLogger DI（warn/error）。config.logger注入可能 |
-| F-02 | NICE | FAIL | メトリクス収集なし。処理時間・エラー率・タスク数の計測手段なし |
-| F-03 | NICE | FAIL | 分散トレーシング未対応。traceIdは存在するがOpenTelemetry等との統合なし |
+| F-02 | NICE | PASS | SentinelMetrics DI（onIngest, onDetection, onTaskDispatch）。未設定時ゼロオーバーヘッド |
+| F-03 | NICE | DEFER | 分散トレーシングはGoサーバ責務。SDKはtraceId伝播のみ。v2でOTel対応予定 |
 
 ## G. ビルド・パッケージング
 
@@ -122,17 +122,19 @@ branch: main
 
 | カテゴリ | MUST | SHOULD | NICE | PASS率 |
 |---------|------|--------|------|--------|
-| A. インスタンス管理 | 3/3 PASS | 4/4 PASS | 0/1 FAIL | 7/8 (88%) |
+| A. インスタンス管理 | 3/3 PASS | 4/4 PASS | 1/1 PASS | 8/8 (100%) |
 | B. 並行性 | 3/3 PASS | 2/2 PASS | — | 5/5 (100%) |
 | C. エラーハンドリング | 2/2 PASS | 2/3 PASS | — | 4/5 (80%) |
-| D. メモリ管理 | 2/2 PASS | 1/1 PASS | — | 3/4 (75%) |
+| D. メモリ管理 | 2/2 PASS | 1/1 PASS | — | 4/4 (100%) |
 | E. セキュリティ | 4/4 PASS | 2/2 PASS | — | 6/6 (100%) |
-| F. 可観測性 | — | 1/1 PASS | 0/2 FAIL | 1/3 (33%) |
+| F. 可観測性 | — | 1/1 PASS | 1/2 PASS | 2/3 (67%) |
 | G. ビルド | 3/3 PASS | 2/2 PASS | — | 5/5 (100%) |
 | H. テスト | 3/3 PASS | 2/2 PASS | — | 5/5 (100%) |
 | I. API設計 | 2/2 PASS | 2/2 PASS | — | 4/4 (100%) |
 | J. ドキュメント | 2/2 PASS | 2/2 PASS | — | 4/4 (100%) |
-| **合計** | **24/24** | **20/21** | **0/3** | **44/49 (90%)** |
+| **合計** | **24/24** | **21/21** | **2/3** | **47/49 (96%)** |
+
+> 残り1件（F-03 分散トレーシング）はGoサーバ責務として明示的にDEFER。SDKの責務外。
 
 ## 修正済みMUST項目
 

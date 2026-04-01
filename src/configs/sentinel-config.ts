@@ -13,6 +13,20 @@ export interface SentinelLogger {
 }
 
 /**
+ * 軽量メトリクスフック。
+ * 全フィールドoptional。未設定のフックはゼロオーバーヘッド。
+ * 各フック内の例外はパイプラインに影響しない（emitSafeで保護）。
+ */
+export interface SentinelMetrics {
+    /** ログ取込み完了時 */
+    onIngest?: () => void;
+    /** イベント検知時（検知結果を引数で受取） */
+    onDetection?: (detection: { eventName: string; priority: string }) => void;
+    /** タスクディスパッチ完了時（結果を引数で受取） */
+    onTaskDispatch?: (result: TaskResult) => void;
+}
+
+/**
  * Sentinel SDK unified configuration
  */
 export interface SentinelConfig {
@@ -57,6 +71,12 @@ export interface SentinelConfig {
 
     /** バリデーション制限値のオーバーライド（省略時はDEFAULT_VALIDATION_LIMITS） */
     validationLimits?: Partial<import("../validation/log-validator").ValidationLimits>;
+
+    /**
+     * メトリクスフック（省略時: ゼロオーバーヘッド）
+     * 各フックは optional。必要なものだけ設定可能。
+     */
+    metrics?: SentinelMetrics;
 
     /**
      * ホワイトリスト検証設定
