@@ -52,3 +52,36 @@ export interface DetectionResult<K extends SystemEventName> {
     payload: SystemEventMap[K];
     priority: "HIGH" | "MEDIUM" | "LOW";
 }
+
+/**
+ * カスタム検知ルール定義。
+ * 利用者がconfig経由で独自の検知ルールを追加可能にする。
+ * conditions内の条件はAND結合。
+ */
+export interface DetectionRule {
+    /** ルール一意識別子 */
+    ruleId: string;
+    /** マッチ時に生成されるイベント名 */
+    eventName: SystemEventName;
+    /** 検知結果の優先度 */
+    priority: "HIGH" | "MEDIUM" | "LOW";
+    /** 検知条件（全てAND結合） */
+    conditions: DetectionRuleConditions;
+}
+
+export interface DetectionRuleConditions {
+    /** ログタイプでフィルタ */
+    logTypes?: string[];
+    /** 最小レベル（以上） */
+    minLevel?: number;
+    /** 最大レベル（以下） */
+    maxLevel?: number;
+    /** メッセージの正規表現マッチ */
+    messagePattern?: RegExp;
+    /** タグのキー/値マッチ */
+    tagMatch?: { key: string; value?: string };
+    /** origin でフィルタ */
+    origin?: string;
+    /** isCritical フラグでフィルタ */
+    isCritical?: boolean;
+}

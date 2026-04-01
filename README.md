@@ -342,6 +342,7 @@ go test ./... -race -count=1
 | [Security](docs/security.md) | 脅威モデル、HMAC hash chain、PII masking、バリデーション境界 |
 | [Architecture Diagrams](docs/architecture-diagrams.md) | システム構成図、データフロー図 |
 | [Whitelist Management](docs/design/whitelist-management.md) | ホワイトリスト管理方針・有効値一覧 |
+| [Intrusion Detection](docs/design/intrusion-detection.md) | 不正アクセス検知設計・カスタムルール・責務分担 |
 
 ### テスト
 

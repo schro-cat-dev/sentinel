@@ -1,10 +1,17 @@
 import { Log } from "../../types/log";
-import { DetectionResult, SystemEventName } from "../../types/event";
+import { DetectionResult, DetectionRule, SystemEventName } from "../../types/event";
 
 /**
- * ログからシステムイベントを検知するルールベースの検出器
+ * ログからシステムイベントを検知するルールベースの検出器。
+ * 組込みルール（最優先）→ カスタムルール（設定順）の順で評価。
  */
 export class EventDetector {
+    private readonly customRules: DetectionRule[];
+
+    constructor(customRules?: DetectionRule[]) {
+        this.customRules = customRules ?? [];
+    }
+
     /**
      * ログを評価し、該当するシステムイベントを返す。
      * 該当なしの場合はnull。
@@ -14,6 +21,8 @@ export class EventDetector {
         if (log.origin === "AI_AGENT" && !log.isCritical) {
             return null;
         }
+
+        // === 組込みルール（最優先） ===
 
         // 1. クリティカルフラグ（最優先）
         if (log.isCritical) {
@@ -87,7 +96,112 @@ export class EventDetector {
             };
         }
 
+        // === カスタムルール（設定順、最初にマッチしたものが勝つ） ===
+        for (const rule of this.customRules) {
+            if (this.matchesCustomRule(log, rule)) {
+                return this.buildCustomResult(log, rule);
+            }
+        }
+
         return null;
+    }
+
+    /**
+     * カスタムルールの条件を全てAND評価する
+     */
+    private matchesCustomRule(log: Log, rule: DetectionRule): boolean {
+        const { conditions } = rule;
+
+        if (conditions.logTypes && !conditions.logTypes.includes(log.type)) {
+            return false;
+        }
+
+        if (conditions.minLevel !== undefined && log.level < conditions.minLevel) {
+            return false;
+        }
+
+        if (conditions.maxLevel !== undefined && log.level > conditions.maxLevel) {
+            return false;
+        }
+
+        if (conditions.messagePattern && !conditions.messagePattern.test(log.message)) {
+            return false;
+        }
+
+        if (conditions.tagMatch) {
+            const { key, value } = conditions.tagMatch;
+            const found = log.tags.some(
+                (t) => t.key === key && (value === undefined || t.category === value),
+            );
+            if (!found) return false;
+        }
+
+        if (conditions.origin !== undefined && log.origin !== conditions.origin) {
+            return false;
+        }
+
+        if (conditions.isCritical !== undefined && log.isCritical !== conditions.isCritical) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * カスタムルールマッチ時のDetectionResult生成
+     */
+    private buildCustomResult(log: Log, rule: DetectionRule): DetectionResult<SystemEventName> {
+        // eventName に応じた型安全なpayloadを構築
+        switch (rule.eventName) {
+            case "SECURITY_INTRUSION_DETECTED":
+                return {
+                    eventName: rule.eventName,
+                    priority: rule.priority,
+                    payload: {
+                        ip: EventDetector.extractIp(log),
+                        severity: log.level,
+                        rawLog: {
+                            traceId: log.traceId,
+                            type: log.type,
+                            level: log.level,
+                            timestamp: log.timestamp,
+                            boundary: log.boundary,
+                            serviceId: log.serviceId,
+                            message: log.message,
+                            isCritical: log.isCritical,
+                        },
+                    },
+                };
+            case "COMPLIANCE_VIOLATION":
+                return {
+                    eventName: rule.eventName,
+                    priority: rule.priority,
+                    payload: {
+                        ruleId: rule.ruleId,
+                        documentId: log.resourceIds?.[0] || "unknown",
+                        userId: log.actorId || "system",
+                    },
+                };
+            case "SYSTEM_CRITICAL_FAILURE":
+                return {
+                    eventName: rule.eventName,
+                    priority: rule.priority,
+                    payload: {
+                        component: log.boundary,
+                        errorDetails: log.message,
+                    },
+                };
+            case "AI_ACTION_REQUIRED":
+                return {
+                    eventName: rule.eventName,
+                    priority: rule.priority,
+                    payload: {
+                        reason: log.message,
+                        suggestedTask: "SYSTEM_NOTIFICATION",
+                        context: log.aiContext ?? null,
+                    },
+                };
+        }
     }
 
     private static extractIp(log: Log): string {

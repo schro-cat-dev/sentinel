@@ -1,6 +1,7 @@
 import { MaskingRule } from "./masking-rule";
 import { Log } from "../types/log";
 import { TaskRule, GeneratedTask, TaskResult } from "../types/task";
+import { DetectionRule } from "../types/event";
 
 /**
  * SDKの内部ログ出力先。利用者が注入することでconsole.warn等を制御可能。
@@ -36,6 +37,9 @@ export interface SentinelConfig {
         enableHashChain: boolean;
         signingKeyId?: string;
     };
+
+    /** カスタム検知ルール（組込みルールの後に評価される） */
+    detectionRules?: DetectionRule[];
 
     /** タスク生成ルール（CORE VALUE） */
     taskRules: TaskRule[];
