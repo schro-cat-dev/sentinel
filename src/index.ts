@@ -10,6 +10,8 @@ import { Log } from "./types/log";
 import { IngestionResult } from "./core/engine/types";
 import { TransportConfig, RemoteTransport } from "./transport/transport";
 import { validateLogInput, ValidationError } from "./validation/log-validator";
+import { validateConfigWhitelists } from "./validation/config-validator";
+import { WhitelistRegistry } from "./validation/whitelist-registry";
 
 /**
  * SentinelOptions はSentinel初期化時のオプション
@@ -33,10 +35,12 @@ export class Sentinel {
     private readonly taskExecutor: TaskExecutor;
     private readonly config: SentinelConfig;
     private readonly transportConfig: TransportConfig;
+    private readonly whitelistRegistry?: WhitelistRegistry;
     private initialized = false;
 
-    private constructor(config: SentinelConfig, options?: SentinelOptions) {
+    private constructor(config: SentinelConfig, registry?: WhitelistRegistry, options?: SentinelOptions) {
         this.config = config;
+        this.whitelistRegistry = registry;
         this.transportConfig = options?.transport ?? { mode: "local" };
 
         const normalizer = new LogNormalizer(config.serviceId);
@@ -65,7 +69,8 @@ export class Sentinel {
         if (Sentinel.instance?.initialized) {
             return Sentinel.instance;
         }
-        Sentinel.instance = new Sentinel(config, options);
+        const { registry } = validateConfigWhitelists(config);
+        Sentinel.instance = new Sentinel(config, registry, options);
         return Sentinel.instance;
     }
 
@@ -144,6 +149,7 @@ export class Sentinel {
      * タスクアクションハンドラの登録
      */
     public onTaskAction(actionType: string, handler: TaskDispatchHandler): void {
+        this.whitelistRegistry?.validate("actionType", actionType);
         this.taskExecutor.registerHandler(actionType, handler);
     }
 
@@ -203,3 +209,7 @@ export type { SentinelLogger } from "./configs/sentinel-config";
 export type { RemoteTransport, TransportMode, TransportConfig } from "./transport/transport";
 export { validateLogInput, ValidationError, DEFAULT_VALIDATION_LIMITS } from "./validation/log-validator";
 export type { ValidationLimits } from "./validation/log-validator";
+export { WhitelistRegistry } from "./validation/whitelist-registry";
+export { validateConfigWhitelists } from "./validation/config-validator";
+export type { WhitelistDefinition, WhitelistExtensions } from "./validation/whitelist-types";
+export type { WhitelistDomain, WhitelistLevel, WhitelistValidationResult } from "./validation/config-validator";

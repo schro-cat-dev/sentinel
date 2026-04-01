@@ -25,7 +25,7 @@
 │   │   │   ├── types.ts                         # IngestionResult 型（traceId, hash, tasks, detection）
 │   │   │   └── index.ts                         # barrel export
 │   │   ├── detection/
-│   │   │   └── event-detector.ts                # ルールベースイベント検知（5種: CRITICAL, SECURITY, AI_ACTION, COMPLIANCE, SLA）
+│   │   │   └── event-detector.ts                # ルールベースイベント検知（5種built-in + カスタムルール設定可能）
 │   │   └── task/
 │   │       ├── task-generator.ts                # ルールインデックス + 重大度マッチング → GeneratedTask 生成
 │   │       ├── task-executor.ts                 # ディスパッチ（AUTO/SEMI_AUTO/MANUAL/MONITOR + timeoutMs + confirmHandler）
@@ -36,11 +36,18 @@
 │   ├── transport/
 │   │   └── transport.ts                         # RemoteTransport I/F, TransportConfig（local/remote/dual + timeoutMs）
 │   ├── validation/
-│   │   └── log-validator.ts                     # SDK公開API境界のランタイム入力検証（message必須, 型, 長さ, null byte）
+│   │   ├── log-validator.ts                     # SDK公開API境界のランタイム入力検証（message必須, 型, 長さ, null byte）
+│   │   ├── whitelist-types.ts                   # WhitelistDefinition, WhitelistExtensions 型定義
+│   │   ├── whitelist-registry.ts                # モジュラーホワイトリスト統合レジストリ（合成・拡張・O(1)検証）
+│   │   ├── config-validator.ts                  # SentinelConfig全体のホワイトリスト検証（level対応）
+│   │   └── whitelists/                          # ドメイン別ホワイトリスト定義（一元管理）
+│   │       ├── security-whitelist.ts            # eventName(4値), detectionPriority(3値)
+│   │       ├── task-whitelist.ts                # actionType(6値), severity(5値), executionLevel(4値)
+│   │       └── privacy-whitelist.ts             # piiCategory(8値)
 │   ├── types/
 │   │   ├── log.ts                               # Log ドメインモデル（30+フィールド, agentBackLog, aiContext含む）
 │   │   ├── task.ts                              # TaskRule, GeneratedTask, TaskResult, 実行レベル/重大度の型定義
-│   │   └── event.ts                             # SystemEventMap, DetectionResult, SafeLogSubset
+│   │   └── event.ts                             # SystemEventMap, DetectionResult, DetectionRule, SafeLogSubset
 │   └── shared/
 │       ├── functional/
 │       │   └── result.ts                        # Result<T,E> monad（success/failure/map/flatMap/safe）— SDK公開ユーティリティ候補
@@ -49,13 +56,14 @@
 │       └── utils/
 │           └── error-utils.ts                   # isPiiSafe, maskPiiContext, classifyError（パイプライン未使用、ユーティリティ）
 │
-├── tests/                                       # ── テストスイート（671テスト）──
+├── tests/                                       # ── テストスイート（2020テスト）──
 │   ├── helpers/
 │   │   └── fixtures.ts                          # テストファクトリ（createTestLog, createTestConfig, createTestTaskRule）
 │   ├── unit/                                    # ユニットテスト（220テスト）
 │   │   ├── core/
 │   │   │   ├── ingestion-engine.test.ts         # エンジン: フィールドパススルー, コールバック接続, mutex, エラー耐性 (12)
 │   │   │   ├── event-detector.test.ts           # 検知: 5イベントタイプ全分岐, AIループ防止 (19)
+│   │   │   ├── custom-detection-rules.test.ts   # カスタム検知ルール: 正常/異常/エッジ/ペネトレーション (22)
 │   │   │   ├── log-normalizer.test.ts           # 正規化: 全デフォルト値, 防御的フォールバック (26)
 │   │   │   └── task-executor-extended.test.ts   # 実行: removeHandler, timeoutMs, clearHandlers (6)
 │   │   ├── intelligence/
@@ -66,7 +74,13 @@
 │   │   │   ├── integrity-signer.test.ts         # hash chain: 計算, 検証, チェーン状態 (15)
 │   │   │   └── masking-service.test.ts          # マスキング: 全ルールタイプ, 循環参照, depth (23)
 │   │   ├── validation/
-│   │   │   └── log-validator.test.ts            # 入力検証: 全フィールドの正常/異常 (24)
+│   │   │   ├── log-validator.test.ts            # 入力検証: 全フィールドの正常/異常 (24)
+│   │   │   ├── whitelist-registry.test.ts       # レジストリ: 合成, 拡張, セキュリティ (20)
+│   │   │   ├── config-validator.test.ts         # 設定検証: 全フィールド正常/異常, ドメイン切替 (22)
+│   │   │   ├── whitelist-definitions.test.ts    # 定義正確性: ソースオブトゥルース一致 (10)
+│   │   │   ├── whitelist-config-yaml.test.ts    # YAML設定シミュレーション, 設定切替 (9)
+│   │   │   ├── whitelist-security-level.test.ts # セキュリティレベル: strict/standard/permissive/off (18)
+│   │   │   └── whitelist-routing-e2e.test.ts    # E2Eルーティング: 全パイプラインステージ到達 (20)
 │   │   ├── transport/
 │   │   │   └── transport.test.ts                # Transport: local/remote/dual 基本動作 (7)
 │   │   ├── shared/
@@ -96,6 +110,10 @@
 │   ├── architecture.md                          # SDK + Server パイプラインフロー, モジュール責務
 │   ├── architecture-diagrams.md                 # システム構成図, データフロー図
 │   ├── security.md                              # 脅威モデル, HMAC, PII masking, バリデーション境界
+│   ├── design/
+│   │   ├── intrusion-detection.md               # 不正アクセス検知設計（方針A実装済, 方針BはGoサーバ責務）
+│   │   ├── whitelist-management.md              # モジュラーホワイトリスト管理方針・2階層構造
+│   │   └── whitelist-security-levels.md         # セキュリティレベル運用ガイド（strict/standard/permissive/off）
 │   ├── usage-guide.md                           # SDK使い方ガイド, 設定詳細
 │   ├── task-gen.md                              # タスク生成設計
 │   ├── coop-siem-like-tools-agent.md            # SIEM連携・AIエージェント連携設計

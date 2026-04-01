@@ -57,6 +57,24 @@ export interface SentinelConfig {
 
     /** バリデーション制限値のオーバーライド（省略時はDEFAULT_VALIDATION_LIMITS） */
     validationLimits?: Partial<import("../validation/log-validator").ValidationLimits>;
+
+    /**
+     * ホワイトリスト検証設定
+     *
+     * level で堅牢性 vs 柔軟性のトレードオフを制御する:
+     * - "strict":   全ドメイン検証、拡張値の追加不可、不正値はエラー
+     * - "standard": 全ドメイン検証、拡張値で追加可能、不正値はエラー（デフォルト）
+     * - "permissive": 全ドメイン検証、不正値は警告のみ（エラーにしない）
+     * - "off":      検証なし（開発・デバッグ用、本番非推奨）
+     */
+    whitelist?: {
+        /** セキュリティレベル（省略時: "standard"） */
+        level?: "strict" | "standard" | "permissive" | "off";
+        /** 有効にするドメイン（省略時: 全て有効。levelが"off"の場合は無視） */
+        enabledDomains?: ("security" | "task" | "privacy")[];
+        /** フィールドごとの追加有効値（levelが"strict"の場合は無視） */
+        extensions?: Partial<Record<string, string[]>>;
+    };
 }
 
 /**
@@ -84,5 +102,11 @@ export const createDefaultConfig = (
             ...defaults.security,
             ...overrides.security,
         },
+        // Deep-merge whitelist to prevent silent level/extensions override
+        ...(overrides.whitelist ? {
+            whitelist: {
+                ...overrides.whitelist,
+            },
+        } : {}),
     };
 };

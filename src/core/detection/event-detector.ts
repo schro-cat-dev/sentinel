@@ -201,6 +201,11 @@ export class EventDetector {
                         context: log.aiContext ?? null,
                     },
                 };
+            default: {
+                // 網羅性チェック: SystemEventNameに新しい値が追加された場合にコンパイルエラーにする
+                const _exhaustive: never = rule.eventName;
+                throw new Error(`Unknown eventName: ${_exhaustive}`);
+            }
         }
     }
 

@@ -15,5 +15,13 @@ export type MaskingRule =
       }
     | {
           type: "PII_TYPE";
-          category: "CREDIT_CARD" | "PHONE" | "EMAIL" | "GOVERNMENT_ID";
+          category:
+              | "CREDIT_CARD"
+              | "PHONE"
+              | "EMAIL"
+              | "GOVERNMENT_ID"
+              | "JAPAN_ACCOUNT"
+              | "POSTAL_CODE"
+              | "DRIVER_LICENSE"
+              | "HEALTH_INSURANCE";
       };

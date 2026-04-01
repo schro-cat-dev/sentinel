@@ -1,87 +1,82 @@
 # ホワイトリスト管理方針
 
 ```yaml
-analyzed_at: "2026-04-01"
-based_on: "7bc95d0"
-status: current
+created_at: "2026-04-01"
+updated_at: "2026-04-01"
+status: implemented
+branch: feat/whitelist-validation
 ```
 
 ## 概要
 
-自由文字列で受け付けている値のうち、有限の許容値セットが定義できるものをホワイトリスト管理し、不正値を早期に拒否する。型レベル（TypeScript union type）とランタイムレベル（Set/配列チェック）の両方で制約する。
+自由文字列で受け付けている値のうち、有限の許容値セットが定義できるものをホワイトリスト管理し、不正値を早期に拒否する。モジュラーなアダプタパターンで各ドメインのホワイトリストを分離し、設定でドメイン単位の有効/無効切替とセキュリティレベル制御を提供する。
 
-## 現状分析と対応方針
+## 2階層構造
 
-### 既にホワイトリスト管理されているもの
+### 1階層目: 適用箇所（パイプラインステージ）
 
-| 値 | 型定義 | ランタイム検証 | 管理場所 |
-|----|--------|--------------|---------|
-| `LogType` | union type (`"BUSINESS-AUDIT" \| ...`) | `VALID_LOG_TYPES` 配列 | log.ts + log-validator.ts |
-| `LogLevel` | union type (`1 \| 2 \| ... \| 6`) | `VALID_LOG_LEVELS` 配列 | log.ts + log-validator.ts / log-normalizer.ts |
-| `origin` | union type (`"SYSTEM" \| "AI_AGENT"`) | `VALID_ORIGINS` 配列 | log.ts + log-validator.ts |
-| `environment` | union type (5値) | TypeScript型のみ | sentinel-config.ts |
-| `TransportMode` | union type (`"local" \| "remote" \| "dual"`) | TypeScript型のみ | transport.ts |
-| `TaskPriority` | union type (`1 \| 2 \| 3 \| 4 \| 5`) | TypeScript型のみ | task.ts |
-| `TaskSeverity` | union type (5値) | TypeScript型のみ | task.ts |
-| `TaskExecutionLevel` | union type (4値) | ランタイム switch 分岐 | task.ts + task-executor.ts |
-| `TaskDispatchStatus` | union type (4値) | TypeScript型のみ | task.ts |
+各ホワイトリストドメインが、対応するパイプラインコンポーネントに到達してバリデーションが効く。
 
-### ホワイトリスト管理すべきもの（未対応）
+| ドメイン | 適用先コンポーネント | 検証対象フィールド |
+|---------|---------------------|-------------------|
+| `security` | EventDetector, SeverityClassifier | `eventName`, `detectionPriority` |
+| `task` | TaskGenerator, TaskExecutor | `actionType`, `severity`, `executionLevel` |
+| `privacy` | MaskingService | `piiCategory` |
 
-| 値 | 現状 | リスク | 対応方針 |
-|----|------|--------|---------|
-| **`TaskActionType`** | 型は union だがランタイムは `string` で受付 | 未定義アクションのハンドラ登録、ルール設定のタイポが無言で通過 | `registerHandler` / `onTaskAction` でホワイトリストチェック |
-| **`TaskRule.eventName`** | 型は `string` | 存在しないイベント名のルールが無言で無視される | `SystemEventName` union から生成したSetでチェック |
-| **`MaskingRule.PII_TYPE.category`** | 型は union (`"CREDIT_CARD" \| ...`) だが `getPiiPattern()` は `string` で受付 | 存在しないカテゴリが無言でスキップ | `getPiiPattern` で存在チェック + 警告 |
-| **`NotifyRoutingRule.provider`** | `string` | 存在しないプロバイダ名が無言で無視 | 有効プロバイダ名のSetでチェック |
-| **`TaskRule.severity`** | 型は `TaskSeverity` だがランタイム未検証 | 無効な重大度でルールが永久にマッチしない | `TASK_SEVERITIES` constでチェック |
-| **`TaskRule.executionLevel`** | 型は `TaskExecutionLevel` だがランタイム未検証 | default分岐でskippedになる | `Set`でチェック |
+### 2階層目: 各ドメイン内のフィールド定義
 
-## 実装計画
+一元管理ディレクトリ: `src/validation/whitelists/`
 
-### Phase 1: 定数のexport（型とランタイムの統一）
+| ファイル | フィールド | ソースオブトゥルース |
+|---------|-----------|---------------------|
+| `security-whitelist.ts` | `eventName` (4値), `detectionPriority` (3値) | `SystemEventMap` keys |
+| `task-whitelist.ts` | `actionType` (6値), `severity` (5値), `executionLevel` (4値) | `TASK_ACTION_TYPES`, `TASK_SEVERITIES` |
+| `privacy-whitelist.ts` | `piiCategory` (8値) | `MaskingService.PII_PATTERNS` keys |
+
+## セキュリティレベル設定
 
 ```typescript
-// src/types/task.ts に既存:
-export const TASK_ACTION_TYPES = [
-    "AI_ANALYZE", "AUTOMATED_REMEDIATE", "SYSTEM_NOTIFICATION",
-    "EXTERNAL_WEBHOOK", "KILL_SWITCH", "ESCALATE",
-] as const;
-
-// 追加: ランタイム検証用Set
-export const VALID_ACTION_TYPES = new Set(TASK_ACTION_TYPES);
-export const VALID_SEVERITIES = new Set(TASK_SEVERITIES);
-export const VALID_EXECUTION_LEVELS = new Set(["AUTO", "SEMI_AUTO", "MANUAL", "MONITOR"] as const);
+whitelist?: {
+    level?: "strict" | "standard" | "permissive" | "off";
+    enabledDomains?: ("security" | "task" | "privacy")[];
+    extensions?: Record<string, string[]>;
+}
 ```
 
-### Phase 2: バリデーション追加箇所
+| レベル | 不正値の挙動 | extensions | 用途 |
+|--------|-------------|-----------|------|
+| `strict` | エラー（即座に拒否） | **無視** | 本番環境、セキュリティ最優先 |
+| `standard` | エラー（即座に拒否） | 有効 | 通常運用（デフォルト） |
+| `permissive` | 警告のみ（logger.warn） | 有効 | 移行期間、段階的導入 |
+| `off` | 検証なし | — | 開発・デバッグ（本番非推奨） |
 
-| 箇所 | チェック内容 | 違反時の動作 |
-|------|------------|------------|
-| `TaskExecutor.registerHandler(actionType)` | `VALID_ACTION_TYPES.has(actionType)` | 警告ログ（登録は許可、将来のカスタムアクション対応のため） |
-| `Sentinel.onTaskAction(actionType)` | 同上 | 同上 |
-| `TaskGenerator` constructor | `rule.eventName` が `SystemEventName` に含まれるか | 警告ログ |
-| `TaskGenerator` constructor | `rule.severity` が `VALID_SEVERITIES` に含まれるか | エラー throw |
-| `TaskGenerator` constructor | `rule.executionLevel` が `VALID_EXECUTION_LEVELS` に含まれるか | エラー throw |
-| `MaskingService.getPiiPattern(category)` | `PII_PATTERNS` にキーが存在するか | 警告ログ（logger DI経由） |
-| Go config.go `validate()` | `notify.routing[].provider` が有効値か | エラー return |
+堅牢性 vs 柔軟性のトレードオフを設定で明示的に制御する。
 
-### Phase 3: ドキュメント・テスト
+## ルーティングフロー
 
-- 各ホワイトリストの有効値一覧をドキュメント化
-- 無効値が警告/エラーになるテストを追加
-- 将来のカスタム値拡張パスを文書化（registerHandler は警告のみで拒否しない理由）
+```
+Sentinel.initialize(config)
+  └→ validateConfigWhitelists(config)
+       ├→ level判定 ("off"→スキップ)
+       ├→ enabledDomains でドメイン選択
+       ├→ WhitelistRegistry 構築 (定義 + extensions)
+       └→ 全ルールを検証
+            ├→ detectionRules[].eventName, priority
+            ├→ taskRules[].eventName, severity, actionType, executionLevel
+            └→ masking.rules[].category (PII_TYPE)
 
-## 設計判断
+Sentinel.onTaskAction(actionType, handler)
+  └→ whitelistRegistry.validate("actionType", actionType)
+```
 
-### なぜ registerHandler は拒否しないか
+## テストカバレッジ
 
-SDKの利用者がカスタムアクションタイプを定義する可能性がある。例えば `sentinel.onTaskAction("MY_CUSTOM_ACTION", handler)` のようなケース。これを拒否すると拡張性が失われる。代わりに警告を出し、組込みアクションタイプでない場合に利用者に注意を促す。
-
-### なぜ TaskRule.eventName は拒否するか
-
-`EventDetector` が生成するイベントは `SystemEventMap` のキーに限定される。存在しないイベント名のルールは永久にマッチせず、利用者の意図しない無動作を引き起こす。これは設定のバグであり、早期に検出すべき。
-
-### なぜ getPiiPattern は警告のみか
-
-カスタムPIIカテゴリの将来拡張を考慮。`PII_PATTERNS` に存在しないカテゴリは単にスキップされるが、利用者のタイポの可能性があるため警告を出す。
+| テストファイル | テスト数 | 検証内容 |
+|--------------|---------|---------|
+| `whitelist-registry.test.ts` | 20 | Registry構築、合成、拡張、セキュリティ |
+| `config-validator.test.ts` | 22 | 全フィールドの正常/異常、ドメイン切替、拡張値 |
+| `whitelist-definitions.test.ts` | 10 | 各定義の値がソースオブトゥルースと一致 |
+| `whitelist-config-yaml.test.ts` | 9 | YAML/JSON設定シミュレーション、設定切替 |
+| `whitelist-security-level.test.ts` | 18 | strict/standard/permissive/off の各挙動 |
+| `whitelist-routing-e2e.test.ts` | 20 | 全パイプラインステージへの到達検証 |
+| **合計** | **99** | |
