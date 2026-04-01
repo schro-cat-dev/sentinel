@@ -12,6 +12,11 @@ type JsonValue = JsonPrimitive | JsonObject | JsonArray;
  */
 export class IntegritySigner {
     private previousHash = "";
+    private readonly signingKeyId: string;
+
+    constructor(signingKeyId?: string) {
+        this.signingKeyId = signingKeyId ?? "";
+    }
 
     /**
      * 現在のチェーンの最新ハッシュを取得
@@ -37,13 +42,18 @@ export class IntegritySigner {
     /**
      * 前のハッシュと現在のログを結合して SHA-256 ハッシュを計算
      */
-    public static calculateHash(log: Log, previousHash: string): string {
+    public static calculateHash(log: Log, previousHash: string, signingKeyId = ""): string {
         const immutableParts = IntegritySigner.omit(log, ["hash", "signature"]);
         const serializedData = IntegritySigner.deterministicStringify(immutableParts);
 
         return createHash("sha256")
-            .update(serializedData + previousHash)
+            .update(serializedData + previousHash + signingKeyId)
             .digest("hex");
+    }
+
+    /** このSignerのkeyIdを取得 */
+    public getSigningKeyId(): string {
+        return this.signingKeyId;
     }
 
     /**

@@ -144,19 +144,19 @@ describe("Fix #4: PII category validation regardless of masking.enabled", () => 
 
 // ===== #5: Sentinel.reset() production warning =====
 describe("Fix #5: Sentinel.reset() warns in non-test environment", () => {
-    it("reset warns when environment is production", () => {
-        const warnFn = vi.fn();
+    it("reset logs error when environment is production", () => {
+        const errorFn = vi.fn();
         Sentinel.initialize(createDefaultConfig({
             projectName: "p", serviceId: "s",
             environment: "production",
             security: { enableHashChain: false },
-            logger: { warn: warnFn, error: vi.fn() },
+            logger: { warn: vi.fn(), error: errorFn },
         }));
 
         Sentinel.reset();
 
-        expect(warnFn).toHaveBeenCalledWith(
-            expect.stringContaining("reset"),
+        expect(errorFn).toHaveBeenCalledWith(
+            expect.stringContaining("production"),
             expect.any(Object),
         );
     });

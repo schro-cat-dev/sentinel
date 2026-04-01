@@ -82,14 +82,14 @@ describe("Sentinel.reset", () => {
         expect(() => Sentinel.getInstance()).toThrow();
     });
 
-    it("warns when called in non-test environment", () => {
-        const warnFn = vi.fn();
+    it("logs error when called in production environment", () => {
+        const errorFn = vi.fn();
         Sentinel.initialize(defaultConfig({
             environment: "production",
-            logger: { warn: warnFn, error: vi.fn() },
+            logger: { warn: vi.fn(), error: errorFn },
         }));
         Sentinel.reset();
-        expect(warnFn).toHaveBeenCalledWith(
+        expect(errorFn).toHaveBeenCalledWith(
             expect.stringContaining("production"),
             expect.objectContaining({ source: "sentinel" }),
         );
@@ -164,16 +164,7 @@ describe("Sentinel.shutdown", () => {
         await expect(sentinel.shutdown()).resolves.toBeUndefined();
     });
 
-    it("is idempotent — second call is a no-op", async () => {
-        const closeFn = vi.fn().mockResolvedValue(undefined);
-        const transport = { send: vi.fn(), close: closeFn };
-        const sentinel = Sentinel.initialize(defaultConfig(), {
-            transport: { mode: "local", transport },
-        });
-        await sentinel.shutdown();
-        await sentinel.shutdown(); // second call — hits early return (line 116)
-        expect(closeFn).toHaveBeenCalledTimes(1);
-    });
+    // idempotent shutdown — see instance-lifecycle.test.ts A-03 for comprehensive tests
 });
 
 // =========================================================================
@@ -370,11 +361,7 @@ describe("Sentinel.updateCallbacks", () => {
 // Sentinel.getConfig
 // =========================================================================
 describe("Sentinel.getConfig", () => {
-    it("returns frozen config", () => {
-        const sentinel = Sentinel.initialize(defaultConfig());
-        const cfg = sentinel.getConfig();
-        expect(Object.isFrozen(cfg)).toBe(true);
-    });
+    // config freezing — see instance-lifecycle.test.ts A-04 for comprehensive tests
 
     it("reflects initialization values", () => {
         const sentinel = Sentinel.initialize(defaultConfig({

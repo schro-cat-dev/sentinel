@@ -170,7 +170,7 @@ export class IngestionEngine implements IIngestionCoordinator {
             await this.withChainLock(() => {
                 const previousHash = this.signer.getPreviousHash();
                 log.previousHash = previousHash;
-                log.hash = IntegritySigner.calculateHash(log, previousHash);
+                log.hash = IntegritySigner.calculateHash(log, previousHash, this.signer.getSigningKeyId());
                 this.signer.updateChain(log.hash);
             });
             hashChainValid = true;

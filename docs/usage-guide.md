@@ -632,11 +632,21 @@ dispose();
 YAMLファイルからSentinelConfigを読み込み可能。
 
 ```typescript
-import { loadConfigFromYaml } from "@sentinel/client";
+import { loadConfigFromYaml, parseConfigYaml } from "@sentinel/client";
 
-const config = await loadConfigFromYaml("./sentinel.config.yaml");
+// File-based loading
+const config = loadConfigFromYaml("./sentinel.config.yaml");
 const sentinel = Sentinel.initialize(config);
+
+// String-based parsing with options
+const config2 = parseConfigYaml(yamlString, {
+  expandEnv: true,              // Enable ${VAR} expansion (default: true)
+  strictEnvExpansion: true,     // Throw on undefined vars without defaults (default: false)
+  envSource: process.env,       // Custom env source (for testing)
+});
 ```
+
+> **Production tip:** `strictEnvExpansion: true` を使うと、`${API_KEY}` のような必須環境変数の設定漏れをデプロイ前に検出できます。
 
 ### gRPC認証（Go Server）
 

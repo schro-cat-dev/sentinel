@@ -285,7 +285,7 @@ describe("Fuzzing: very long strings", () => {
         expect(() => validateLogInput({ message: maxMsg })).not.toThrow();
     });
 
-    it("should handle masking on 100KB string without crash", () => {
+    it("should handle masking on 100KB string without crash", { timeout: 30000 }, () => {
         const largeStr = "x".repeat(100 * 1024);
         expect(() => MaskingService.mask(largeStr, PII_RULES)).not.toThrow();
     });

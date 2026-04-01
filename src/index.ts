@@ -46,7 +46,7 @@ export class Sentinel {
         this.transportConfig = options?.transport ?? { mode: "local" };
 
         const normalizer = new LogNormalizer(config.serviceId, config.projectName);
-        const signer = new IntegritySigner();
+        const signer = new IntegritySigner(config.security.signingKeyId);
         const detector = new EventDetector(config.detectionRules);
         const taskGenerator = new TaskGenerator(config.taskRules);
         this.taskExecutor = new TaskExecutor();
@@ -97,12 +97,17 @@ export class Sentinel {
 
     /**
      * インスタンスリセット（テスト用）
-     * 非テスト環境で呼ばれた場合は警告を出す。
+     * production環境ではlogger.error。staging/developmentではlogger.warn。
      */
     public static reset(): void {
         if (Sentinel.instance) {
             const env = Sentinel.instance.config.environment;
-            if (env !== "test" && env !== "local") {
+            if (env === "production") {
+                Sentinel.instance.config.logger?.error(
+                    "Sentinel.reset() called in production environment. Use shutdown() instead for proper cleanup.",
+                    { source: "sentinel" },
+                );
+            } else if (env !== "test" && env !== "local") {
                 Sentinel.instance.config.logger?.warn(
                     `Sentinel.reset() called in "${env}" environment. This method is intended for testing only.`,
                     { source: "sentinel" },

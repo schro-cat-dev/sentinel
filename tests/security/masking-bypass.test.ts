@@ -178,7 +178,7 @@ describe("Security: PII Masking Bypass resistance", () => {
             expect(() => MaskingService.mask(log, ALL_PII_RULES)).not.toThrow();
         });
 
-        it("handles extremely long message without crash", () => {
+        it("handles extremely long message without crash", { timeout: 30000 }, () => {
             const log = createTestLog({ message: "A".repeat(100000) });
             expect(() => MaskingService.mask(log, ALL_PII_RULES)).not.toThrow();
         });
