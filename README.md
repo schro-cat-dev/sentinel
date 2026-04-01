@@ -348,6 +348,7 @@ go test ./... -race -count=1
 | [Architecture Diagrams](docs/architecture-diagrams.md) | システム構成図、データフロー図 |
 | [Whitelist Management](docs/design/whitelist-management.md) | モジュラーホワイトリスト管理・2階層構造・セキュリティレベル制御 |
 | [Intrusion Detection](docs/design/intrusion-detection.md) | 不正アクセス検知設計・カスタムルール・責務分担 |
+| [Error Routing](docs/design/error-routing/) | エラールーティング層設計（分類→ルーティング→実行、外部サービス連携） |
 | [Security Levels](docs/design/whitelist-security-levels.md) | ホワイトリストセキュリティレベル（strict/standard/permissive/off）運用ガイド |
 
 ### テスト
