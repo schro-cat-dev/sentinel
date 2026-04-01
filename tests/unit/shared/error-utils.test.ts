@@ -182,6 +182,16 @@ describe("safeContext", () => {
         const result = safeContext({ contact: "user@example.com" });
         expect(result.contact).toBe("***_contact_MASKED***");
     });
+
+    it("handles circular references in object values without crashing", () => {
+        const circular: Record<string, unknown> = { a: 1 };
+        circular.self = circular; // circular reference
+        // safeObjectKeys should detect the circular ref via WeakSet and return 0 for the nested call
+        const result = safeContext({ obj: circular });
+        // The top-level object has keys, so we get the key count
+        expect(typeof result.obj).toBe("number");
+        expect(result.obj).toBeGreaterThanOrEqual(0);
+    });
 });
 
 // =========================================================================

@@ -127,4 +127,25 @@ describe("ErrorClassifier", () => {
         const result = classifier.classify(poisoned as never);
         expect(result.kind).toBe("ClassificationError");
     });
+
+    it("classifies timeout with task context as HandlerTimeout", () => {
+        const result = classifier.classify({
+            error: new Error("timeout occurred"),
+            context: "task.timeout",
+            traceId: "t-2",
+        });
+        expect(result.kind).toBe("HandlerTimeout");
+        expect(result.severity).toBe("WARNING");
+    });
+
+    it("timeout message with non-matching context skips to next pattern", () => {
+        // "timeout" matches the first KIND_PATTERN (transport), but context "callback"
+        // doesn't match /transport/i → continues. Second pattern (task) also doesn't
+        // match "callback" → continues. Falls through to Unknown.
+        const result = classifier.classify({
+            error: new Error("timeout happened"),
+            context: "callback",
+        });
+        expect(result.kind).toBe("Unknown");
+    });
 });

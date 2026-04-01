@@ -50,6 +50,27 @@ describe("ConsoleAuditSink", () => {
         stderrSpy.mockRestore();
     });
 
+    it("uses 'unknown' when traceId is undefined", async () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const sink = new ConsoleAuditSink();
+
+        const error: ClassifiedError = {
+            kind: "Test",
+            detailKind: "test",
+            code: "TEST",
+            message: "test",
+            severity: "INFO",
+            meta: { context: {} }, // no traceId
+        };
+
+        await sink.send(error);
+
+        const output = stderrSpy.mock.calls[0][0] as string;
+        const parsed = JSON.parse(output) as Record<string, unknown>;
+        expect(parsed.traceId).toBe("unknown");
+        stderrSpy.mockRestore();
+    });
+
     it("ErrorRouter + ConsoleAuditSink E2E", async () => {
         const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
         const sink = new ConsoleAuditSink();

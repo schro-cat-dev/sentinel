@@ -184,6 +184,28 @@ describe("TaskGenerator", () => {
         });
     });
 
+    describe("unknown severity handling", () => {
+        it("does not match rule with unknown severity", () => {
+            const unknownSeverityRules: TaskRule[] = [
+                createTestTaskRule({
+                    ruleId: "unknown-sev",
+                    eventName: "SYSTEM_CRITICAL_FAILURE",
+                    severity: "UNKNOWN" as unknown as TaskRule["severity"],
+                    actionType: "SYSTEM_NOTIFICATION",
+                }),
+            ];
+            const gen = new TaskGenerator(unknownSeverityRules);
+            const detection: DetectionResult<SystemEventName> = {
+                eventName: "SYSTEM_CRITICAL_FAILURE",
+                priority: "HIGH",
+                payload: { component: "x", errorDetails: "y" },
+            };
+            const log = createCriticalLog();
+            const tasks = gen.generate(detection, log);
+            expect(tasks).toHaveLength(0);
+        });
+    });
+
     describe("no matching rules", () => {
         it("returns empty array for unregistered event", () => {
             const detection: DetectionResult<SystemEventName> = {

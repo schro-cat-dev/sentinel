@@ -145,6 +145,76 @@ describe("ErrorRouter", () => {
         expect(call[1]).toEqual({});
     });
 
+    it("task destination calls onTaskRequest with ESCALATE", async () => {
+        const onTaskRequest = vi.fn();
+        const router = new ErrorRouter({
+            enabled: true,
+            onTaskRequest,
+            rules: [
+                {
+                    match: { severity: "CRITICAL" },
+                    decisions: [{ destination: "task", action: "escalate", priority: 1 }],
+                },
+            ],
+        });
+
+        await router.route(new Error("connection refused"), "transport.dual");
+
+        expect(onTaskRequest).toHaveBeenCalledTimes(1);
+        expect(onTaskRequest).toHaveBeenCalledWith(
+            expect.objectContaining({
+                eventName: "ERROR_ESCALATION",
+                actionType: "ESCALATE",
+            }),
+        );
+    });
+
+    it("ai_agent destination calls onTaskRequest with AI_ANALYZE", async () => {
+        const onTaskRequest = vi.fn();
+        const router = new ErrorRouter({
+            enabled: true,
+            onTaskRequest,
+            rules: [
+                {
+                    match: { severity: "WARNING", kindPattern: /^Handler/ },
+                    decisions: [{ destination: "ai_agent", action: "auto_remediate", priority: 2 }],
+                },
+            ],
+        });
+
+        // "timeout" + "task" context → HandlerTimeout → WARNING severity, kind starts with "Handler"
+        await router.route(new Error("timeout occurred"), "task.timeout");
+
+        expect(onTaskRequest).toHaveBeenCalledTimes(1);
+        expect(onTaskRequest).toHaveBeenCalledWith(
+            expect.objectContaining({
+                eventName: "ERROR_ESCALATION",
+                actionType: "AI_ANALYZE",
+            }),
+        );
+    });
+
+    it("notification destination calls onNotification", async () => {
+        const onNotification = vi.fn();
+        const router = new ErrorRouter({
+            enabled: true,
+            onNotification,
+            rules: [
+                {
+                    match: { severity: "CRITICAL" },
+                    decisions: [{ destination: "notification", action: "escalate", priority: 1 }],
+                },
+            ],
+        });
+
+        await router.route(new Error("connection refused"), "transport.dual");
+
+        expect(onNotification).toHaveBeenCalledTimes(1);
+        const [error, decision] = onNotification.mock.calls[0];
+        expect(error.kind).toBe("TransportConnectionRefused");
+        expect(decision.destination).toBe("notification");
+    });
+
     it("classify/evaluate throwing falls back to console.error", async () => {
         const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
         // Router with a rule whose kindPattern.test will throw

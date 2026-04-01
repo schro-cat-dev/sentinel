@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { TaskExecutor } from "../../../src/core/task/task-executor";
-import { GeneratedTask } from "../../../src/types/task";
+import { GeneratedTask, TaskExecutionLevel } from "../../../src/types/task";
 import { createTestTaskRule } from "../../helpers/fixtures";
 
 const createGeneratedTask = (overrides: Partial<GeneratedTask> = {}): GeneratedTask => ({
@@ -180,6 +180,16 @@ describe("TaskExecutor", () => {
 
             expect(specificHandler).toHaveBeenCalled();
             expect(defaultHandler).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("dispatch - unknown executionLevel", () => {
+        it("returns skipped for unknown executionLevel", async () => {
+            const task = createGeneratedTask({
+                executionLevel: "UNKNOWN" as unknown as TaskExecutionLevel,
+            });
+            const result = await executor.dispatch(task);
+            expect(result.status).toBe("skipped");
         });
     });
 

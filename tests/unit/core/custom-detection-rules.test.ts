@@ -243,6 +243,19 @@ describe("Custom Detection Rules: edge cases", () => {
         expect(detector.detect(createTestLog({ origin: "AI_AGENT" }))).toBeNull();
     });
 
+    it("origin condition AI_AGENT does not match SYSTEM log", () => {
+        const rules: DetectionRule[] = [{
+            ruleId: "ai-only",
+            eventName: "AI_ACTION_REQUIRED",
+            priority: "LOW",
+            conditions: { origin: "AI_AGENT" },
+        }];
+
+        const detector = new EventDetector(rules);
+        // origin="SYSTEM" should NOT match origin condition "AI_AGENT"
+        expect(detector.detect(createTestLog({ origin: "SYSTEM", isCritical: false }))).toBeNull();
+    });
+
     it("isCritical condition in custom rule", () => {
         const rules: DetectionRule[] = [{
             ruleId: "critical-custom",
@@ -256,6 +269,20 @@ describe("Custom Detection Rules: edge cases", () => {
         // Custom rule does NOT fire because built-in takes precedence
         const result = detector.detect(createTestLog({ isCritical: true }));
         expect(result!.eventName).toBe("SYSTEM_CRITICAL_FAILURE");
+    });
+
+    it("isCritical true condition does not match non-critical log", () => {
+        const rules: DetectionRule[] = [{
+            ruleId: "critical-only",
+            eventName: "AI_ACTION_REQUIRED",
+            priority: "LOW",
+            conditions: { isCritical: true },
+        }];
+
+        const detector = new EventDetector(rules);
+        // isCritical=false log should NOT match isCritical=true condition
+        const result = detector.detect(createTestLog({ isCritical: false }));
+        expect(result).toBeNull();
     });
 
     it("50 custom rules do not degrade performance", () => {
