@@ -102,5 +102,11 @@ export const createDefaultConfig = (
             ...defaults.security,
             ...overrides.security,
         },
+        // Deep-merge whitelist to prevent silent level/extensions override
+        ...(overrides.whitelist ? {
+            whitelist: {
+                ...overrides.whitelist,
+            },
+        } : {}),
     };
 };
