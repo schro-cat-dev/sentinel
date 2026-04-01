@@ -132,7 +132,7 @@ describe("Size Limits: total log size", () => {
     it("rejects log that exceeds maxTotalLogSize", () => {
         expect(() => validateLogInput({
             message: "m".repeat(65536),
-            details: "d".repeat(65536),
+            details: { data: "d".repeat(65536) },
             input: { data: "x".repeat(1_048_576) },
         })).toThrow(ValidationError);
     });
@@ -140,7 +140,7 @@ describe("Size Limits: total log size", () => {
     it("accepts log within total size limit", () => {
         expect(() => validateLogInput({
             message: "small message",
-            details: "small details",
+            details: { info: "small details" },
         })).not.toThrow();
     });
 });
@@ -178,7 +178,7 @@ describe("Size Limits: custom overrides", () => {
 
     it("allows increasing maxTotalLogSize", () => {
         expect(() => validateLogInput(
-            { message: "m".repeat(65536), details: "d".repeat(65536), input: { data: "x".repeat(1_048_576) } },
+            { message: "m".repeat(65536), details: { data: "d".repeat(65536) }, input: { data: "x".repeat(1_048_576) } },
             { maxInputSize: 5_000_000, maxTotalLogSize: 10_000_000 },
         )).not.toThrow();
     });

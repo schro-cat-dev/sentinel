@@ -22,7 +22,7 @@ describe("AUDIT-02: lone surrogate checks on all string fields", () => {
         const sentinel = initSentinel();
         await expect(sentinel.ingest({
             message: "ok",
-            details: "some detail\uD800value",
+            details: { info: "some detail\uD800value" },
         })).rejects.toThrow(ValidationError);
     });
 
@@ -30,7 +30,7 @@ describe("AUDIT-02: lone surrogate checks on all string fields", () => {
         const sentinel = initSentinel();
         await expect(sentinel.ingest({
             message: "ok",
-            details: "detail with emoji 😀",
+            details: { info: "detail with emoji 😀" },
         })).resolves.toBeDefined();
     });
 

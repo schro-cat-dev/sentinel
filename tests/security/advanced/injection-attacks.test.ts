@@ -419,7 +419,7 @@ describe("Security: Injection Attack Vectors", () => {
         it("handles all injection types in different fields simultaneously", async () => {
             const result = await safeIngest({
                 message: "'; DROP TABLE logs; --",
-                details: "<script>alert(1)</script>",
+                details: { xss: "<script>alert(1)</script>" },
                 actorId: "$(cat /etc/passwd)",
                 boundary: "${process.exit(1)}",
                 tags: [

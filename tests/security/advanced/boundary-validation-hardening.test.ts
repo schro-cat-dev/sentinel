@@ -146,7 +146,7 @@ describe("#4: null byte injection in all string fields", () => {
         { field: "parentSpanId", input: { message: "ok", parentSpanId: "test\x00inject" } },
         { field: "boundary", input: { message: "ok", boundary: "test\x00inject" } },
         { field: "traceInfo", input: { message: "ok", traceInfo: "test\x00inject" } },
-        { field: "details", input: { message: "ok", details: "test\x00inject" } },
+        { field: "details.data", input: { message: "ok", details: { data: "test\x00inject" } } },
     ];
 
     it.each(fields)("rejects null byte in $field", async ({ input }) => {

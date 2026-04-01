@@ -147,7 +147,7 @@ describe("Security v2: NEW-03 — Full log object masking", () => {
 
         await engine.handle({
             message: "payment processed",
-            details: "Card: 4111-1111-1111-1111",
+            details: { card: "4111-1111-1111-1111" },
         });
 
         expect(capturedLog).not.toBeNull();
@@ -214,7 +214,7 @@ describe("Security v2: NEW-06 — rawLog safe subset", () => {
             level: 5,
             actorId: "sensitive-user-id",
             input: { secret: "data" } as Record<string, unknown>,
-            details: "private details",
+            details: { info: "private details" },
             tags: [{ key: "ip", category: "192.168.1.1" }],
         });
 

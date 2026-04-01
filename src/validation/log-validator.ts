@@ -182,19 +182,28 @@ export function validateLogInput(
         }
     }
 
-    // details
+    // details (Record<string, string> — Proto map<string,string> 互換)
     if (input.details !== undefined && input.details !== null) {
-        if (typeof input.details !== "string") {
-            throw new ValidationError("details", "must be a string");
+        if (typeof input.details !== "object" || Array.isArray(input.details)) {
+            throw new ValidationError("details", "must be an object (Record<string, string>)");
         }
-        if (input.details.length > L.maxDetailsLength) {
-            throw new ValidationError("details", `exceeds max length ${L.maxDetailsLength}`);
+        const entries = Object.entries(input.details);
+        if (entries.length > 50) {
+            throw new ValidationError("details", `exceeds max entry count 50 (got ${entries.length})`);
         }
-        if (input.details.includes("\x00")) {
-            throw new ValidationError("details", "contains null bytes");
-        }
-        if (containsLoneSurrogate(input.details)) {
-            throw new ValidationError("details", "contains invalid UTF-16 lone surrogate");
+        for (const [k, v] of entries) {
+            if (typeof v !== "string") {
+                throw new ValidationError(`details.${k}`, "value must be a string");
+            }
+            if (v.length > L.maxDetailsLength) {
+                throw new ValidationError(`details.${k}`, `exceeds max length ${L.maxDetailsLength}`);
+            }
+            if (v.includes("\x00")) {
+                throw new ValidationError(`details.${k}`, "contains null bytes");
+            }
+            if (containsLoneSurrogate(v)) {
+                throw new ValidationError(`details.${k}`, "contains invalid UTF-16 lone surrogate");
+            }
         }
     }
 
@@ -308,7 +317,7 @@ function estimateJsonSize(value: unknown, depth = 0, seen?: WeakSet<object>): nu
 function estimateLogSize(input: Partial<Log>): number {
     // validateLogInput で message は必須・非空が検証済み
     let size = input.message!.length;
-    if (input.details) size += input.details.length;
+    if (input.details) size += estimateJsonSize(input.details);
     if (input.traceInfo) size += input.traceInfo.length;
     if (input.actorId) size += input.actorId.length;
     if (input.boundary) size += input.boundary.length;

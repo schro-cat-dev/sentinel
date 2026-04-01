@@ -588,32 +588,32 @@ describe("Encoding bypass: PII split across fields", () => {
     it("should mask PII independently in message and details", () => {
         const log = createTestLog({
             message: "Contact user@example.com for help",
-            details: "Card: 4111111111111111",
+            details: { card: "4111111111111111" },
         });
         const result = maskObj(log);
         expect(result.message).not.toContain("user@example.com");
-        expect(result.details).not.toContain("4111111111111111");
+        expect(JSON.stringify(result.details)).not.toContain("4111111111111111");
     });
 
     it("should handle email local part in message, domain in details", () => {
         const log = createTestLog({
             message: "User handle: admin@",
-            details: "domain: example.com",
+            details: { domain: "example.com" },
         });
         // Each field alone does not form a complete email
         const result = maskObj(log);
         expect(typeof result.message).toBe("string");
-        expect(typeof result.details).toBe("string");
+        expect(typeof result.details).toBe("object");
     });
 
     it("should handle credit card split: first 8 in message, last 8 in details", () => {
         const log = createTestLog({
             message: "First part: 41111111",
-            details: "Second part: 11111111",
+            details: { part: "11111111" },
         });
         const result = maskObj(log);
         expect(typeof result.message).toBe("string");
-        expect(typeof result.details).toBe("string");
+        expect(typeof result.details).toBe("object");
     });
 
     it("should mask PII in nested input field", () => {

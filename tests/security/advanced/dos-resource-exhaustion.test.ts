@@ -629,14 +629,14 @@ describe("Security: DoS and Resource Exhaustion", () => {
         it("handles large details string at max length", () => {
             expect(() => validateLogInput({
                 message: "test",
-                details: "d".repeat(65536),
+                details: { data: "d".repeat(65536) },
             })).not.toThrow();
         });
 
         it("rejects details string exceeding max length", () => {
             expect(() => validateLogInput({
                 message: "test",
-                details: "d".repeat(65537),
+                details: { data: "d".repeat(65537) },
             })).toThrow(ValidationError);
         });
 
@@ -667,7 +667,7 @@ describe("Security: DoS and Resource Exhaustion", () => {
                     category: "c".repeat(1024),
                 })),
                 resourceIds: Array.from({ length: 100 }, (_, i) => `r-${i}`),
-                details: "d".repeat(65536),
+                details: { data: "d".repeat(65536) },
             })).not.toThrow();
             assertTiming(start, "all fields at max");
         });

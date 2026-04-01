@@ -157,7 +157,7 @@ describe("Security: Hash Chain Integrity", () => {
                 spanId: "span-1",
                 parentSpanId: "parent-1",
                 actorId: "actor-1",
-                details: "detailed info",
+                details: { info: "detailed info" },
                 resourceIds: ["r1", "r2"],
                 traceInfo: "trace data",
                 input: { key: "value" },

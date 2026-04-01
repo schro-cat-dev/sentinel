@@ -54,7 +54,7 @@ export interface Log {
     traceInfo?: string; // TODO 仮
     triggerAgent: boolean;
     agentBackLog?: AIAgentEventBacklog; // AI実行時のみ付与される詳細レコード
-    details?: string; // TODO cooperate AI agent
+    details?: Record<string, string>; // Proto互換: map<string, string>
 
     // 証跡・整合性（不変性責務）
     tags: LogTag[];

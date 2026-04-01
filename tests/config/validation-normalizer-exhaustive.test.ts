@@ -315,15 +315,15 @@ describe("validateLogInput", () => {
     // === details ===
     describe("details field", () => {
         it("accepts valid details string", () => {
-            expectNoValidationError(validInput({ details: "some details" }));
+            expectNoValidationError(validInput({ details: { info: "some details" } }));
         });
 
         it("accepts details at max length (65536)", () => {
-            expectNoValidationError(validInput({ details: "d".repeat(65536) }));
+            expectNoValidationError(validInput({ details: { data: "d".repeat(65536) } }));
         });
 
         it("throws when details exceeds max length (65537)", () => {
-            expectValidationError("details", validInput({ details: "d".repeat(65537) }));
+            expectValidationError("details.data", validInput({ details: { data: "d".repeat(65537) } }));
         });
 
         it("accepts undefined details (optional)", () => {
@@ -827,7 +827,7 @@ describe("Edge cases", () => {
                 isCritical: true,
                 tags: [{ key: "env", category: "prod" }],
                 resourceIds: ["res-1"],
-                details: "detailed info",
+                details: { info: "detailed info" },
                 agentBackLog: {
                     agentId: "agent-1",
                     taskId: "task-1",

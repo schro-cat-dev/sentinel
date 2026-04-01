@@ -279,7 +279,7 @@ describe("validateLogInput", () => {
     it("rejects details exceeding max length", () => {
         expect(() => validateLogInput({
             message: "test",
-            details: "x".repeat(65537),
+            details: { data: "x".repeat(65537) },
         })).toThrow(ValidationError);
     });
 
@@ -287,7 +287,7 @@ describe("validateLogInput", () => {
     it("rejects details with null bytes", () => {
         expect(() => validateLogInput({
             message: "test",
-            details: "hello\x00world",
+            details: { data: "hello\x00world" },
         })).toThrow(ValidationError);
     });
 
@@ -405,7 +405,7 @@ describe("validateLogInput", () => {
     it("validates log with all optional fields for size estimation", () => {
         expect(() => validateLogInput({
             message: "test message for size",
-            details: "some details",
+            details: { info: "some details" },
             traceInfo: "trace-info",
             actorId: "actor-1",
             boundary: "svc:module",
