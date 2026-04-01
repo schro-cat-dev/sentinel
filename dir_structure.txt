@@ -59,9 +59,11 @@
 │   │   ├── types.ts                             # ClassifiedError, RoutingRule, AuditSink, DeadLetterQueue
 │   │   ├── error-classifier.ts                  # Error+context→ClassifiedError (kind+severity分類)
 │   │   ├── routing-engine.ts                    # ルール評価→RoutingDecision[] (first-match-wins)
-│   │   └── error-router.ts                      # オーケストレーター（3重無限ループ防壁）
+│   │   ├── error-router.ts                      # オーケストレーター（3重無限ループ防壁、task/notify/audit実行）
+│   │   └── sinks/
+│   │       └── console-audit-sink.ts            # デフォルトAuditSink（serializeForAudit接続、PII除去済みJSON出力）
 │
-├── tests/                                       # ── テストスイート（2,159テスト）──
+├── tests/                                       # ── テストスイート（2,173テスト）──
 │   ├── helpers/
 │   │   └── fixtures.ts                          # テストファクトリ（createTestLog, createTestConfig, createTestTaskRule）
 │   ├── unit/                                    # ユニットテスト（220テスト）
@@ -91,10 +93,13 @@
 │   │   │   ├── instance-lifecycle.test.ts      # インスタンスライフサイクル: freeze, idempotent shutdown, handler limit (9)
 │   │   │   ├── quality-improvements.test.ts   # 品質改善: transportError通知, dispose関数 (6)
 │   │   │   └── metrics-hooks.test.ts          # メトリクスフック: onIngest, onDetection, onTaskDispatch (6)
-│   │   ├── error-routing/                     # エラールーティングテスト (26)
+│   │   ├── error-routing/                     # エラールーティングテスト (40)
 │   │   │   ├── error-classifier.test.ts       # 分類: 10パターン, poisoned input, custom severity (10)
 │   │   │   ├── routing-engine.test.ts         # ルール評価: severity×kind, first-match-wins (9)
-│   │   │   └── error-router.test.ts           # 統合: enabled/disabled, loop defense, shutdown (7)
+│   │   │   ├── error-router.test.ts           # 統合: enabled/disabled, loop defense, shutdown (7)
+│   │   │   ├── error-router-integration.test.ts # task/notification/ai_agent destination (6)
+│   │   │   ├── console-audit-sink.test.ts     # ConsoleAuditSink: JSON出力, PII除去 (3)
+│   │   │   └── update-callbacks-e2e.test.ts   # 動的コールバック: 差替え, null, shutdown (5)
 │   │   ├── transport/
 │   │   │   └── transport.test.ts                # Transport: local/remote/dual 基本動作 (7)
 │   │   ├── shared/

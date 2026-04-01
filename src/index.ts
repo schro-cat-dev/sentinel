@@ -294,4 +294,6 @@ export type {
     RoutingDecision,
     AuditSink,
     DeadLetterQueue,
+    TaskRequest,
 } from "./error-routing/types";
+export { ConsoleAuditSink } from "./error-routing/sinks/console-audit-sink";

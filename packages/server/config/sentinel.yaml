@@ -77,6 +77,37 @@ pipeline:
 # SDK側のdetectionRulesと同じ形式。サーバ側でも静的パターンマッチ検知が可能。
 # ensemble.dynamic_rules はスコアベースの高度な検知用（別機能）。
 detection_rules: []
+
+# --- Error Routing ---
+# エラー分類→ルーティング→外部サービス連携。TS SDK ErrorRouter と同等の概念。
+# Go Server側の実装は将来タスク。設定スキーマのみ先行定義。
+error_routing:
+  enabled: false
+  # severity_config:
+  #   critical: ["TransportConnectionRefused", "EngineInternalError"]
+  #   warning: ["TransportTimeout", "HandlerTimeout", "HandlerException"]
+  # sinks:
+  #   audit:
+  #     type: datadog           # datadog / sentry / cloudwatch / console
+  #     config:
+  #       api_key: ${SENTINEL_DATADOG_API_KEY}
+  #       site: datadoghq.com
+  #   dead_letter:
+  #     type: sqs               # sqs / local_file
+  #     config:
+  #       queue_url: ${SENTINEL_DLQ_URL}
+  #       region: ap-northeast-1
+  # rules:
+  #   - match:
+  #       severity: CRITICAL
+  #     decisions:
+  #       - destination: task
+  #         action: escalate
+  #         priority: 1
+  #       - destination: notification
+  #         action: escalate
+  #         metadata:
+  #           channel: "#incidents-critical"
 # detection_rules:
 #   - rule_id: custom-brute-force
 #     event_name: SECURITY_INTRUSION_DETECTED

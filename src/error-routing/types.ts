@@ -47,6 +47,13 @@ export interface DeadLetterQueue {
     enqueue(payload: ClassifiedError, metadata: Record<string, string>): Promise<void>;
 }
 
+export interface TaskRequest {
+    eventName: string;
+    actionType: string;
+    description: string;
+    source: ClassifiedError;
+}
+
 export interface ErrorRoutingConfig {
     enabled: boolean;
     severityConfig?: {
@@ -58,4 +65,8 @@ export interface ErrorRoutingConfig {
         audit?: AuditSink;
         deadLetter?: DeadLetterQueue;
     };
+    /** タスク生成要求コールバック（task/ai_agent destination用） */
+    onTaskRequest?: (request: TaskRequest) => void;
+    /** 通知要求コールバック（notification destination用） */
+    onNotification?: (error: ClassifiedError, decision: RoutingDecision) => void;
 }
