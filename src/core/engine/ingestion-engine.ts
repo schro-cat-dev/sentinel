@@ -69,8 +69,10 @@ export class IngestionEngine implements IIngestionCoordinator {
     }
 
     async handle(raw: Partial<Log>): Promise<IngestionResult> {
+        const startTime = Date.now();
         // 1. Normalize (outside lock — stateless, parallelizable)
         let log = this.normalizer.normalize(raw);
+        this.emitSafe(() => this.config.tracer?.onPipelineStart?.({ traceId: log.traceId, operation: "ingest" }));
 
         // 2. Mask PII
         let masked = false;
@@ -119,9 +121,15 @@ export class IngestionEngine implements IIngestionCoordinator {
             hashChainValid = true;
         }
 
-        // 6. Callbacks + metrics
+        // 6. Callbacks + metrics + tracing
         this.emitSafe(() => this.config.onLogProcessed?.(log));
         this.emitSafe(() => this.config.metrics?.onIngest?.());
+        this.emitSafe(() => this.config.tracer?.onPipelineEnd?.({
+            traceId: log.traceId,
+            operation: "ingest",
+            durationMs: Date.now() - startTime,
+            success: true,
+        }));
 
         this.lastProcessedLog = log;
 

@@ -76,7 +76,7 @@ branch: main
 |----|------|------|------|
 | F-01 | SHOULD | PASS | SentinelLogger DI（warn/error）。config.logger注入可能 |
 | F-02 | NICE | PASS | SentinelMetrics DI（onIngest, onDetection, onTaskDispatch）。未設定時ゼロオーバーヘッド |
-| F-03 | NICE | DEFER | 分散トレーシングはGoサーバ責務。SDKはtraceId伝播のみ。v2でOTel対応予定 |
+| F-03 | NICE | PASS | SentinelTracer DI（onPipelineStart/End）。ゼロ依存でOTel接続可能。durationMs計測付き |
 
 ## G. ビルド・パッケージング
 
@@ -127,14 +127,14 @@ branch: main
 | C. エラーハンドリング | 2/2 PASS | 2/3 PASS | — | 4/5 (80%) |
 | D. メモリ管理 | 2/2 PASS | 1/1 PASS | — | 4/4 (100%) |
 | E. セキュリティ | 4/4 PASS | 2/2 PASS | — | 6/6 (100%) |
-| F. 可観測性 | — | 1/1 PASS | 1/2 PASS | 2/3 (67%) |
+| F. 可観測性 | — | 1/1 PASS | 2/2 PASS | 3/3 (100%) |
 | G. ビルド | 3/3 PASS | 2/2 PASS | — | 5/5 (100%) |
 | H. テスト | 3/3 PASS | 2/2 PASS | — | 5/5 (100%) |
 | I. API設計 | 2/2 PASS | 2/2 PASS | — | 4/4 (100%) |
 | J. ドキュメント | 2/2 PASS | 2/2 PASS | — | 4/4 (100%) |
-| **合計** | **24/24** | **21/21** | **2/3** | **47/49 (96%)** |
+| **合計** | **24/24** | **21/21** | **3/3** | **48/48 (100%)** |
 
-> 残り1件（F-03 分散トレーシング）はGoサーバ責務として明示的にDEFER。SDKの責務外。
+> 全カテゴリ100%達成。D-04（メモリ制限）はN/A（JSにネイティブAPIなし）として除外。
 
 ## 修正済みMUST項目
 

@@ -250,7 +250,7 @@ export type {
 } from "./types/task";
 export type { SystemEventName, DetectionResult, DetectionRule, DetectionRuleConditions } from "./types/event";
 export type { TaskDispatchHandler, TaskConfirmHandler } from "./core/task/task-executor";
-export type { SentinelLogger, SentinelMetrics } from "./configs/sentinel-config";
+export type { SentinelLogger, SentinelMetrics, SentinelTracer } from "./configs/sentinel-config";
 export type { RemoteTransport, TransportMode, TransportConfig } from "./transport/transport";
 export { validateLogInput, ValidationError, DEFAULT_VALIDATION_LIMITS } from "./validation/log-validator";
 export type { ValidationLimits } from "./validation/log-validator";

@@ -27,6 +27,18 @@ export interface SentinelMetrics {
 }
 
 /**
+ * 軽量トレーシングフック。
+ * 分散トレーシングの統合ポイント。未設定時はゼロオーバーヘッド。
+ * ユーザーが自身のOpenTelemetry等のインスタンスを接続する形で使用。
+ */
+export interface SentinelTracer {
+    /** パイプライン処理開始時（spanの開始点） */
+    onPipelineStart?: (context: { traceId: string; operation: string }) => void;
+    /** パイプライン処理完了時（spanの終了点） */
+    onPipelineEnd?: (context: { traceId: string; operation: string; durationMs: number; success: boolean }) => void;
+}
+
+/**
  * Sentinel SDK unified configuration
  */
 export interface SentinelConfig {
@@ -77,6 +89,12 @@ export interface SentinelConfig {
      * 各フックは optional。必要なものだけ設定可能。
      */
     metrics?: SentinelMetrics;
+
+    /**
+     * トレーシングフック（省略時: ゼロオーバーヘッド）
+     * OpenTelemetry等の分散トレーシングとの統合ポイント。
+     */
+    tracer?: SentinelTracer;
 
     /**
      * ホワイトリスト検証設定
