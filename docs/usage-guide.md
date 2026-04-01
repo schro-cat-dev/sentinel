@@ -517,3 +517,137 @@ The TaskGenerator classifies severity from the detection result and log context:
 | 4 | Warn | SLA violation (with type=SLA) |
 | 5 | Error | Security intrusion (with type=SECURITY) |
 | 6 | Critical | Security intrusion (with type=SECURITY) |
+
+---
+
+## v2 新機能
+
+### カスタム検知ルール（detectionRules）
+
+組込みの5ルールに加えて、独自のパターンマッチ検知ルールを追加可能。
+
+```typescript
+const sentinel = Sentinel.initialize(createDefaultConfig({
+    projectName: "my-app", serviceId: "api",
+    detectionRules: [
+        {
+            ruleId: "brute-force",
+            eventName: "SECURITY_INTRUSION_DETECTED",
+            priority: "HIGH",
+            conditions: {
+                logTypes: ["SECURITY"],
+                minLevel: 4,
+                messagePattern: /failed.*login|brute.*force/i,
+            },
+        },
+    ],
+}));
+```
+
+条件はAND結合。`logTypes`, `minLevel`, `maxLevel`, `messagePattern`, `tagMatch`, `origin`, `isCritical` が利用可能。
+
+### ホワイトリスト検証（whitelist）
+
+設定値の妥当性を初期化時に検証。タイポによる無言のルール不発を防止。
+
+```typescript
+whitelist: {
+    level: "strict",      // strict/standard/permissive/off
+    enabledDomains: ["security", "task", "privacy"],
+    extensions: {
+        actionType: ["CUSTOM_JIRA_TICKET"],
+        eventName: ["CUSTOM_BUSINESS_EVENT"],
+    },
+},
+```
+
+| レベル | 挙動 |
+|--------|------|
+| `strict` | 組込み値のみ許可、extensions無視 |
+| `standard` | 組込み値 + extensions、不正値はエラー（デフォルト） |
+| `permissive` | 不正値は警告のみ（移行期用） |
+| `off` | 検証なし（開発用） |
+
+### メトリクスフック（metrics）
+
+パイプラインの各ステージで呼ばれるオプショナルコールバック。未設定時ゼロオーバーヘッド。
+
+```typescript
+metrics: {
+    onIngest: () => { counter.inc("logs_ingested"); },
+    onDetection: (det) => { counter.inc("events_detected", { event: det.eventName }); },
+    onTaskDispatch: (result) => { counter.inc("tasks_dispatched"); },
+},
+```
+
+### トレーシングフック（tracer）
+
+OpenTelemetry等の分散トレーシングとの統合ポイント。
+
+```typescript
+tracer: {
+    onPipelineStart: (ctx) => { span = tracer.startSpan(ctx.operation); },
+    onPipelineEnd: (ctx) => { span.end(); record(ctx.durationMs); },
+},
+```
+
+### エラールーティング（errorRouting）
+
+エラーを分類→ルーティング→外部サービス送信。CRITICAL→タスク生成+通知+監査ログ。
+
+```typescript
+import { ConsoleAuditSink } from "@sentinel/client";
+
+errorRouting: {
+    enabled: true,
+    sinks: { audit: new ConsoleAuditSink() },
+    onTaskRequest: (req) => { /* タスク生成ロジック */ },
+    onNotification: (err, decision) => { /* 通知送信 */ },
+},
+```
+
+### 動的コールバック更新（updateCallbacks）
+
+初期化後にコールバックを差し替え可能。
+
+```typescript
+sentinel.updateCallbacks({
+    onLogProcessed: newHandler,   // 差し替え
+    onTaskGenerated: null,         // クリア
+});
+```
+
+### ハンドラのdispose
+
+`onTaskAction()` は解除関数を返す。
+
+```typescript
+const dispose = sentinel.onTaskAction("ESCALATE", handler);
+// 後で解除
+dispose();
+```
+
+### YAML設定ファイル（config-loader）
+
+YAMLファイルからSentinelConfigを読み込み可能。
+
+```typescript
+import { loadConfigFromYaml } from "@sentinel/client";
+
+const config = await loadConfigFromYaml("./sentinel.config.yaml");
+const sentinel = Sentinel.initialize(config);
+```
+
+### gRPC認証（Go Server）
+
+SDK→Server通信にはAPI keyをgRPCメタデータに設定。
+
+```typescript
+// SDK側: gRPC transport にAPI key設定
+const transport = createGrpcTransport({
+    address: "localhost:50051",
+    metadata: { "x-api-key": "your-api-key-here" },
+});
+```
+
+サーバ側: `SENTINEL_API_KEYS=key1,key2` 環境変数、または `auth.api_keys` YAML設定。

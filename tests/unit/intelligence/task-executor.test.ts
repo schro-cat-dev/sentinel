@@ -210,4 +210,89 @@ describe("TaskExecutor", () => {
             expect(analyzeHandler).toHaveBeenCalledTimes(1);
         });
     });
+
+    describe("unregisterHandler edge cases", () => {
+        it("unregistering a handler not in the list does nothing", () => {
+            const handlerA = vi.fn();
+            const handlerB = vi.fn();
+            executor.registerHandler("SYSTEM_NOTIFICATION", handlerA);
+
+            // handlerB was never registered - indexOf returns -1
+            executor.unregisterHandler("SYSTEM_NOTIFICATION", handlerB);
+
+            // handlerA still there
+            expect(executor.getHandlerCount("SYSTEM_NOTIFICATION")).toBe(1);
+        });
+
+        it("unregistering from nonexistent action type does nothing", () => {
+            const handler = vi.fn();
+            // No handlers registered for this type - early return
+            executor.unregisterHandler("NONEXISTENT", handler);
+            expect(executor.getHandlerCount("NONEXISTENT")).toBe(0);
+        });
+
+        it("unregistering the last handler deletes the action type entry", () => {
+            const handler = vi.fn();
+            executor.registerHandler("SYSTEM_NOTIFICATION", handler);
+            executor.unregisterHandler("SYSTEM_NOTIFICATION", handler);
+            expect(executor.getHandlerCount("SYSTEM_NOTIFICATION")).toBe(0);
+        });
+    });
+
+    describe("getHandlerCount edge cases", () => {
+        it("returns 0 for action type with no registered handlers", () => {
+            expect(executor.getHandlerCount("NONEXISTENT")).toBe(0);
+        });
+    });
+
+    describe("error handling edge cases", () => {
+        it("returns stringified error when handler throws non-Error", async () => {
+            executor.registerHandler("SYSTEM_NOTIFICATION", () => {
+                throw "string-error" as unknown;
+            });
+
+            const task = createGeneratedTask();
+            const result = await executor.dispatch(task);
+
+            expect(result.status).toBe("failed");
+            expect(result.error).toBe("string-error");
+        });
+    });
+
+    describe("SEMI_AUTO with confirm handler", () => {
+        it("dispatches when confirm handler returns true", async () => {
+            executor.setConfirmHandler(() => true);
+            const task = createGeneratedTask({ executionLevel: "SEMI_AUTO" });
+            const result = await executor.dispatch(task);
+            expect(result.status).toBe("dispatched");
+        });
+
+        it("blocks when confirm handler returns false", async () => {
+            executor.setConfirmHandler(() => false);
+            const task = createGeneratedTask({ executionLevel: "SEMI_AUTO" });
+            const result = await executor.dispatch(task);
+            expect(result.status).toBe("blocked_approval");
+        });
+
+        it("handles async confirm handler returning true", async () => {
+            executor.setConfirmHandler(async () => true);
+            const task = createGeneratedTask({ executionLevel: "SEMI_AUTO" });
+            const result = await executor.dispatch(task);
+            expect(result.status).toBe("dispatched");
+        });
+    });
+
+    describe("timeout with negative timeoutMs", () => {
+        it("skips timeout when timeoutMs is negative (treated as <= 0)", async () => {
+            const handler = vi.fn();
+            executor.registerHandler("SYSTEM_NOTIFICATION", handler);
+
+            const task = createGeneratedTask({
+                guardrails: { requireHumanApproval: false, timeoutMs: -1, maxRetries: 0 },
+            });
+            const result = await executor.dispatch(task);
+            expect(result.status).toBe("dispatched");
+            expect(handler).toHaveBeenCalled();
+        });
+    });
 });

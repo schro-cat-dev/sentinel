@@ -673,8 +673,8 @@ describe("Advanced PII Masking Bypass", () => {
             // "test@" alone doesn't match email regex (no domain), so it passes through
             // "example.com" alone doesn't match email regex (no @), so it passes through
             // Each individual field is safe - only combination reveals PII
-            expect(String(masked.message)).toBeDefined();
-            expect(String(details?.suffix)).toBeDefined();
+            expect(String(masked.message)).toContain("test@");
+            expect(String(details?.suffix)).toBe("example.com");
         });
 
         it("STRUCT-02: PII in deeply nested input field should be masked", () => {
@@ -812,7 +812,9 @@ describe("Advanced PII Masking Bypass", () => {
             const masked = maskObj(log) as Record<string, unknown>;
             // Each 8-digit fragment matches the CC pattern on its own (4+4 groups)
             // The test documents that the split halves are processed independently
-            expect(masked).toBeDefined();
+            expect(masked).toHaveProperty("message");
+            expect(masked).toHaveProperty("details");
+            expect(typeof masked.message).toBe("string");
         });
 
         it("STRUCT-17: phone in nested array of objects should be masked", () => {
@@ -1084,7 +1086,7 @@ describe("Advanced PII Masking Bypass", () => {
             // as 4+4+4+3 since \d{1,7} allows 1-7 trailing digits
             const result = maskStr("411111111111111", CC_RULE);
             // Document: 15-digit numbers DO match the CC pattern
-            expect(result).toBeDefined();
+            expect(result).not.toBe("411111111111111");
         });
 
         it("RULE-18: PII_TYPE GOVERNMENT_ID should not mask 11-digit numbers", () => {
@@ -1183,7 +1185,7 @@ describe("Advanced PII Masking Bypass", () => {
         it("EDGE-08: empty-like email '@' should not crash masking", () => {
             // WHY: degenerate input should be handled gracefully without exceptions
             const result = maskStr("@", EMAIL_RULE);
-            expect(result).toBeDefined();
+            expect(result).toBe("@");
         });
 
         it("EDGE-09: empty-like CC '0000-0000-0000-0000' should be masked", () => {
@@ -1195,28 +1197,32 @@ describe("Advanced PII Masking Bypass", () => {
         it("EDGE-10: minimal phone '+81-' should not crash masking", () => {
             // WHY: incomplete phone number should not cause errors
             const result = maskStr("+81-", PHONE_RULE);
-            expect(result).toBeDefined();
+            expect(result).toBe("+81-");
         });
 
         it("EDGE-11: 15-digit number (Amex-like) handling", () => {
             // WHY: American Express uses 15 digits; CC regex may or may not catch it
             const result = maskStr("378282246310005", CC_RULE);
-            // Document whether 15-digit numbers are caught
-            expect(result).toBeDefined();
+            // 15-digit Amex numbers match the CC pattern (4+4+4+3 via \d{1,7})
+            expect(result).not.toBe("378282246310005");
         });
 
         it("EDGE-12: Unicode NFC normalization of email", () => {
             // WHY: NFC normalization produces precomposed characters; regex behavior may differ
             const nfc = "t\u00EBst@example.com".normalize("NFC");
             const result = maskStr(nfc, EMAIL_RULE);
-            expect(result).toBeDefined();
+            // ASCII-only email regex cannot match the full local part due to ë,
+            // but "st@example.com" portion is still detected and masked
+            expect(result).not.toContain("@example.com");
         });
 
         it("EDGE-13: Unicode NFD normalization of email", () => {
             // WHY: NFD decomposes chars (e + combining diaeresis); regex may match differently
             const nfd = "t\u00EBst@example.com".normalize("NFD");
             const result = maskStr(nfd, EMAIL_RULE);
-            expect(result).toBeDefined();
+            // ASCII-only email regex cannot match the full local part due to ë (decomposed),
+            // but "st@example.com" portion is still detected and masked
+            expect(result).not.toContain("@example.com");
         });
 
         it("EDGE-14: NFC vs NFD should produce consistent masking", () => {

@@ -36,6 +36,7 @@ func benchPipeline(b *testing.B) *Pipeline {
 }
 
 func BenchmarkPipeline_NormalLog(b *testing.B) {
+	b.ReportAllocs()
 	p := benchPipeline(b)
 	ctx := context.Background()
 	log := domain.Log{Message: "benchmark normal log", Level: 3}
@@ -48,6 +49,7 @@ func BenchmarkPipeline_NormalLog(b *testing.B) {
 }
 
 func BenchmarkPipeline_CriticalLogWithTask(b *testing.B) {
+	b.ReportAllocs()
 	p := benchPipeline(b)
 	ctx := context.Background()
 
@@ -60,6 +62,7 @@ func BenchmarkPipeline_CriticalLogWithTask(b *testing.B) {
 }
 
 func BenchmarkPipeline_PIIMasking(b *testing.B) {
+	b.ReportAllocs()
 	p := benchPipeline(b)
 	ctx := context.Background()
 
@@ -72,6 +75,7 @@ func BenchmarkPipeline_PIIMasking(b *testing.B) {
 }
 
 func BenchmarkHashChain(b *testing.B) {
+	b.ReportAllocs()
 	signer, _ := security.NewIntegritySigner([]byte("benchmark-hmac-key-32-bytes-long!"))
 	log := testutil.NewTestLog()
 
@@ -82,6 +86,7 @@ func BenchmarkHashChain(b *testing.B) {
 }
 
 func BenchmarkStore_InsertLog(b *testing.B) {
+	b.ReportAllocs()
 	st, _ := store.NewSQLiteStore(":memory:")
 	defer st.Close()
 	ctx := context.Background()

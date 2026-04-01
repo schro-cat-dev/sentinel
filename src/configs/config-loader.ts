@@ -90,11 +90,14 @@ export interface ConfigLoaderOptions {
     expandEnv?: boolean;
     /** 環境変数のソース（テスト用にオーバーライド可能） */
     envSource?: Record<string, string | undefined>;
+    /** YAMLパーサー関数（省略時は `yaml` パッケージを使用） */
+    yamlParser?: (content: string) => RawYamlConfig;
     /**
-     * YAMLパーサー関数（テスト用にインジェクション可能。省略時は `yaml` パッケージを使用）。
-     * `false` を渡すと「yamlパッケージ未インストール」をシミュレートする（テスト専用）。
+     * requireの差し替え（依存注入）。
+     * yaml パッケージ未インストール時のエラーハンドリングテスト等で使用。
+     * 省略時はNode.jsの require を使用。
      */
-    yamlParser?: ((content: string) => RawYamlConfig) | false;
+    requireFn?: (moduleName: string) => { parse: (s: string) => RawYamlConfig };
 }
 
 // =========================================================================
@@ -150,7 +153,7 @@ export function parseConfigYaml(
         : yamlContent;
 
     // 2. YAMLパース
-    const raw = parseYaml(expanded, options.yamlParser);
+    const raw = parseYaml(expanded, { yamlParser: options.yamlParser, requireFn: options.requireFn });
 
     // 3. バリデーション
     validateRawConfig(raw);
@@ -188,20 +191,13 @@ function expandEnvVars(
 
 function parseYaml(
     content: string,
-    customParser?: ((content: string) => RawYamlConfig) | false,
+    options: Pick<ConfigLoaderOptions, "yamlParser" | "requireFn">,
 ): RawYamlConfig {
-    if (typeof customParser === "function") return customParser(content);
+    if (options.yamlParser) return options.yamlParser(content);
 
-    // customParser === false はテスト専用: yaml未インストールをシミュレート
-    if (customParser === false) {
-        throw new Error(
-            'YAML parsing requires the "yaml" package. Install it with: npm install yaml',
-        );
-    }
-
+    const loadYaml = options.requireFn ?? defaultRequireYaml;
     try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const yamlModule = require("yaml") as { parse: (s: string) => RawYamlConfig };
+        const yamlModule = loadYaml("yaml");
         return yamlModule.parse(content);
     } catch (e) {
         if (e instanceof Error && e.message.includes("Cannot find module")) {
@@ -211,6 +207,11 @@ function parseYaml(
         }
         throw e;
     }
+}
+
+function defaultRequireYaml(_moduleName: string): { parse: (s: string) => RawYamlConfig } {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require("yaml") as { parse: (s: string) => RawYamlConfig };
 }
 
 // =========================================================================

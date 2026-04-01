@@ -1,4 +1,5 @@
 import { WhitelistRegistry } from "./whitelist-registry";
+import { ValidationError } from "./log-validator";
 import { SECURITY_WHITELIST } from "./whitelists/security-whitelist";
 import { TASK_WHITELIST } from "./whitelists/task-whitelist";
 import { PRIVACY_WHITELIST } from "./whitelists/privacy-whitelist";
@@ -33,7 +34,15 @@ export interface WhitelistValidationResult {
 export function validateConfigWhitelists(
     config: SentinelConfig,
 ): WhitelistValidationResult {
-    const level: WhitelistLevel = config.whitelist?.level ?? "standard";
+    const VALID_LEVELS: readonly string[] = ["strict", "standard", "permissive", "off"];
+    const rawLevel = config.whitelist?.level ?? "standard";
+    if (!VALID_LEVELS.includes(rawLevel)) {
+        throw new ValidationError(
+            "whitelist.level",
+            `invalid whitelist level: "${rawLevel}" (valid: ${VALID_LEVELS.join(", ")})`,
+        );
+    }
+    const level: WhitelistLevel = rawLevel as WhitelistLevel;
     const warnings: string[] = [];
 
     // "off" → 検証なし

@@ -129,7 +129,7 @@ describe("IngestionEngine", () => {
 
             expect(onTaskDispatched).toHaveBeenCalledTimes(1);
             const result = onTaskDispatched.mock.calls[0][0] as TaskResult;
-            expect(result.status).toBeDefined();
+            expect(result.status).toBe("dispatched");
         });
 
         it("invokes onLogProcessed after hash chain", async () => {
@@ -143,7 +143,8 @@ describe("IngestionEngine", () => {
 
             expect(onLogProcessed).toHaveBeenCalledTimes(1);
             const log = onLogProcessed.mock.calls[0][0];
-            expect(log.hash).toBeDefined();
+            expect(typeof log.hash).toBe("string");
+            expect(log.hash).toMatch(/^[0-9a-f]{64}$/); // SHA-256 hex
         });
 
         it("does not crash when onTaskGenerated throws", async () => {
@@ -158,7 +159,8 @@ describe("IngestionEngine", () => {
             });
 
             const result = await engine.handle({ message: "critical", isCritical: true });
-            expect(result.traceId).toBeDefined();
+            expect(typeof result.traceId).toBe("string");
+            expect(result.traceId.length).toBeGreaterThan(0);
         });
     });
 

@@ -35,6 +35,7 @@ func benchmarkEnhancedPipeline(b *testing.B) *Pipeline {
 }
 
 func BenchmarkEnsemble_NormalLog(b *testing.B) {
+	b.ReportAllocs()
 	p := benchmarkEnhancedPipeline(b)
 	ctx := context.Background()
 	b.ResetTimer()
@@ -44,6 +45,7 @@ func BenchmarkEnsemble_NormalLog(b *testing.B) {
 }
 
 func BenchmarkEnsemble_SecurityDetection(b *testing.B) {
+	b.ReportAllocs()
 	p := benchmarkEnhancedPipeline(b)
 	ctx := context.Background()
 	b.ResetTimer()
@@ -56,6 +58,7 @@ func BenchmarkEnsemble_SecurityDetection(b *testing.B) {
 }
 
 func BenchmarkEnsemble_CriticalWithTask(b *testing.B) {
+	b.ReportAllocs()
 	p := benchmarkEnhancedPipeline(b)
 	ctx := context.Background()
 	b.ResetTimer()
@@ -67,6 +70,7 @@ func BenchmarkEnsemble_CriticalWithTask(b *testing.B) {
 }
 
 func BenchmarkAnomaly_HighTraffic(b *testing.B) {
+	b.ReportAllocs()
 	p := benchmarkEnhancedPipeline(b)
 	ctx := context.Background()
 	b.ResetTimer()
@@ -79,6 +83,7 @@ func BenchmarkAnomaly_HighTraffic(b *testing.B) {
 }
 
 func BenchmarkMaskingVerification(b *testing.B) {
+	b.ReportAllocs()
 	p := benchmarkEnhancedPipeline(b)
 	ctx := context.Background()
 	b.ResetTimer()

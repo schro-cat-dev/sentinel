@@ -236,6 +236,26 @@ describe("ErrorRouter", () => {
         stderrSpy.mockRestore();
     });
 
+    it("route() catch block handles non-Error thrown value", async () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        // Force classify to throw a non-Error value
+        const router = new ErrorRouter({
+            enabled: true,
+            rules: [
+                {
+                    match: { severity: "CRITICAL", kindPattern: {
+                        test: () => { throw "string-thrown"; },
+                    } as unknown as RegExp },
+                    decisions: [],
+                },
+            ],
+        });
+
+        await router.route(new Error("connection refused"), "transport.dual");
+        expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("string-thrown"));
+        stderrSpy.mockRestore();
+    });
+
     it("log destination without logger does nothing (no-op)", async () => {
         const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
         const router = new ErrorRouter({
@@ -253,6 +273,135 @@ describe("ErrorRouter", () => {
 
         // Should not throw or call console.error
         expect(stderrSpy).not.toHaveBeenCalled();
+        stderrSpy.mockRestore();
+    });
+
+    it("task destination without onTaskRequest does nothing (no-op)", async () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const router = new ErrorRouter({
+            enabled: true,
+            // No onTaskRequest callback
+            rules: [
+                {
+                    match: { severity: "CRITICAL" },
+                    decisions: [{ destination: "task", action: "escalate", priority: 1 }],
+                },
+            ],
+        });
+
+        await router.route(new Error("connection refused"), "transport.dual");
+        // Should not throw or error
+        expect(stderrSpy).not.toHaveBeenCalled();
+        stderrSpy.mockRestore();
+    });
+
+    it("ai_agent destination without onTaskRequest does nothing (no-op)", async () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const router = new ErrorRouter({
+            enabled: true,
+            // No onTaskRequest callback
+            rules: [
+                {
+                    match: { severity: "WARNING", kindPattern: /^Handler/ },
+                    decisions: [{ destination: "ai_agent", action: "auto_remediate", priority: 2 }],
+                },
+            ],
+        });
+
+        await router.route(new Error("timeout occurred"), "task.timeout");
+        expect(stderrSpy).not.toHaveBeenCalled();
+        stderrSpy.mockRestore();
+    });
+
+    it("notification destination without onNotification does nothing (no-op)", async () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const router = new ErrorRouter({
+            enabled: true,
+            // No onNotification callback
+            rules: [
+                {
+                    match: { severity: "CRITICAL" },
+                    decisions: [{ destination: "notification", action: "escalate", priority: 1 }],
+                },
+            ],
+        });
+
+        await router.route(new Error("connection refused"), "transport.dual");
+        expect(stderrSpy).not.toHaveBeenCalled();
+        stderrSpy.mockRestore();
+    });
+
+    it("audit_sink destination without sink does nothing (no-op)", async () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const router = new ErrorRouter({
+            enabled: true,
+            // No sinks configured
+            rules: [
+                {
+                    match: { severity: "CRITICAL" },
+                    decisions: [{ destination: "audit_sink", action: "record", priority: 1 }],
+                },
+            ],
+        });
+
+        await router.route(new Error("connection refused"), "transport.dual");
+        expect(stderrSpy).not.toHaveBeenCalled();
+        stderrSpy.mockRestore();
+    });
+
+    it("dead_letter destination without deadLetter sink does nothing (no-op)", async () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const router = new ErrorRouter({
+            enabled: true,
+            // No deadLetter sink configured
+            rules: [
+                {
+                    match: { severity: "WARNING" },
+                    decisions: [{ destination: "dead_letter", action: "retry", priority: 3 }],
+                },
+            ],
+        });
+
+        await router.route(new Error("some warning"), "callback");
+        expect(stderrSpy).not.toHaveBeenCalled();
+        stderrSpy.mockRestore();
+    });
+
+    it("log destination traceId defaults to null when not provided", async () => {
+        const logger: ErrorRoutingLogger = { info: vi.fn() };
+        const router = new ErrorRouter({
+            enabled: true,
+            logger,
+            rules: [
+                {
+                    match: { severity: "INFO" },
+                    decisions: [{ destination: "log", action: "record", priority: 5 }],
+                },
+            ],
+        });
+
+        // No traceId passed
+        await router.route(new Error("validation(field) failed"), "callback");
+
+        expect(logger.info).toHaveBeenCalledTimes(1);
+        const call = vi.mocked(logger.info).mock.calls[0];
+        expect(call[1]).toEqual(
+            expect.objectContaining({ traceId: null }),
+        );
+    });
+
+    it("execute() catch block handles non-Error thrown by sink", async () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const sink: AuditSink = {
+            send: vi.fn().mockRejectedValue("string-rejection"),
+        };
+        const router = new ErrorRouter({ enabled: true, sinks: { audit: sink } });
+
+        await router.route(new Error("connection refused"), "transport.dual");
+
+        expect(stderrSpy).toHaveBeenCalledWith(
+            expect.stringContaining("string-rejection"),
+        );
         stderrSpy.mockRestore();
     });
 });

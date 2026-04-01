@@ -206,3 +206,39 @@ describe("F-15: detectionRules.conditions.logTypes/origin validated", () => {
         ).not.toThrow();
     });
 });
+
+// ===== whitelist.level runtime validation =====
+describe("whitelist.level runtime type validation", () => {
+    it("rejects typo in whitelist.level", () => {
+        expect(() =>
+            Sentinel.initialize(createDefaultConfig({
+                projectName: "p", serviceId: "s",
+                security: { enableHashChain: false },
+                whitelist: { level: "stric" as never },
+            })),
+        ).toThrow(ValidationError);
+    });
+
+    it("rejects unknown whitelist.level value", () => {
+        expect(() =>
+            Sentinel.initialize(createDefaultConfig({
+                projectName: "p", serviceId: "s",
+                security: { enableHashChain: false },
+                whitelist: { level: "ultra_strict" as never },
+            })),
+        ).toThrow(/whitelist\.level/);
+    });
+
+    it("accepts valid whitelist.level values", () => {
+        for (const level of ["strict", "standard", "permissive", "off"] as const) {
+            Sentinel.reset();
+            expect(() =>
+                Sentinel.initialize(createDefaultConfig({
+                    projectName: "p", serviceId: "s",
+                    security: { enableHashChain: false },
+                    whitelist: { level },
+                })),
+            ).not.toThrow();
+        }
+    });
+});

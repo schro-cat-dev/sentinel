@@ -95,3 +95,27 @@ task_rules:
 #     - security
 #     - task
 #     - privacy
+#   extensions:                # カスタム値の追加（standard/permissive時のみ有効）
+#     action_type:
+#       - CUSTOM_JIRA_TICKET
+#     event_name:
+#       - CUSTOM_BUSINESS_EVENT
+
+# --- Error Routing (optional) ---
+# error_routing:
+#   enabled: false
+#   rules:
+#     - match:
+#         severity: CRITICAL
+#       decisions:
+#         - destination: audit_sink
+#           action: record
+#           priority: 1
+#         - destination: task
+#           action: escalate
+#           priority: 1
+
+# --- Validation Limits (optional) ---
+# validation_limits:
+#   max_message_length: 65536
+#   max_total_log_size: 2097152
