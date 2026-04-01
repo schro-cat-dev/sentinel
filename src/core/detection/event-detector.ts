@@ -19,15 +19,21 @@ export class EventDetector {
      */
     private validateCustomRules(): void {
         for (const rule of this.customRules) {
-            if (
-                rule.conditions.messagePattern !== undefined &&
-                !(rule.conditions.messagePattern instanceof RegExp)
-            ) {
-                throw new Error(
-                    `detectionRules[${rule.ruleId}].conditions.messagePattern must be a RegExp instance, ` +
-                    `got ${typeof rule.conditions.messagePattern}. ` +
-                    `If loading from JSON/YAML, convert the string to RegExp: new RegExp("pattern", "flags")`,
-                );
+            const mp = rule.conditions.messagePattern;
+            if (mp !== undefined) {
+                if (!(mp instanceof RegExp)) {
+                    throw new Error(
+                        `detectionRules[${rule.ruleId}].conditions.messagePattern must be a RegExp instance, ` +
+                        `got ${typeof mp}. ` +
+                        `If loading from JSON/YAML, convert the string to RegExp: new RegExp("pattern", "flags")`,
+                    );
+                }
+                if (mp.global || mp.sticky) {
+                    throw new Error(
+                        `detectionRules[${rule.ruleId}].conditions.messagePattern must not have global (g) or sticky (y) flag. ` +
+                        `These flags make .test() stateful and cause non-deterministic detection.`,
+                    );
+                }
             }
         }
     }

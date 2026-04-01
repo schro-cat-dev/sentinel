@@ -71,6 +71,15 @@ export function validateConfigWhitelists(
         for (const rule of config.detectionRules) {
             validate("eventName", rule.eventName);
             validate("detectionPriority", rule.priority);
+            // conditions内のlogTypes/originも検証（F-15修正）
+            if (rule.conditions.logTypes) {
+                for (const lt of rule.conditions.logTypes) {
+                    validate("logType", lt);
+                }
+            }
+            if (rule.conditions.origin) {
+                validate("origin", rule.conditions.origin);
+            }
         }
     }
 
@@ -80,6 +89,17 @@ export function validateConfigWhitelists(
         validate("severity", rule.severity);
         validate("actionType", rule.actionType);
         validate("executionLevel", rule.executionLevel);
+    }
+
+    // --- errorRouting.rules (F-14修正) ---
+    if (config.errorRouting?.rules) {
+        for (const rule of config.errorRouting.rules) {
+            validate("errorRoutingSeverity", rule.match.severity);
+            for (const d of rule.decisions) {
+                validate("errorRoutingDestination", d.destination);
+                validate("errorRoutingAction", d.action);
+            }
+        }
     }
 
     // --- masking rules (PII categories — 無効時も検証して潜在的な設定ミスを検出) ---

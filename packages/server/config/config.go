@@ -24,6 +24,23 @@ type Config struct {
 	MaskingPolicies []MaskingPolicyRuleConfig   `yaml:"masking_policies"`
 	RoutingRules    []ApprovalRoutingRuleConfig `yaml:"routing_rules"`
 	ErrorRouting    ErrorRoutingConfig          `yaml:"error_routing"`
+	DetectionRules  []DetectionRuleConfig       `yaml:"detection_rules"`
+}
+
+// DetectionRuleConfig はカスタム検知ルール（TS SDK互換）
+type DetectionRuleConfig struct {
+	RuleID     string                    `yaml:"rule_id"`
+	EventName  string                    `yaml:"event_name"`
+	Priority   string                    `yaml:"priority"`
+	Conditions DetectionConditionConfig  `yaml:"conditions"`
+}
+
+type DetectionConditionConfig struct {
+	LogTypes       []string `yaml:"log_types"`
+	MinLevel       int      `yaml:"min_level"`
+	MaxLevel       int      `yaml:"max_level"`
+	MessagePattern string   `yaml:"message_pattern"`
+	Origin         string   `yaml:"origin"`
 }
 
 // ErrorRoutingConfig はエラー分類→ルーティング→外部サービス連携の設定。
@@ -545,6 +562,34 @@ func validate(cfg *Config) error {
 		}
 		if rule.Priority != "" && !validDetectionPriorities[rule.Priority] {
 			return fmt.Errorf("ensemble.dynamic_rules[%d].priority %q is not valid (allowed: HIGH, MEDIUM, LOW)", i, rule.Priority)
+		}
+	}
+
+	// detection_rules validation
+	for i, rule := range cfg.DetectionRules {
+		if rule.EventName != "" && !validTaskEventNames[rule.EventName] {
+			return fmt.Errorf("detection_rules[%d].event_name %q is not valid (allowed: SECURITY_INTRUSION_DETECTED, COMPLIANCE_VIOLATION, SYSTEM_CRITICAL_FAILURE, AI_ACTION_REQUIRED)", i, rule.EventName)
+		}
+		if rule.Priority != "" && !validDetectionPriorities[rule.Priority] {
+			return fmt.Errorf("detection_rules[%d].priority %q is not valid (allowed: HIGH, MEDIUM, LOW)", i, rule.Priority)
+		}
+	}
+
+	// error_routing.rules validation
+	validERSeverities := map[string]bool{"CRITICAL": true, "WARNING": true, "INFO": true}
+	validERDestinations := map[string]bool{"task": true, "ai_agent": true, "notification": true, "audit_sink": true, "dead_letter": true, "log": true}
+	validERActions := map[string]bool{"escalate": true, "auto_remediate": true, "block": true, "record": true, "retry": true}
+	for i, rule := range cfg.ErrorRouting.Rules {
+		if rule.Match.Severity != "" && !validERSeverities[rule.Match.Severity] {
+			return fmt.Errorf("error_routing.rules[%d].match.severity %q is not valid (allowed: CRITICAL, WARNING, INFO)", i, rule.Match.Severity)
+		}
+		for j, d := range rule.Decisions {
+			if d.Destination != "" && !validERDestinations[d.Destination] {
+				return fmt.Errorf("error_routing.rules[%d].decisions[%d].destination %q is not valid", i, j, d.Destination)
+			}
+			if d.Action != "" && !validERActions[d.Action] {
+				return fmt.Errorf("error_routing.rules[%d].decisions[%d].action %q is not valid", i, j, d.Action)
+			}
 		}
 	}
 
