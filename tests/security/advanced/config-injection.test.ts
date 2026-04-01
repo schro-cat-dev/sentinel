@@ -961,12 +961,11 @@ describe("Security: Advanced Config Injection Attacks", () => {
             expect(() => Sentinel.getInstance()).toThrow();
         });
 
-        it("ingest after shutdown on same reference still works on engine", async () => {
+        it("ingest after shutdown on same reference is blocked", async () => {
             const s = Sentinel.initialize(createTestConfig());
             await s.shutdown();
-            // The engine reference is still held by `s`
-            const result = await s.ingest({ message: "post-shutdown" });
-            expect(result).toBeDefined();
+            // post-shutdown operations are now properly blocked
+            await expect(s.ingest({ message: "post-shutdown" })).rejects.toThrow(/shutdown/i);
         });
     });
 });

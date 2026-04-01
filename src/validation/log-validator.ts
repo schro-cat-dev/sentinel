@@ -137,8 +137,14 @@ export function validateLogInput(
             if (typeof tag.key !== "string" || tag.key.length > L.maxTagKeyLength) {
                 throw new ValidationError(`tags[${i}].key`, `invalid or too long`);
             }
+            if (tag.key.includes("\x00")) {
+                throw new ValidationError(`tags[${i}].key`, "contains null bytes");
+            }
             if (typeof tag.category !== "string" || tag.category.length > L.maxTagValueLength) {
                 throw new ValidationError(`tags[${i}].category`, `invalid or too long`);
+            }
+            if (tag.category.includes("\x00")) {
+                throw new ValidationError(`tags[${i}].category`, "contains null bytes");
             }
         }
     }
@@ -152,16 +158,26 @@ export function validateLogInput(
             throw new ValidationError("resourceIds", `exceeds max count ${L.maxResourceIds}`);
         }
         for (let i = 0; i < input.resourceIds.length; i++) {
-            if (typeof input.resourceIds[i] === "string" && input.resourceIds[i].length > L.maxResourceIdLength) {
-                throw new ValidationError(`resourceIds[${i}]`, `exceeds max length ${L.maxResourceIdLength}`);
+            if (typeof input.resourceIds[i] === "string") {
+                if (input.resourceIds[i].length > L.maxResourceIdLength) {
+                    throw new ValidationError(`resourceIds[${i}]`, `exceeds max length ${L.maxResourceIdLength}`);
+                }
+                if (input.resourceIds[i].includes("\x00")) {
+                    throw new ValidationError(`resourceIds[${i}]`, "contains null bytes");
+                }
             }
         }
     }
 
     // details
     if (input.details !== undefined && input.details !== null) {
-        if (typeof input.details === "string" && input.details.length > L.maxDetailsLength) {
-            throw new ValidationError("details", `exceeds max length ${L.maxDetailsLength}`);
+        if (typeof input.details === "string") {
+            if (input.details.length > L.maxDetailsLength) {
+                throw new ValidationError("details", `exceeds max length ${L.maxDetailsLength}`);
+            }
+            if (input.details.includes("\x00")) {
+                throw new ValidationError("details", "contains null bytes");
+            }
         }
     }
 
@@ -197,8 +213,13 @@ export function validateLogInput(
 
 function validateStringField(value: unknown, field: string, maxLength: number): void {
     if (value === undefined || value === null) return;
-    if (typeof value === "string" && value.length > maxLength) {
-        throw new ValidationError(field, `exceeds max length ${maxLength}`);
+    if (typeof value === "string") {
+        if (value.length > maxLength) {
+            throw new ValidationError(field, `exceeds max length ${maxLength}`);
+        }
+        if (value.includes("\x00")) {
+            throw new ValidationError(field, "contains null bytes");
+        }
     }
 }
 
@@ -242,6 +263,12 @@ function estimateLogSize(input: Partial<Log>): number {
     }
     if (input.input !== undefined && input.input !== null) {
         size += estimateJsonSize(input.input);
+    }
+    if (input.agentBackLog !== undefined && input.agentBackLog !== null) {
+        size += estimateJsonSize(input.agentBackLog);
+    }
+    if (input.aiContext !== undefined && input.aiContext !== null) {
+        size += estimateJsonSize(input.aiContext);
     }
     return size;
 }

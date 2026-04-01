@@ -100,6 +100,10 @@ export class Sentinel {
                     { source: "sentinel" },
                 );
             }
+            // リソースクリーンアップ（非同期closeはbest-effort）
+            try { Sentinel.instance.transportConfig.transport?.close?.(); } catch { /* */ }
+            Sentinel.instance.taskExecutor.clearHandlers();
+            Sentinel.instance.engine.resetState();
         }
         Sentinel.instance = null;
     }
@@ -131,6 +135,7 @@ export class Sentinel {
      * - "dual":   ローカル処理 + リモート送信の両方
      */
     public async ingest(log: Partial<Log>): Promise<IngestionResult> {
+        if (this.isShutdown) throw new Error("Sentinel is shutdown. Cannot ingest after shutdown.");
         validateLogInput(log, this.config.validationLimits);
 
         const mode = this.transportConfig.mode;
@@ -156,7 +161,7 @@ export class Sentinel {
             } catch (e) {
                 const error = e instanceof Error ? e : new Error(String(e));
                 localResult.transportError = error.message;
-                try { this.config.onError?.(error, "transport.dual"); } catch { /* */ }
+                try { this.engine.getOnError()?.(error, "transport.dual"); } catch { /* */ }
             }
         }
 
@@ -168,6 +173,7 @@ export class Sentinel {
      * 戻り値の関数を呼ぶとこのハンドラのみ解除される。
      */
     public onTaskAction(actionType: string, handler: TaskDispatchHandler): () => void {
+        if (this.isShutdown) throw new Error("Sentinel is shutdown. Cannot register handler after shutdown.");
         this.whitelistRegistry?.validate("actionType", actionType);
         this.taskExecutor.registerHandler(actionType, handler);
         this.warnIfTooManyHandlers(actionType);
@@ -215,6 +221,7 @@ export class Sentinel {
         onTaskDispatched?: ((result: import("./types/task").TaskResult) => void) | null;
         onError?: ((error: Error, context: string) => void) | null;
     }): void {
+        if (this.isShutdown) throw new Error("Sentinel is shutdown. Cannot update callbacks after shutdown.");
         this.engine.updateCallbacks(callbacks);
     }
 
