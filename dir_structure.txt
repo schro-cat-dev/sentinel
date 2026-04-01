@@ -63,7 +63,7 @@
 │   │   └── sinks/
 │   │       └── console-audit-sink.ts            # デフォルトAuditSink（serializeForAudit接続、PII除去済みJSON出力）
 │
-├── tests/                                       # ── テストスイート（2,173テスト）──
+├── tests/                                       # ── テストスイート（`npm test` で最新数を確認）──
 │   ├── helpers/
 │   │   └── fixtures.ts                          # テストファクトリ（createTestLog, createTestConfig, createTestTaskRule）
 │   ├── unit/                                    # ユニットテスト（220テスト）

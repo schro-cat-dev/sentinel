@@ -66,7 +66,7 @@ export interface ErrorRoutingConfig {
         deadLetter?: DeadLetterQueue;
     };
     /** タスク生成要求コールバック（task/ai_agent destination用） */
-    onTaskRequest?: (request: TaskRequest) => void;
+    onTaskRequest?: (request: TaskRequest) => void | Promise<void>;
     /** 通知要求コールバック（notification destination用） */
-    onNotification?: (error: ClassifiedError, decision: RoutingDecision) => void;
+    onNotification?: (error: ClassifiedError, decision: RoutingDecision) => void | Promise<void>;
 }

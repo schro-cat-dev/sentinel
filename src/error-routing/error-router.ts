@@ -64,23 +64,23 @@ export class ErrorRouter {
                     // 構造化ログ出力のみ（console.errorは最終防壁なのでここではinfo相当）
                     break;
                 case "task":
-                    this.config.onTaskRequest?.({
+                    await Promise.resolve(this.config.onTaskRequest?.({
                         eventName: "ERROR_ESCALATION",
                         actionType: "ESCALATE",
                         description: `[ErrorRouter] ${error.kind}: ${error.message}`,
                         source: error,
-                    });
+                    }));
                     break;
                 case "ai_agent":
-                    this.config.onTaskRequest?.({
+                    await Promise.resolve(this.config.onTaskRequest?.({
                         eventName: "ERROR_ESCALATION",
                         actionType: "AI_ANALYZE",
                         description: `[ErrorRouter:AI] ${error.kind}: ${error.message}`,
                         source: error,
-                    });
+                    }));
                     break;
                 case "notification":
-                    this.config.onNotification?.(error, decision);
+                    await Promise.resolve(this.config.onNotification?.(error, decision));
                     break;
             }
         } catch (execErr) {

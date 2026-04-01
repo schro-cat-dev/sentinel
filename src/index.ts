@@ -232,6 +232,10 @@ export class Sentinel {
         Object.freeze(obj);
         for (const value of Object.values(obj)) {
             if (value && typeof value === "object" && !Object.isFrozen(value)) {
+                // classインスタンス（plain Object/Array以外）はfreezeしない
+                // 理由: Sink等のstateful classが内部状態を持つ場合に壊れるため
+                const ctor = (value as object).constructor;
+                if (ctor !== Object && ctor !== Array) continue;
                 Sentinel.deepFreeze(value as object);
             }
         }

@@ -4,7 +4,7 @@
 audited_at: "2026-04-01"
 initial_audit: "2026-04-01 (d08cfd8)"
 remediation: "2026-04-01"
-total_tests: 2173
+total_tests: "npm test で確認"
 branch: main
 ```
 
@@ -92,7 +92,7 @@ branch: main
 
 | ID | 水準 | 結果 | 詳細 |
 |----|------|------|------|
-| H-01 | MUST | PASS | 2173テスト全パス |
+| H-01 | MUST | PASS | 全テストパス（`npm test` で確認） |
 | H-02 | MUST | PASS | 正常/異常/エッジ/ペネトレーション/E2E全方位 |
 | H-03 | MUST | PASS | fuzzing, ReDoS, prototype pollution, encoding bypass等 |
 | H-04 | SHOULD | PASS | フレーキーテストなし |

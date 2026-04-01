@@ -23,6 +23,48 @@ type Config struct {
 	Response        ResponseConfig              `yaml:"response"`
 	MaskingPolicies []MaskingPolicyRuleConfig   `yaml:"masking_policies"`
 	RoutingRules    []ApprovalRoutingRuleConfig `yaml:"routing_rules"`
+	ErrorRouting    ErrorRoutingConfig          `yaml:"error_routing"`
+}
+
+// ErrorRoutingConfig はエラー分類→ルーティング→外部サービス連携の設定。
+// TS SDK の ErrorRoutingConfig と同等の概念。
+type ErrorRoutingConfig struct {
+	Enabled        bool                        `yaml:"enabled"`
+	SeverityConfig *ErrorSeverityConfig        `yaml:"severity_config"`
+	Sinks          *ErrorSinkConfig            `yaml:"sinks"`
+	Rules          []ErrorRoutingRuleConfig    `yaml:"rules"`
+}
+
+type ErrorSeverityConfig struct {
+	Critical []string `yaml:"critical"`
+	Warning  []string `yaml:"warning"`
+}
+
+type ErrorSinkConfig struct {
+	Audit      *SinkAdapterConfig `yaml:"audit"`
+	DeadLetter *SinkAdapterConfig `yaml:"dead_letter"`
+}
+
+type SinkAdapterConfig struct {
+	Type   string            `yaml:"type"`   // datadog, sentry, cloudwatch, sqs, console, local_file
+	Config map[string]string `yaml:"config"`
+}
+
+type ErrorRoutingRuleConfig struct {
+	Match     ErrorRoutingMatchConfig     `yaml:"match"`
+	Decisions []ErrorRoutingDecisionConfig `yaml:"decisions"`
+}
+
+type ErrorRoutingMatchConfig struct {
+	Severity    string `yaml:"severity"`
+	KindPattern string `yaml:"kind_pattern"`
+}
+
+type ErrorRoutingDecisionConfig struct {
+	Destination string            `yaml:"destination"` // task, ai_agent, notification, audit_sink, dead_letter, log
+	Action      string            `yaml:"action"`      // escalate, auto_remediate, block, record, retry
+	Priority    int               `yaml:"priority"`
+	Metadata    map[string]string `yaml:"metadata"`
 }
 
 type ServerConfig struct {
