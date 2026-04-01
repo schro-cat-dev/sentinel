@@ -283,3 +283,15 @@ export { WhitelistRegistry } from "./validation/whitelist-registry";
 export { validateConfigWhitelists } from "./validation/config-validator";
 export type { WhitelistDefinition, WhitelistExtensions } from "./validation/whitelist-types";
 export type { WhitelistDomain, WhitelistLevel, WhitelistValidationResult } from "./validation/config-validator";
+export { ErrorRouter } from "./error-routing/error-router";
+export { ErrorClassifier } from "./error-routing/error-classifier";
+export { RoutingEngine } from "./error-routing/routing-engine";
+export type {
+    ErrorRoutingConfig,
+    ClassifiedError,
+    ClassificationInput,
+    RoutingRule,
+    RoutingDecision,
+    AuditSink,
+    DeadLetterQueue,
+} from "./error-routing/types";

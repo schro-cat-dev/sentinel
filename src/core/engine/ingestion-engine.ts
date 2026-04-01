@@ -8,6 +8,7 @@ import { IIngestionCoordinator, ILogNormalizer } from "./i-interfaces";
 import { IngestionResult } from "./types";
 import { SentinelConfig } from "../../configs/sentinel-config";
 import { TaskResult } from "../../types/task";
+import { ErrorRouter } from "../../error-routing/error-router";
 
 export class IngestionEngine implements IIngestionCoordinator {
     private readonly normalizer: ILogNormalizer;
@@ -22,6 +23,9 @@ export class IngestionEngine implements IIngestionCoordinator {
 
     // RES-02: dual-mode reuse
     private lastProcessedLog: Log | null = null;
+
+    // エラールーティング（optional）
+    private readonly errorRouter?: ErrorRouter;
 
     // 動的コールバックオーバーライド（configはfrozen、こちらはmutable）
     private callbackOverrides: {
@@ -45,6 +49,9 @@ export class IngestionEngine implements IIngestionCoordinator {
         this.detector = deps.detector;
         this.taskGenerator = deps.taskGenerator;
         this.taskExecutor = deps.taskExecutor;
+        if (this.config.errorRouting?.enabled) {
+            this.errorRouter = new ErrorRouter(this.config.errorRouting);
+        }
     }
 
     private static readonly VALID_CALLBACK_KEYS = new Set([
@@ -84,6 +91,7 @@ export class IngestionEngine implements IIngestionCoordinator {
         this.signer.resetChain();
         this.lastProcessedLog = null;
         this.callbackOverrides = {};
+        this.errorRouter?.shutdown();
     }
 
     /** onErrorコールバックを取得（オーバーライド優先）。dual-mode transport等から利用。 */
@@ -207,10 +215,18 @@ export class IngestionEngine implements IIngestionCoordinator {
             fn();
         } catch (e) {
             const error = e instanceof Error ? e : new Error(String(e));
+
+            // ErrorRouter有効時: 分類→ルーティング→アダプタ実行（非同期、non-blocking）
+            if (this.errorRouter) {
+                this.errorRouter.route(error, context).catch((routeErr) => {
+                    console.error("[Sentinel] ErrorRouter.route failed:", routeErr);
+                });
+            }
+
+            // 既存動作も維持: onErrorコールバック呼出し
             try {
                 this.getCallback("onError")?.(error, context);
             } catch (onErrorErr) {
-                // onError自体の例外をstderrにfallback出力（完全無視を防ぐ）
                 console.error(`[Sentinel] onError handler threw:`, onErrorErr);
             }
         }
