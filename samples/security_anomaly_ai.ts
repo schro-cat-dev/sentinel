@@ -7,7 +7,8 @@
  * TS SDKはイベント検知→タスク生成→ハンドラ呼び出しまでを担当します。
  * 実際のAI分析やSIEM連携はGoサーバまたは外部サービスで実行します。
  */
-import { Sentinel, createDefaultConfig, GeneratedTask } from "../src/index";
+import { Sentinel, createDefaultConfig } from "../src/index";
+import type { GeneratedTask } from "../src/index";
 
 async function runAnomalyDemo() {
     const dispatchedTasks: GeneratedTask[] = [];

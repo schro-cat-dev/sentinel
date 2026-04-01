@@ -56,7 +56,7 @@
 │       └── utils/
 │           └── error-utils.ts                   # isPiiSafe, maskPiiContext, classifyError（パイプライン未使用、ユーティリティ）
 │
-├── tests/                                       # ── テストスイート（2020テスト）──
+├── tests/                                       # ── テストスイート（2,102テスト）──
 │   ├── helpers/
 │   │   └── fixtures.ts                          # テストファクトリ（createTestLog, createTestConfig, createTestTaskRule）
 │   ├── unit/                                    # ユニットテスト（220テスト）
@@ -98,10 +98,23 @@
 │   │   ├── masking-bypass.test.ts               # PIIマスキング回避: エンコード, 構造, KEY_MATCH (18)
 │   │   ├── integrity-chain.test.ts              # hash chain改竄: フィールド変更, 順序, 検証 (16)
 │   │   ├── information-leakage.test.ts          # 情報漏洩: エラーメッセージ, PII除去 (5)
-│   │   └── new-findings-v2.test.ts              # v2修正: timing, race, transport, config, NaN (21)
-│   ├── config/                                  # 設定マトリクステスト（322テスト）
+│   │   ├── new-findings-v2.test.ts              # v2修正: timing, race, transport, config, NaN (21)
+│   │   └── advanced/                            # 高度なセキュリティテスト（1,203テスト）
+│   │       ├── config-injection.test.ts         # prototype pollution, deep-merge攻撃 (53)
+│   │       ├── state-manipulation.test.ts       # singleton abuse, config freeze検証 (55)
+│   │       ├── injection-attacks.test.ts        # XSS, SQL injection (42)
+│   │       ├── encoding-bypass.test.ts          # Unicode, HTML entities, zero-width (68)
+│   │       ├── crypto-attacks.test.ts           # hash chain tampering, replay (38)
+│   │       ├── transport-security.test.ts       # transport layer攻撃 (32)
+│   │       ├── dos-resource-exhaustion.test.ts  # oversized fields, memory bombs (45)
+│   │       ├── type-confusion.test.ts           # 型強制攻撃 (28)
+│   │       ├── pii-masking-advanced.test.ts     # homoglyph, invisible chars (44)
+│   │       └── fuzzing-inputs.test.ts           # ランダム/fuzzテスト (102)
+│   ├── config/                                  # 設定マトリクステスト（390テスト）
 │   │   ├── config-matrix.test.ts                # createDefaultConfig: defaults, deep-merge, environment (14)
 │   │   ├── config-pipeline-reflection.test.ts   # 設定→パイプライン反映: 全フィールドE2E (38)
+│   │   ├── config-server-exhaustive.test.ts     # 全設定組合せ + 侵入経路 + トレーシング (43)
+│   │   ├── size-limits.test.ts                  # サイズ制限: デフォルト, カスタム, フィールド別 (25)
 │   │   ├── transport-modes.test.ts              # Transport全モード: timeout, fallback, dual, shutdown (34)
 │   │   ├── masking-rules-exhaustive.test.ts     # マスキング全パターン: PII/REGEX/KEY_MATCH/edge (73)
 │   │   └── validation-normalizer-exhaustive.test.ts # 全フィールド検証+正規化: 正常/異常/edge (159)

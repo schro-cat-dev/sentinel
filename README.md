@@ -20,7 +20,7 @@ The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **
 | Backend Server | Go 1.22+ / gRPC | Implemented | 689 tests (`-race` verified, fuzz tested) |
 | gRPC Communication | Protocol Buffers v3 | Implemented | E2E verified (SDK→Server 15 tests via real gRPC connection) |
 
-**Total: 2,791 tests, 0 FAIL**
+**Total: 2,791 tests (SDK 2,102 + Server 689), 0 FAIL**
 
 ---
 
@@ -166,11 +166,12 @@ sentinel/
 │   ├── security/                 # Hash-chain, PII masking
 │   ├── shared/                   # Error taxonomy, Result monad
 │   └── types/                    # Domain models (Log, Task, Event)
-├── tests/                        # TS tests (349 cases)
-│   ├── unit/                     # Unit tests (220 cases)
-│   │   ├── core/                 # Engine, detection, normalizer tests
+├── tests/                        # TS tests (2,102 cases)
+│   ├── unit/                     # Unit + validation tests
+│   │   ├── core/                 # Engine, detection, normalizer, custom rules tests
 │   │   ├── security/             # Masking, signer tests
 │   │   ├── intelligence/         # Task generator, executor, severity tests
+│   │   ├── validation/           # Whitelist, config validator, lifecycle, metrics tests
 │   │   ├── transport/            # Transport mode tests (local/remote/dual)
 │   │   ├── validation/           # Input validator tests
 │   │   └── shared/               # Result monad tests
@@ -310,7 +311,7 @@ authorization:
 ## Testing
 
 ```bash
-# TypeScript SDK (1,899 tests)
+# TypeScript SDK (2,102 tests)
 npm test
 
 # Go Server (689 tests)
@@ -318,17 +319,21 @@ cd packages/server
 go test ./... -race -count=1
 ```
 
-**Total: 2,588 tests**
+**Total: 2,791 tests (SDK 2,102 + Server 689), 0 FAIL**
 
 | カテゴリ | テスト数 | 詳細ドキュメント |
 |---------|---------|----------------|
 | Unit | 220 | [docs/testing/unit-tests.md](docs/testing/unit-tests.md) |
 | Security | 94 | [docs/testing/security-tests.md](docs/testing/security-tests.md) |
-| Config Matrix | 322 | [docs/testing/config-tests.md](docs/testing/config-tests.md) |
+| Advanced Security | 1,203 | Fuzzing, encoding bypass, injection, DoS, state manipulation |
+| Config Matrix | 390 | [docs/testing/config-tests.md](docs/testing/config-tests.md) |
+| Detection Rules | 22 | Custom detection rules (正常/異常/エッジ/ペネトレーション) |
+| Whitelist Validation | 99 | Registry, config validator, routing E2E, security levels |
+| Quality / Lifecycle | 39 | Instance lifecycle, pollution guard, metrics, audit fixes |
 | Integration | 18 | [docs/testing/integration-e2e-tests.md](docs/testing/integration-e2e-tests.md) |
 | E2E (SDK→Go) | 15 | [docs/testing/integration-e2e-tests.md](docs/testing/integration-e2e-tests.md) |
 | Go Server | 689 | `go test ./... -race` |
-| **品質チェックリスト** | — | [docs/testing/quality-checklist.md](docs/testing/quality-checklist.md) |
+| **品質ベンチマーク** | 48/48 | [docs/quality-benchmark/checklist-results.md](docs/quality-benchmark/checklist-results.md) |
 
 ---
 
