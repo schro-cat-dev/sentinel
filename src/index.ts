@@ -201,6 +201,24 @@ export class Sentinel {
     }
 
     /**
+     * ライフサイクルコールバックを動的に更新する。
+     *
+     * configはdeepFreezeされているが、コールバックは運用中に差し替えが必要な場合がある
+     * （例: ログ出力先の変更、メトリクス収集の切替）。
+     * この関数はエンジン内部のコールバック参照を安全に更新する。
+     *
+     * @param callbacks 更新するコールバック（省略されたフィールドは変更しない）
+     */
+    public updateCallbacks(callbacks: {
+        onLogProcessed?: ((log: Log) => void) | null;
+        onTaskGenerated?: ((task: import("./types/task").GeneratedTask) => void) | null;
+        onTaskDispatched?: ((result: import("./types/task").TaskResult) => void) | null;
+        onError?: ((error: Error, context: string) => void) | null;
+    }): void {
+        this.engine.updateCallbacks(callbacks);
+    }
+
+    /**
      * 設定オブジェクトをdeep freezeして外部からの変更を防ぐ
      */
     private static deepFreeze<T extends object>(obj: T): T {

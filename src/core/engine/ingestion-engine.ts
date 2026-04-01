@@ -23,6 +23,14 @@ export class IngestionEngine implements IIngestionCoordinator {
     // RES-02: dual-mode reuse
     private lastProcessedLog: Log | null = null;
 
+    // 動的コールバックオーバーライド（configはfrozen、こちらはmutable）
+    private callbackOverrides: {
+        onLogProcessed?: ((log: Log) => void) | null;
+        onTaskGenerated?: ((task: import("../../types/task").GeneratedTask) => void) | null;
+        onTaskDispatched?: ((result: TaskResult) => void) | null;
+        onError?: ((error: Error, context: string) => void) | null;
+    } = {};
+
     constructor(deps: {
         config: SentinelConfig;
         normalizer: ILogNormalizer;
@@ -40,11 +48,33 @@ export class IngestionEngine implements IIngestionCoordinator {
     }
 
     /**
+     * コールバックを動的に更新する。nullで明示的にクリア。undefinedで変更なし。
+     */
+    updateCallbacks(callbacks: typeof this.callbackOverrides): void {
+        for (const [key, value] of Object.entries(callbacks)) {
+            if (value !== undefined) {
+                (this.callbackOverrides as Record<string, unknown>)[key] = value;
+            }
+        }
+    }
+
+    /** コールバックを取得（オーバーライド優先、なければconfig） */
+    private getCallback<K extends "onLogProcessed" | "onTaskGenerated" | "onTaskDispatched" | "onError">(
+        key: K,
+    ): SentinelConfig[K] | undefined {
+        if (key in this.callbackOverrides) {
+            return (this.callbackOverrides[key] ?? undefined) as SentinelConfig[K] | undefined;
+        }
+        return this.config[key];
+    }
+
+    /**
      * 内部状態をリセットする（shutdown時に呼ばれる）
      */
     resetState(): void {
         this.signer.resetChain();
         this.lastProcessedLog = null;
+        this.callbackOverrides = {};
     }
 
     getLastProcessedLog(): Log | null {
@@ -101,9 +131,9 @@ export class IngestionEngine implements IIngestionCoordinator {
         if (detection) {
             const tasks = this.taskGenerator.generate(detection, log);
             for (const task of tasks) {
-                this.emitSafe(() => this.config.onTaskGenerated?.(task));
+                this.emitSafe(() => this.getCallback("onTaskGenerated")?.(task));
                 const result = await this.taskExecutor.dispatch(task);
-                this.emitSafe(() => this.config.onTaskDispatched?.(result));
+                this.emitSafe(() => this.getCallback("onTaskDispatched")?.(result));
                 this.emitSafe(() => this.config.metrics?.onTaskDispatch?.(result));
                 tasksGenerated.push(result);
             }
@@ -122,7 +152,7 @@ export class IngestionEngine implements IIngestionCoordinator {
         }
 
         // 6. Callbacks + metrics + tracing
-        this.emitSafe(() => this.config.onLogProcessed?.(log));
+        this.emitSafe(() => this.getCallback("onLogProcessed")?.(log));
         this.emitSafe(() => this.config.metrics?.onIngest?.());
         this.emitSafe(() => this.config.tracer?.onPipelineEnd?.({
             traceId: log.traceId,
@@ -164,7 +194,7 @@ export class IngestionEngine implements IIngestionCoordinator {
         } catch (e) {
             const error = e instanceof Error ? e : new Error(String(e));
             try {
-                this.config.onError?.(error, context);
+                this.getCallback("onError")?.(error, context);
             } catch (onErrorErr) {
                 // onError自体の例外をstderrにfallback出力（完全無視を防ぐ）
                 console.error(`[Sentinel] onError handler threw:`, onErrorErr);

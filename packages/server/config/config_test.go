@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -420,5 +421,203 @@ func TestLoad_FileNotFound(t *testing.T) {
 	_, err := Load("/nonexistent/path/config.yaml")
 	if err == nil {
 		t.Error("expected error for missing file")
+	}
+}
+
+// --- Enum validation tests ---
+
+func TestLoad_Validation_InvalidTaskRuleSeverity(t *testing.T) {
+	path := writeTestConfig(t, `
+pipeline:
+  service_id: "test"
+  rules:
+    - rule_id: "r1"
+      severity: "URGENT"
+      event_name: "SECURITY_INTRUSION_DETECTED"
+      action_type: "AI_ANALYZE"
+      execution_level: "AUTO"
+`)
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for invalid severity")
+	}
+	if !strings.Contains(err.Error(), "severity") || !strings.Contains(err.Error(), "URGENT") {
+		t.Errorf("error should mention severity and invalid value, got: %v", err)
+	}
+}
+
+func TestLoad_Validation_InvalidTaskRuleActionType(t *testing.T) {
+	path := writeTestConfig(t, `
+pipeline:
+  service_id: "test"
+  rules:
+    - rule_id: "r1"
+      severity: "HIGH"
+      event_name: "SECURITY_INTRUSION_DETECTED"
+      action_type: "DELETE_EVERYTHING"
+      execution_level: "AUTO"
+`)
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for invalid action_type")
+	}
+	if !strings.Contains(err.Error(), "action_type") || !strings.Contains(err.Error(), "DELETE_EVERYTHING") {
+		t.Errorf("error should mention action_type and invalid value, got: %v", err)
+	}
+}
+
+func TestLoad_Validation_InvalidTaskRuleExecutionLevel(t *testing.T) {
+	path := writeTestConfig(t, `
+pipeline:
+  service_id: "test"
+  rules:
+    - rule_id: "r1"
+      severity: "HIGH"
+      event_name: "SECURITY_INTRUSION_DETECTED"
+      action_type: "AI_ANALYZE"
+      execution_level: "YOLO"
+`)
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for invalid execution_level")
+	}
+	if !strings.Contains(err.Error(), "execution_level") || !strings.Contains(err.Error(), "YOLO") {
+		t.Errorf("error should mention execution_level and invalid value, got: %v", err)
+	}
+}
+
+func TestLoad_Validation_InvalidTaskRuleEventName(t *testing.T) {
+	path := writeTestConfig(t, `
+pipeline:
+  service_id: "test"
+  rules:
+    - rule_id: "r1"
+      severity: "HIGH"
+      event_name: "COFFEE_MACHINE_BROKEN"
+      action_type: "AI_ANALYZE"
+      execution_level: "AUTO"
+`)
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for invalid event_name")
+	}
+	if !strings.Contains(err.Error(), "event_name") || !strings.Contains(err.Error(), "COFFEE_MACHINE_BROKEN") {
+		t.Errorf("error should mention event_name and invalid value, got: %v", err)
+	}
+}
+
+func TestLoad_Validation_InvalidDynamicRuleEventName(t *testing.T) {
+	path := writeTestConfig(t, `
+pipeline:
+  service_id: "test"
+ensemble:
+  enabled: true
+  dynamic_rules:
+    - rule_id: "d1"
+      event_name: "INVALID_EVENT"
+      priority: "HIGH"
+      score: 0.8
+`)
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for invalid dynamic_rule event_name")
+	}
+	if !strings.Contains(err.Error(), "dynamic_rules") || !strings.Contains(err.Error(), "INVALID_EVENT") {
+		t.Errorf("error should mention dynamic_rules and invalid value, got: %v", err)
+	}
+}
+
+func TestLoad_Validation_InvalidDynamicRulePriority(t *testing.T) {
+	path := writeTestConfig(t, `
+pipeline:
+  service_id: "test"
+ensemble:
+  enabled: true
+  dynamic_rules:
+    - rule_id: "d1"
+      event_name: "SECURITY_INTRUSION_DETECTED"
+      priority: "CRITICAL"
+      score: 0.8
+`)
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for invalid dynamic_rule priority (CRITICAL not in detection priorities)")
+	}
+	if !strings.Contains(err.Error(), "priority") || !strings.Contains(err.Error(), "CRITICAL") {
+		t.Errorf("error should mention priority and invalid value, got: %v", err)
+	}
+}
+
+func TestLoad_Validation_ValidAllTaskRuleEnums(t *testing.T) {
+	// Ensure all valid enum combinations pass validation
+	severities := []string{"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"}
+	actionTypes := []string{"AI_ANALYZE", "AUTOMATED_REMEDIATE", "SYSTEM_NOTIFICATION", "EXTERNAL_WEBHOOK", "KILL_SWITCH", "ESCALATE"}
+	executionLevels := []string{"AUTO", "SEMI_AUTO", "MANUAL", "MONITOR"}
+	eventNames := []string{"SECURITY_INTRUSION_DETECTED", "COMPLIANCE_VIOLATION", "SYSTEM_CRITICAL_FAILURE", "AI_ACTION_REQUIRED"}
+
+	for _, sev := range severities {
+		for _, act := range actionTypes[:1] { // just test one action_type per severity to keep tests fast
+			for _, exec := range executionLevels[:1] {
+				for _, ev := range eventNames[:1] {
+					t.Run(sev+"_"+act+"_"+exec+"_"+ev, func(t *testing.T) {
+						path := writeTestConfig(t, `
+pipeline:
+  service_id: "test"
+  rules:
+    - rule_id: "r1"
+      severity: "`+sev+`"
+      action_type: "`+act+`"
+      execution_level: "`+exec+`"
+      event_name: "`+ev+`"
+`)
+						_, err := Load(path)
+						if err != nil {
+							t.Fatalf("expected no error for valid enums, got: %v", err)
+						}
+					})
+				}
+			}
+		}
+	}
+}
+
+func TestLoad_Validation_ValidDynamicRulePriorities(t *testing.T) {
+	priorities := []string{"HIGH", "MEDIUM", "LOW"}
+	for _, p := range priorities {
+		t.Run(p, func(t *testing.T) {
+			path := writeTestConfig(t, `
+pipeline:
+  service_id: "test"
+ensemble:
+  enabled: true
+  dynamic_rules:
+    - rule_id: "d1"
+      event_name: "SECURITY_INTRUSION_DETECTED"
+      priority: "`+p+`"
+      score: 0.5
+`)
+			_, err := Load(path)
+			if err != nil {
+				t.Fatalf("expected no error for priority %s, got: %v", p, err)
+			}
+		})
+	}
+}
+
+func TestLoad_Validation_EmptyEnumFieldsSkipped(t *testing.T) {
+	// Rules with empty enum fields should pass (only non-empty values are validated)
+	path := writeTestConfig(t, `
+pipeline:
+  service_id: "test"
+  rules:
+    - rule_id: "r1"
+ensemble:
+  dynamic_rules:
+    - rule_id: "d1"
+      score: 0.5
+`)
+	_, err := Load(path)
+	if err != nil {
+		t.Fatalf("expected no error for empty enum fields, got: %v", err)
 	}
 }

@@ -263,6 +263,29 @@ type ResponseRuleConfig struct {
 	MinPriority    string   `yaml:"min_priority"`
 }
 
+// Enum whitelists — must match TS SDK's allowed values
+var validSeverities = map[string]bool{
+	"CRITICAL": true, "HIGH": true, "MEDIUM": true, "LOW": true, "INFO": true,
+}
+
+var validActionTypes = map[string]bool{
+	"AI_ANALYZE": true, "AUTOMATED_REMEDIATE": true, "SYSTEM_NOTIFICATION": true,
+	"EXTERNAL_WEBHOOK": true, "KILL_SWITCH": true, "ESCALATE": true,
+}
+
+var validExecutionLevels = map[string]bool{
+	"AUTO": true, "SEMI_AUTO": true, "MANUAL": true, "MONITOR": true,
+}
+
+var validTaskEventNames = map[string]bool{
+	"SECURITY_INTRUSION_DETECTED": true, "COMPLIANCE_VIOLATION": true,
+	"SYSTEM_CRITICAL_FAILURE": true, "AI_ACTION_REQUIRED": true,
+}
+
+var validDetectionPriorities = map[string]bool{
+	"HIGH": true, "MEDIUM": true, "LOW": true,
+}
+
 // Load はYAMLファイルから設定を読み込み、環境変数でオーバーライドする
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
@@ -456,5 +479,32 @@ func validate(cfg *Config) error {
 	if cfg.Store.Driver == "sqlite_encrypted" && len(cfg.Store.EncryptionKey) < 32 {
 		return fmt.Errorf("store.encryption_key must be at least 32 bytes when driver is sqlite_encrypted")
 	}
+
+	// TaskRule enum validation
+	for i, rule := range cfg.Pipeline.Rules {
+		if rule.Severity != "" && !validSeverities[rule.Severity] {
+			return fmt.Errorf("pipeline.rules[%d].severity %q is not valid (allowed: CRITICAL, HIGH, MEDIUM, LOW, INFO)", i, rule.Severity)
+		}
+		if rule.ActionType != "" && !validActionTypes[rule.ActionType] {
+			return fmt.Errorf("pipeline.rules[%d].action_type %q is not valid (allowed: AI_ANALYZE, AUTOMATED_REMEDIATE, SYSTEM_NOTIFICATION, EXTERNAL_WEBHOOK, KILL_SWITCH, ESCALATE)", i, rule.ActionType)
+		}
+		if rule.ExecutionLevel != "" && !validExecutionLevels[rule.ExecutionLevel] {
+			return fmt.Errorf("pipeline.rules[%d].execution_level %q is not valid (allowed: AUTO, SEMI_AUTO, MANUAL, MONITOR)", i, rule.ExecutionLevel)
+		}
+		if rule.EventName != "" && !validTaskEventNames[rule.EventName] {
+			return fmt.Errorf("pipeline.rules[%d].event_name %q is not valid (allowed: SECURITY_INTRUSION_DETECTED, COMPLIANCE_VIOLATION, SYSTEM_CRITICAL_FAILURE, AI_ACTION_REQUIRED)", i, rule.EventName)
+		}
+	}
+
+	// DynamicRule (detection rule) enum validation
+	for i, rule := range cfg.Ensemble.DynamicRules {
+		if rule.EventName != "" && !validTaskEventNames[rule.EventName] {
+			return fmt.Errorf("ensemble.dynamic_rules[%d].event_name %q is not valid (allowed: SECURITY_INTRUSION_DETECTED, COMPLIANCE_VIOLATION, SYSTEM_CRITICAL_FAILURE, AI_ACTION_REQUIRED)", i, rule.EventName)
+		}
+		if rule.Priority != "" && !validDetectionPriorities[rule.Priority] {
+			return fmt.Errorf("ensemble.dynamic_rules[%d].priority %q is not valid (allowed: HIGH, MEDIUM, LOW)", i, rule.Priority)
+		}
+	}
+
 	return nil
 }
