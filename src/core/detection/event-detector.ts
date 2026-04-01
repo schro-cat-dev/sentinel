@@ -62,7 +62,20 @@ export class EventDetector {
             };
         }
 
-        // 4. SLA違反
+        // 4. AIエージェントアクション要求
+        if (log.triggerAgent && log.level >= 4) {
+            return {
+                eventName: "AI_ACTION_REQUIRED",
+                priority: log.level >= 5 ? "HIGH" : "MEDIUM",
+                payload: {
+                    reason: log.message,
+                    suggestedTask: log.type === "SECURITY" ? "AI_ANALYZE" : "SYSTEM_NOTIFICATION",
+                    context: log.aiContext ?? null,
+                },
+            };
+        }
+
+        // 5. SLA違反
         if (log.type === "SLA" && log.level >= 4) {
             return {
                 eventName: "SYSTEM_CRITICAL_FAILURE",

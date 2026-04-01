@@ -6,8 +6,11 @@
   "types": "./dist/index.d.ts",
   "type": "module",
   "exports": {
-    "import": "./dist/index.mjs",
-    "require": "./dist/index.cjs"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
   },
   "engines": {
     "node": ">=20.0.0"
@@ -38,6 +41,8 @@
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@grpc/grpc-js": "^1.14.3",
+    "@grpc/proto-loader": "^0.8.0",
     "@rollup/plugin-typescript": "^11.1.6",
     "@types/node": "^20.19.30",
     "eslint": "^9.39.2",

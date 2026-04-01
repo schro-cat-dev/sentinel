@@ -67,4 +67,9 @@ export interface TransportConfig {
      * リモート送信失敗時にローカル処理にフォールバックするか（mode="remote" 時のみ）
      */
     fallbackToLocal?: boolean;
+
+    /**
+     * リモート送信タイムアウト（ミリ秒）。デフォルト30000ms。
+     */
+    timeoutMs?: number;
 }

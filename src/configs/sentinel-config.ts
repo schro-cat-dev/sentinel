@@ -3,7 +3,16 @@ import { Log } from "../types/log";
 import { TaskRule, GeneratedTask, TaskResult } from "../types/task";
 
 /**
- * Sentinel v1 SDK unified configuration
+ * SDKの内部ログ出力先。利用者が注入することでconsole.warn等を制御可能。
+ * 未指定時はproduction環境で抑制、それ以外でconsole出力。
+ */
+export interface SentinelLogger {
+    warn(message: string, context?: Record<string, unknown>): void;
+    error(message: string, context?: Record<string, unknown>): void;
+}
+
+/**
+ * Sentinel SDK unified configuration
  */
 export interface SentinelConfig {
     /** プロジェクト名 */
@@ -35,6 +44,12 @@ export interface SentinelConfig {
     onLogProcessed?: (log: Log) => void;
     onTaskGenerated?: (task: GeneratedTask) => void;
     onTaskDispatched?: (result: TaskResult) => void;
+
+    /** エラーハンドラ（パイプライン内部のswallowされるエラーを通知） */
+    onError?: (error: Error, context: string) => void;
+
+    /** SDK内部ログ出力先（省略時は環境に応じたデフォルト） */
+    logger?: SentinelLogger;
 }
 
 /**

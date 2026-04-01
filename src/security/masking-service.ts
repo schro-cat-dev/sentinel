@@ -1,4 +1,5 @@
 import { MaskingRule } from "../configs/masking-rule";
+import type { SentinelLogger } from "../configs/sentinel-config";
 
 interface MaskingContext {
     readonly seen: WeakSet<object>;
@@ -22,12 +23,12 @@ export class MaskingService {
         data: unknown,
         rules: readonly MaskingRule[] = [],
         preserveFields: readonly string[] = [],
-        options: { maxDepth?: number; maxArrayLength?: number } = {},
+        options: { maxDepth?: number; maxArrayLength?: number; logger?: SentinelLogger } = {},
     ): unknown {
         if (data === null || data === undefined) return data;
         if (typeof data !== "object") {
             return typeof data === "string"
-                ? MaskingService.maskString(data, rules)
+                ? MaskingService.maskString(data, rules, options.logger)
                 : data;
         }
         const context: MaskingContext = {
@@ -35,10 +36,11 @@ export class MaskingService {
             depth: 0,
             maxDepth: options.maxDepth ?? 10,
         };
+        const preserveSet = new Set(preserveFields);
         return MaskingService.maskInternal(
             data,
             rules,
-            preserveFields,
+            preserveSet,
             context,
             options,
         );
@@ -47,9 +49,9 @@ export class MaskingService {
     private static maskInternal(
         data: object,
         rules: readonly MaskingRule[],
-        preserveFields: readonly string[],
+        preserveFields: ReadonlySet<string>,
         context: MaskingContext,
-        options: { maxArrayLength?: number },
+        options: { maxArrayLength?: number; logger?: SentinelLogger },
     ): unknown {
         if (context.depth >= context.maxDepth || context.seen.has(data)) {
             return "[CIRCULAR_REFERENCE_OR_TOO_DEEP]";
@@ -67,14 +69,14 @@ export class MaskingService {
                     if (item === null || item === undefined) {
                         result.push(item);
                     } else if (typeof item === "string") {
-                        result.push(MaskingService.maskString(item, rules));
+                        result.push(MaskingService.maskString(item, rules, options.logger));
                     } else if (typeof item === "object") {
                         result.push(
                             MaskingService.maskInternal(
                                 item,
                                 rules,
                                 preserveFields,
-                                { ...context, depth: context.depth },
+                                context,
                                 options,
                             ),
                         );
@@ -97,7 +99,7 @@ export class MaskingService {
                     continue;
                 }
 
-                if (preserveFields.includes(key)) {
+                if (preserveFields.has(key)) {
                     result[key] = value;
                     continue;
                 }
@@ -117,13 +119,13 @@ export class MaskingService {
                 }
 
                 if (typeof value === "string") {
-                    result[key] = MaskingService.maskString(value, rules);
+                    result[key] = MaskingService.maskString(value, rules, options.logger);
                 } else if (typeof value === "object") {
                     result[key] = MaskingService.maskInternal(
                         value,
                         rules,
                         preserveFields,
-                        { ...context, depth: context.depth },
+                        context,
                         options,
                     );
                 } else {
@@ -140,6 +142,7 @@ export class MaskingService {
     private static maskString(
         text: string,
         rules: readonly MaskingRule[],
+        logger?: SentinelLogger,
     ): string {
         if (text.length === 0) return text;
         let result = text;
@@ -163,12 +166,9 @@ export class MaskingService {
                             rule.category,
                         );
                         if (piiPattern) {
-                            const safePattern = new RegExp(
-                                piiPattern.source,
-                                "g",
-                            );
+                            piiPattern.lastIndex = 0;
                             result = result.replace(
-                                safePattern,
+                                piiPattern,
                                 `[MASKED_${rule.category}]`,
                             );
                         }
@@ -180,9 +180,7 @@ export class MaskingService {
                         break;
                 }
             } catch (error) {
-                console.warn(
-                    `Masking rule failed: ${String(rule.type)}`,
-                );
+                logger?.warn(`Masking rule failed: ${String(rule.type)}`);
                 continue;
             }
         }

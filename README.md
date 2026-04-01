@@ -16,11 +16,11 @@ The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
-| Client SDK | TypeScript (zero dependencies) | Implemented | 302 tests (Vitest) — 208 unit/integration + 94 security |
-| Backend Server | Go 1.22+ / gRPC | Implemented | 682 tests (`-race` verified, fuzz tested) |
-| gRPC Communication | Protocol Buffers v3 | Implemented | Server-side E2E verified (SDK→Server gRPC client is user-injected via Transport I/F) |
+| Client SDK | TypeScript (zero dependencies) | Implemented | 349 tests (Vitest) — 208 unit/integration + 94 security + 33 engine + 14 E2E |
+| Backend Server | Go 1.22+ / gRPC | Implemented | 689 tests (`-race` verified, fuzz tested) |
+| gRPC Communication | Protocol Buffers v3 | Implemented | E2E verified (SDK→Server 15 tests via real gRPC connection) |
 
-**Total: 984 tests, 0 FAIL**
+**Total: 1,038 tests, 0 FAIL**
 
 ---
 
@@ -150,9 +150,9 @@ sentinel/
 │   ├── security/                 # Hash-chain, PII masking
 │   ├── shared/                   # Error taxonomy, Result monad
 │   └── types/                    # Domain models (Log, Task, Event)
-├── tests/                        # TS tests (302 cases)
-│   ├── unit/                     # Unit tests (208 cases)
-│   │   ├── core/                 # Detection, normalizer tests
+├── tests/                        # TS tests (349 cases)
+│   ├── unit/                     # Unit tests (220 cases)
+│   │   ├── core/                 # Engine, detection, normalizer tests
 │   │   ├── security/             # Masking, signer tests
 │   │   ├── intelligence/         # Task generator, executor, severity tests
 │   │   ├── transport/            # Transport mode tests (local/remote/dual)
@@ -166,6 +166,7 @@ sentinel/
 │   │   ├── integrity-chain       # Hash chain tamper/replay (CWE-354)
 │   │   ├── information-leakage   # Info leak prevention (CWE-209)
 │   │   └── new-findings-v2       # Timing, race condition, transport masking
+│   ├── e2e/                      # Cross-component E2E (SDK→Go gRPC, 15 cases)
 │   └── integration/              # Pipeline E2E tests
 ├── packages/
 │   └── server/                   # Go Backend Server
@@ -293,7 +294,7 @@ authorization:
 ## Testing
 
 ```bash
-# TypeScript SDK (302 tests: 208 unit/integration + 94 security)
+# TypeScript SDK (349 tests: unit + security + E2E)
 npm test
 
 # Go Server (682 tests)

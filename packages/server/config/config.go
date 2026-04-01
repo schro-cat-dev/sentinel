@@ -250,7 +250,14 @@ func applyEnvOverrides(cfg *Config) {
 		cfg.Server.Addr = addr
 	}
 	if keys := os.Getenv("SENTINEL_API_KEYS"); keys != "" {
-		cfg.Auth.APIKeys = strings.Split(keys, ",")
+		raw := strings.Split(keys, ",")
+		filtered := make([]string, 0, len(raw))
+		for _, k := range raw {
+			if trimmed := strings.TrimSpace(k); trimmed != "" {
+				filtered = append(filtered, trimmed)
+			}
+		}
+		cfg.Auth.APIKeys = filtered
 	}
 	// Agent overrides
 	if v := os.Getenv("SENTINEL_AGENT_ENABLED"); v == "true" || v == "1" {
@@ -310,10 +317,10 @@ func applyDefaults(cfg *Config) {
 		cfg.Store.DSN = "file:sentinel.db?_journal=WAL"
 	}
 	if cfg.Auth.RateLimitRPS == 0 {
-		cfg.Auth.RateLimitRPS = 100
+		cfg.Auth.RateLimitRPS = 10
 	}
 	if cfg.Auth.RateLimitBurst == 0 {
-		cfg.Auth.RateLimitBurst = 200
+		cfg.Auth.RateLimitBurst = 50
 	}
 	if cfg.Webhook.TimeoutSec == 0 {
 		cfg.Webhook.TimeoutSec = 10
@@ -364,6 +371,16 @@ func validate(cfg *Config) error {
 	}
 	if cfg.Auth.Enabled && len(cfg.Auth.APIKeys) == 0 {
 		return fmt.Errorf("auth.api_keys must not be empty when auth is enabled (set SENTINEL_API_KEYS)")
+	}
+	if cfg.Auth.Enabled {
+		for i, key := range cfg.Auth.APIKeys {
+			if len(key) < 16 {
+				return fmt.Errorf("auth.api_keys[%d] must be at least 16 characters", i)
+			}
+		}
+	}
+	if cfg.Store.Driver == "sqlite_encrypted" && len(cfg.Store.EncryptionKey) < 32 {
+		return fmt.Errorf("store.encryption_key must be at least 32 bytes when driver is sqlite_encrypted")
 	}
 	return nil
 }

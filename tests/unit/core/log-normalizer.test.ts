@@ -4,18 +4,21 @@ import { LogNormalizer } from "../../../src/core/engine/log-normalizer";
 describe("LogNormalizer", () => {
     const normalizer = new LogNormalizer("test-service");
 
-    describe("validation", () => {
-        it("throws on empty message", () => {
-            expect(() => normalizer.normalize({})).toThrow("Log message is required");
+    describe("defensive defaults (validation is at SDK boundary)", () => {
+        it("defaults empty/undefined message to empty string", () => {
+            const log = normalizer.normalize({});
+            expect(log.message).toBe("");
         });
 
-        it("throws on whitespace-only message", () => {
-            expect(() => normalizer.normalize({ message: "   " })).toThrow("Log message is required");
+        it("trims whitespace-only message to empty string", () => {
+            const log = normalizer.normalize({ message: "   " });
+            expect(log.message).toBe("");
         });
 
-        it("throws on message exceeding max length", () => {
+        it("handles very long message without throwing", () => {
             const longMsg = "x".repeat(65537);
-            expect(() => normalizer.normalize({ message: longMsg })).toThrow("exceeds maximum length");
+            const log = normalizer.normalize({ message: longMsg });
+            expect(log.message).toBe(longMsg);
         });
 
         it("accepts message at exactly max length", () => {

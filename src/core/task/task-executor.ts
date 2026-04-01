@@ -7,6 +7,12 @@ import { GeneratedTask, TaskResult, TaskDispatchStatus } from "../../types/task"
 export type TaskDispatchHandler = (task: GeneratedTask) => Promise<void> | void;
 
 /**
+ * SEMI_AUTO用の確認ハンドラ。
+ * true: ディスパッチ続行  false: blocked_approval として中断
+ */
+export type TaskConfirmHandler = (task: GeneratedTask) => Promise<boolean> | boolean;
+
+/**
  * タスク実行エンジン（v1: コールバックベース）
  *
  * 生成されたタスクを実行レベルに応じてディスパッチする。
@@ -15,9 +21,18 @@ export type TaskDispatchHandler = (task: GeneratedTask) => Promise<void> | void;
 export class TaskExecutor {
     private readonly handlers: Map<string, TaskDispatchHandler[]> = new Map();
     private readonly defaultHandler?: TaskDispatchHandler;
+    private confirmHandler?: TaskConfirmHandler;
 
     constructor(defaultHandler?: TaskDispatchHandler) {
         this.defaultHandler = defaultHandler;
+    }
+
+    /**
+     * SEMI_AUTO用の確認ハンドラを登録
+     * 未登録時はSEMI_AUTOがAUTOと同じ動作になる（後方互換）
+     */
+    public setConfirmHandler(handler: TaskConfirmHandler): void {
+        this.confirmHandler = handler;
     }
 
     /**
@@ -30,6 +45,20 @@ export class TaskExecutor {
     }
 
     /**
+     * 指定アクションタイプのハンドラを全て解除 (MEM-01)
+     */
+    public removeHandlers(actionType: string): void {
+        this.handlers.delete(actionType);
+    }
+
+    /**
+     * 全ハンドラを解除
+     */
+    public clearHandlers(): void {
+        this.handlers.clear();
+    }
+
+    /**
      * タスクをディスパッチ
      */
     public async dispatch(task: GeneratedTask): Promise<TaskResult> {
@@ -39,15 +68,14 @@ export class TaskExecutor {
             dispatchedAt: new Date().toISOString(),
         };
 
-        // 実行レベルとガードレールに基づくステータス判定
-        const status = this.resolveDispatchStatus(task);
+        const status = await this.resolveDispatchStatus(task);
         if (status !== "dispatched") {
             return { ...base, status };
         }
 
-        // ハンドラの実行
+        // API-03: guardrails.timeoutMs を適用
         try {
-            await this.invokeHandlers(task);
+            await this.invokeWithTimeout(task);
             return { ...base, status: "dispatched" };
         } catch (error) {
             return {
@@ -58,8 +86,7 @@ export class TaskExecutor {
         }
     }
 
-    private resolveDispatchStatus(task: GeneratedTask): TaskDispatchStatus {
-        // ガードレールの承認要求は最優先
+    private async resolveDispatchStatus(task: GeneratedTask): Promise<TaskDispatchStatus> {
         if (task.guardrails.requireHumanApproval) {
             return "blocked_approval";
         }
@@ -68,6 +95,11 @@ export class TaskExecutor {
             case "AUTO":
                 return "dispatched";
             case "SEMI_AUTO":
+                // 確認ハンドラが登録されていれば確認を経由。未登録ならAUTOと同じ。
+                if (this.confirmHandler) {
+                    const confirmed = await this.confirmHandler(task);
+                    return confirmed ? "dispatched" : "blocked_approval";
+                }
                 return "dispatched";
             case "MANUAL":
                 return "blocked_approval";
@@ -75,6 +107,24 @@ export class TaskExecutor {
                 return "skipped";
             default:
                 return "skipped";
+        }
+    }
+
+    private async invokeWithTimeout(task: GeneratedTask): Promise<void> {
+        const timeoutMs = task.guardrails.timeoutMs;
+        if (timeoutMs > 0) {
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            try {
+                const handlerPromise = this.invokeHandlers(task);
+                const timeoutPromise = new Promise<never>((_, reject) => {
+                    timer = setTimeout(() => reject(new Error(`Task handler timeout after ${timeoutMs}ms`)), timeoutMs);
+                });
+                await Promise.race([handlerPromise, timeoutPromise]);
+            } finally {
+                if (timer !== undefined) clearTimeout(timer);
+            }
+        } else {
+            await this.invokeHandlers(task);
         }
     }
 

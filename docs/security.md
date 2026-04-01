@@ -257,7 +257,7 @@ Server-side structured logs (JSON via `log/slog`) include:
 | ReDoS 防止 | 組込みパターンはReDoS-safe。ユーザーREGEXは未検証 | `sanitizer.go`: `ValidateRegexSafety` |
 | RBAC 認可 | なし（SDKはクライアント側） | `authorizer.go`: ロール→権限 |
 
-**設計原則**: SDK は「明らかに不正な入力を早期に弾く」。Server は「全フィールドを厳密に検証・サニタイズする」。
+**設計原則**: SDK は「明らかに不正な入力を早期に弾く」（validateLogInput）。LogNormalizer は「防御的フォールバック」のみ（検証は行わない）。Server は「全フィールドを厳密に検証・サニタイズする」。
 
 ---
 

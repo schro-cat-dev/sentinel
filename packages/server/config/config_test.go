@@ -316,6 +316,96 @@ webhook:
 	}
 }
 
+func TestLoad_Defaults_RateLimits(t *testing.T) {
+	path := writeTestConfig(t, `
+pipeline:
+  service_id: "test"
+`)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if cfg.Auth.RateLimitRPS != 10 {
+		t.Errorf("expected default RateLimitRPS=10, got %v", cfg.Auth.RateLimitRPS)
+	}
+	if cfg.Auth.RateLimitBurst != 50 {
+		t.Errorf("expected default RateLimitBurst=50, got %d", cfg.Auth.RateLimitBurst)
+	}
+}
+
+func TestLoad_Validation_APIKeyTooShort(t *testing.T) {
+	path := writeTestConfig(t, `
+pipeline:
+  service_id: "test"
+auth:
+  enabled: true
+  api_keys: ["short"]
+`)
+	_, err := Load(path)
+	if err == nil {
+		t.Error("expected error for API key shorter than 16 characters")
+	}
+}
+
+func TestLoad_Validation_APIKeyMinLength(t *testing.T) {
+	path := writeTestConfig(t, `
+pipeline:
+  service_id: "test"
+auth:
+  enabled: true
+  api_keys: ["abcdefghijklmnop"]
+`)
+	_, err := Load(path)
+	if err != nil {
+		t.Fatalf("expected no error for 16-char API key, got: %v", err)
+	}
+}
+
+func TestLoad_Validation_EncryptionKeyTooShort(t *testing.T) {
+	path := writeTestConfig(t, `
+pipeline:
+  service_id: "test"
+store:
+  driver: "sqlite_encrypted"
+  encryption_key: "tooshort"
+`)
+	_, err := Load(path)
+	if err == nil {
+		t.Error("expected error for encryption key shorter than 32 bytes")
+	}
+}
+
+func TestLoad_Validation_EncryptionKeyValid(t *testing.T) {
+	path := writeTestConfig(t, `
+pipeline:
+  service_id: "test"
+store:
+  driver: "sqlite_encrypted"
+  encryption_key: "a]very]long]encryption]key]that]is]at]least]32]bytes"
+`)
+	_, err := Load(path)
+	if err != nil {
+		t.Fatalf("expected no error for valid encryption key, got: %v", err)
+	}
+}
+
+func TestLoad_EnvOverride_APIKeys_FiltersEmpty(t *testing.T) {
+	path := writeTestConfig(t, `
+pipeline:
+  service_id: "test"
+auth:
+  enabled: true
+`)
+	t.Setenv("SENTINEL_API_KEYS", "valid-key-1234567890,,  ,valid-key-0987654321")
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if len(cfg.Auth.APIKeys) != 2 {
+		t.Errorf("expected 2 API keys after filtering, got %d: %v", len(cfg.Auth.APIKeys), cfg.Auth.APIKeys)
+	}
+}
+
 func TestLoad_InvalidYAML(t *testing.T) {
 	path := writeTestConfig(t, `
 invalid: yaml: [broken

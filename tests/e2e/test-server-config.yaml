@@ -1,0 +1,75 @@
+# Minimal config for E2E testing: SDK -> gRPC -> Go Server
+# The addr and dsn are overridden via env vars (SENTINEL_ADDR, store.dsn via file)
+server:
+  addr: ":0"  # overridden by SENTINEL_ADDR env var
+  graceful_timeout_sec: 5
+
+security:
+  # hmac_key: overridden by SENTINEL_HMAC_KEY env var
+  enable_masking: true
+  enable_hash_chain: true
+  preserve_fields:
+    - traceId
+    - spanId
+  masking_rules:
+    - type: PII_TYPE
+      category: EMAIL
+    - type: PII_TYPE
+      category: CREDIT_CARD
+    - type: PII_TYPE
+      category: PHONE
+
+pipeline:
+  service_id: e2e-test-server
+  rules:
+    - rule_id: crit-notify
+      event_name: SYSTEM_CRITICAL_FAILURE
+      severity: HIGH
+      action_type: SYSTEM_NOTIFICATION
+      execution_level: AUTO
+      priority: 1
+      description: "Notify on critical system failure"
+      guardrails:
+        require_human_approval: false
+        timeout_ms: 30000
+        max_retries: 3
+
+    - rule_id: sec-analyze
+      event_name: SECURITY_INTRUSION_DETECTED
+      severity: HIGH
+      action_type: AI_ANALYZE
+      execution_level: AUTO
+      priority: 1
+      description: "AI analysis of security intrusion"
+      guardrails:
+        require_human_approval: false
+        timeout_ms: 60000
+        max_retries: 2
+
+store:
+  driver: sqlite
+  dsn: "file::memory:?cache=shared"
+
+auth:
+  enabled: false
+
+webhook:
+  enabled: false
+
+ensemble:
+  enabled: false
+
+anomaly:
+  enabled: false
+
+agent:
+  enabled: false
+
+response:
+  enabled: false
+
+authorization:
+  enabled: false
+
+masking_policies: []
+routing_rules: []

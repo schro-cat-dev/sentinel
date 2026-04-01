@@ -52,20 +52,3 @@ export interface DetectionResult<K extends SystemEventName> {
     payload: SystemEventMap[K];
     priority: "HIGH" | "MEDIUM" | "LOW";
 }
-
-/**
- * Worker Thread からメインスレッドへ送られるメッセージの型定義
- */
-export type WorkerToMainMessage =
-    | {
-          type: "EVENT_DETECTED";
-          payload: {
-              detection: DetectionResult<SystemEventName>;
-              originalLog: Log;
-          };
-      }
-    | { type: "LOG_PROCESSED"; payload: Log }
-    | {
-          type: "ERROR";
-          payload: { message: string; error: string; traceId?: string };
-      };

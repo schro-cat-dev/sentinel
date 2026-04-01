@@ -4,28 +4,28 @@ import { IntegritySigner } from "../../security/integrity-signer";
 import { EventDetector } from "../detection/event-detector";
 import { TaskGenerator } from "../task/task-generator";
 import { TaskExecutor } from "../task/task-executor";
-import { LogNormalizer } from "./log-normalizer";
-import { IIngestionCoordinator } from "./i-interfaces";
+import { IIngestionCoordinator, ILogNormalizer } from "./i-interfaces";
 import { IngestionResult } from "./types";
 import { SentinelConfig } from "../../configs/sentinel-config";
 import { TaskResult } from "../../types/task";
 
 export class IngestionEngine implements IIngestionCoordinator {
-    private readonly normalizer: LogNormalizer;
-    private readonly masking: MaskingService;
+    private readonly normalizer: ILogNormalizer;
     private readonly signer: IntegritySigner;
     private readonly detector: EventDetector;
     private readonly taskGenerator: TaskGenerator;
     private readonly taskExecutor: TaskExecutor;
     private readonly config: SentinelConfig;
 
-    // Async mutex: serializes hash chain operations to prevent race conditions (NEW-02)
+    // PERF-04: Narrow mutex — only serializes hash chain update, not entire pipeline
     private chainLock: Promise<void> = Promise.resolve();
+
+    // RES-02: dual-mode reuse
+    private lastProcessedLog: Log | null = null;
 
     constructor(deps: {
         config: SentinelConfig;
-        normalizer: LogNormalizer;
-        masking: MaskingService;
+        normalizer: ILogNormalizer;
         signer: IntegritySigner;
         detector: EventDetector;
         taskGenerator: TaskGenerator;
@@ -33,16 +33,19 @@ export class IngestionEngine implements IIngestionCoordinator {
     }) {
         this.config = deps.config;
         this.normalizer = deps.normalizer;
-        this.masking = deps.masking;
         this.signer = deps.signer;
         this.detector = deps.detector;
         this.taskGenerator = deps.taskGenerator;
         this.taskExecutor = deps.taskExecutor;
     }
 
+    getLastProcessedLog(): Log | null {
+        if (!this.lastProcessedLog) return null;
+        return { ...this.lastProcessedLog };
+    }
+
     /**
-     * ログを正規化 + マスキングのみ行う（リモート送信用）
-     * NEW-05: transport送信前にマスキングを適用
+     * 正規化 + マスキングのみ（リモート送信用）
      */
     normalizeOnly(raw: Partial<Log>): Log {
         const log = this.normalizer.normalize(raw);
@@ -51,33 +54,17 @@ export class IngestionEngine implements IIngestionCoordinator {
                 log,
                 this.config.masking.rules,
                 this.config.masking.preserveFields,
+                { logger: this.config.logger },
             ) as Log;
         }
         return log;
     }
 
     async handle(raw: Partial<Log>): Promise<IngestionResult> {
-        // NEW-02: Serialize hash chain operations via async mutex
-        let releaseLock: () => void;
-        const acquired = new Promise<void>((resolve) => {
-            releaseLock = resolve;
-        });
-        const previousLock = this.chainLock;
-        this.chainLock = acquired;
-        await previousLock;
-
-        try {
-            return await this.handleInternal(raw);
-        } finally {
-            releaseLock!();
-        }
-    }
-
-    private async handleInternal(raw: Partial<Log>): Promise<IngestionResult> {
-        // 1. Normalize
+        // 1. Normalize (outside lock — stateless, parallelizable)
         let log = this.normalizer.normalize(raw);
 
-        // 2. Mask PII (if enabled) — NEW-03: ログ全体をマスク対象に
+        // 2. Mask PII
         let masked = false;
         if (this.config.masking.enabled) {
             log = MaskingService.mask(
@@ -88,41 +75,69 @@ export class IngestionEngine implements IIngestionCoordinator {
             masked = true;
         }
 
-        // 3. Detect events (before hash chain, so detection uses masked data)
+        // 3. Detect events
         const detection = this.detector.detect(log);
 
-        // 4. Generate tasks (before hash chain to avoid ghost entries on failure)
+        // 4. Generate + dispatch tasks (outside lock — user handlers may be slow)
         const tasksGenerated: TaskResult[] = [];
         if (detection) {
             const tasks = this.taskGenerator.generate(detection, log);
             for (const task of tasks) {
+                this.emitSafe(() => this.config.onTaskGenerated?.(task));
                 const result = await this.taskExecutor.dispatch(task);
+                this.emitSafe(() => this.config.onTaskDispatched?.(result));
                 tasksGenerated.push(result);
             }
         }
 
-        // 5. Hash-chain (NEW-08: moved to AFTER side effects to prevent ghost entries)
+        // 5. Hash-chain (NARROW lock — only the read-compute-update section)
         let hashChainValid = false;
         if (this.config.security.enableHashChain) {
-            const previousHash = this.signer.getPreviousHash();
-            log.previousHash = previousHash;
-            log.hash = IntegritySigner.calculateHash(log, previousHash);
-            this.signer.updateChain(log.hash);
+            await this.withChainLock(() => {
+                const previousHash = this.signer.getPreviousHash();
+                log.previousHash = previousHash;
+                log.hash = IntegritySigner.calculateHash(log, previousHash);
+                this.signer.updateChain(log.hash);
+            });
             hashChainValid = true;
         }
 
-        // 6. Emit to handlers (after hash chain, wrapped in try-catch for safety)
-        try {
-            this.config.onLogProcessed?.(log);
-        } catch {
-            // Callback errors must not propagate — hash chain is already committed
-        }
+        // 6. Callbacks
+        this.emitSafe(() => this.config.onLogProcessed?.(log));
+
+        this.lastProcessedLog = log;
 
         return {
             traceId: log.traceId,
             hashChainValid,
             tasksGenerated,
             masked,
+            detection: detection ? { eventName: detection.eventName, priority: detection.priority } : null,
         };
+    }
+
+    /**
+     * Narrow async mutex — serializes only the critical section
+     */
+    private async withChainLock(fn: () => void): Promise<void> {
+        let releaseLock: () => void;
+        const acquired = new Promise<void>((resolve) => { releaseLock = resolve; });
+        const previousLock = this.chainLock;
+        this.chainLock = acquired;
+        await previousLock;
+        try {
+            fn();
+        } finally {
+            releaseLock!();
+        }
+    }
+
+    private emitSafe(fn: () => void, context = "callback"): void {
+        try {
+            fn();
+        } catch (e) {
+            const error = e instanceof Error ? e : new Error(String(e));
+            try { this.config.onError?.(error, context); } catch { /* */ }
+        }
     }
 }

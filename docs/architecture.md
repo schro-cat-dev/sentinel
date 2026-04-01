@@ -49,11 +49,12 @@ Sentinel.ingest(partialLog)
   │
   ├── [remote mode] → normalizeOnly() → MaskingService.mask(log全体) → transport.send()
   │
-  ▼  [local/dual mode — async mutex protected]
+  ▼  [local/dual mode]
 LogNormalizer.normalize()          src/core/engine/log-normalizer.ts
-  │  Validates message (empty, length, type, level)
+  │  Defensive defaults only (validation is at SDK boundary)
   │  Generates traceId if missing
   │  Sets defaults (serviceId, timestamp, boundary)
+  │  Preserves agentBackLog, traceInfo, aiContext
   ▼
 MaskingService.mask(log全体)       src/security/masking-service.ts
   │  ログオブジェクト全体を再帰マスク (message + input + details + tags)
@@ -65,7 +66,7 @@ MaskingService.mask(log全体)       src/security/masking-service.ts
   ▼
 EventDetector.detect()             src/core/detection/event-detector.ts
   │  AI_AGENT origin logs skipped (loop prevention)
-  │  Priority order: isCritical > SECURITY > COMPLIANCE > SLA
+  │  Priority: isCritical > SECURITY > AI_ACTION_REQUIRED > COMPLIANCE > SLA
   │  Returns: eventName + priority + SafeLogSubset (PII-safe fields only)
   ▼
 TaskGenerator.generate()           src/core/task/task-generator.ts
@@ -77,20 +78,21 @@ TaskGenerator.generate()           src/core/task/task-generator.ts
   ▼
 TaskExecutor.dispatch()            src/core/task/task-executor.ts
   │  Guardrail check: requireHumanApproval → blocked
-  │  Execution level: AUTO → dispatch, MANUAL → block, MONITOR → skip
-  │  Handler invocation by actionType
-  │  Default handler fallback
+  │  Execution level: AUTO → dispatch, SEMI_AUTO → confirm → dispatch/block,
+  │                    MANUAL → block, MONITOR → skip
+  │  guardrails.timeoutMs enforcement (Promise.race)
+  │  onTaskGenerated / onTaskDispatched callbacks
   ▼
 IntegritySigner.calculateHash()    src/security/integrity-signer.ts
   │  SHA-256 deterministic serialization (NaN/Infinity rejected)
   │  Keys sorted alphabetically
   │  hash/signature fields excluded from input
-  │  previousHash chaining (in-memory, async mutex serialized)
+  │  previousHash chaining (in-memory, narrow async mutex)
   │  Verification via timingSafeEqual (constant-time)
   ▼
-onLogProcessed callback (try-catch wrapped)
+onLogProcessed callback (emitSafe — errors → onError)
   ▼
-IngestionResult returned
+IngestionResult { traceId, hashChainValid, tasksGenerated, masked, detection }
 ```
 
 ### Module Responsibilities
