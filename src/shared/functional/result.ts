@@ -98,7 +98,7 @@ export const safe = async <T, E extends Error = Error>(
             const appError = error as E;
             notify?.(appError);
             if (i === retries) return failure(appError);
-            await new Promise((r) => setTimeout(r, i * 100));
+            await new Promise<void>((r) => setTimeout(r, i * 100));
         }
     }
     throw new Error("Unreachable");
