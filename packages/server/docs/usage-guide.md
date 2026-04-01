@@ -185,8 +185,8 @@ agent:
 auth:
   enabled: true
   api_keys: ["key-1", "key-2"]     # SENTINEL_API_KEYS で上書き可
-  rate_limit_rps: 100
-  rate_limit_burst: 200
+  rate_limit_rps: 10
+  rate_limit_burst: 50
 
 webhook:
   enabled: true

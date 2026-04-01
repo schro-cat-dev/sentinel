@@ -81,8 +81,8 @@ store:
 auth:
   enabled: false
   # api_keys: override via SENTINEL_API_KEYS env var (comma-separated)
-  rate_limit_rps: 100
-  rate_limit_burst: 200
+  rate_limit_rps: 10
+  rate_limit_burst: 50
 
 webhook:
   enabled: false

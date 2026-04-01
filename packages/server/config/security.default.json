@@ -33,7 +33,7 @@
   ],
   "rate_limit": {
     "enabled": true,
-    "rps": 100,
-    "burst_max": 200
+    "rps": 10,
+    "burst_max": 50
   }
 }

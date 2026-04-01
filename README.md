@@ -123,6 +123,16 @@ const sentinel = Sentinel.initialize(createDefaultConfig({
   }],
 }));
 
+// Register task action handler
+sentinel.onTaskAction("SYSTEM_NOTIFICATION", async (task) => {
+  console.log(`[${task.severity}] ${task.description}`);
+});
+
+// Optional: SEMI_AUTO confirmation handler
+sentinel.onTaskConfirm(async (task) => {
+  return task.severity === "CRITICAL"; // auto-approve critical only
+});
+
 const result = await sentinel.ingest({
   message: "Database connection pool exhausted",
   isCritical: true,
@@ -130,6 +140,10 @@ const result = await sentinel.ingest({
   boundary: "db-service:pool",
 });
 // result.tasksGenerated[0].status === "dispatched"
+// result.detection?.eventName === "SYSTEM_CRITICAL_FAILURE"
+
+// Graceful shutdown
+await sentinel.shutdown();
 ```
 
 ---
@@ -255,8 +269,8 @@ response:
 
 auth:
   enabled: false                    # or SENTINEL_API_KEYS で有効化
-  rate_limit_rps: 100
-  rate_limit_burst: 200
+  rate_limit_rps: 10                # default: 10 (security hardened)
+  rate_limit_burst: 50
 
 authorization:
   enabled: true                     # or SENTINEL_AUTHZ_ENABLED=true
@@ -297,7 +311,7 @@ authorization:
 # TypeScript SDK (349 tests: unit + security + E2E)
 npm test
 
-# Go Server (682 tests)
+# Go Server (689 tests)
 cd packages/server
 go test ./... -race -count=1
 
@@ -318,8 +332,9 @@ go test ./... -race -v -count=1
 | [モジュール責務マップ](packages/server/docs/design/module-responsibility-map.md) | パッケージ構成 + 10ステージデータフロー |
 | [脅威レスポンス設計](packages/server/docs/design/threat-response-orchestration.md) | 戦略パターン/ブロック/通知の設計仕様 |
 | [v2 作業ログ](packages/server/docs/design/work-log-2026-03-27.md) | 全実装フェーズの詳細記録 |
-| [docs/architecture.md](docs/architecture.md) | v1 アーキテクチャ |
-| [docs/security.md](docs/security.md) | HMAC、PII masking、脅威モデル |
+| [docs/architecture.md](docs/architecture.md) | SDK + Server アーキテクチャ（パイプラインフロー） |
+| [docs/security.md](docs/security.md) | HMAC、PII masking、脅威モデル、バリデーション境界 |
+| [docs/analysis/](docs/analysis/) | 内部品質解析ログ（機能、非機能、dead code、改善バックログ） |
 
 ---
 

@@ -219,7 +219,7 @@ Adding a new rule:
 | `Pipeline` | Stateless except signer | Each gRPC call processes independently |
 | gRPC server | goroutine-per-request | Standard gRPC concurrency model |
 
-Verified with `go test -race` (682 tests across 13 packages, 0 data races).
+Verified with `go test -race` (689 tests across 13 packages, 0 data races).
 
 ---
 
