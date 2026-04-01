@@ -42,8 +42,8 @@ function maskStr(input: string, rules: MaskingRule[] = PII_RULES): string {
 }
 
 /** Mask an object and return it. */
-function maskObj(input: object, rules: MaskingRule[] = PII_RULES): any {
-    return MaskingService.mask(input, rules);
+function maskObj(input: object, rules: MaskingRule[] = PII_RULES): Record<string, unknown> {
+    return MaskingService.mask(input, rules) as Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -590,7 +590,7 @@ describe("Encoding bypass: PII split across fields", () => {
             message: "Contact user@example.com for help",
             details: "Card: 4111111111111111",
         });
-        const result = maskObj(log) as any;
+        const result = maskObj(log);
         expect(result.message).not.toContain("user@example.com");
         expect(result.details).not.toContain("4111111111111111");
     });
@@ -601,7 +601,7 @@ describe("Encoding bypass: PII split across fields", () => {
             details: "domain: example.com",
         });
         // Each field alone does not form a complete email
-        const result = maskObj(log) as any;
+        const result = maskObj(log);
         expect(typeof result.message).toBe("string");
         expect(typeof result.details).toBe("string");
     });
@@ -611,7 +611,7 @@ describe("Encoding bypass: PII split across fields", () => {
             message: "First part: 41111111",
             details: "Second part: 11111111",
         });
-        const result = maskObj(log) as any;
+        const result = maskObj(log);
         expect(typeof result.message).toBe("string");
         expect(typeof result.details).toBe("string");
     });
@@ -621,8 +621,9 @@ describe("Encoding bypass: PII split across fields", () => {
             message: "Processing request",
             input: { userData: { email: "secret@corp.com" } },
         });
-        const result = maskObj(log) as any;
-        expect(result.input.userData.email).not.toContain("secret@corp.com");
+        const result = maskObj(log);
+        const input = result.input as Record<string, Record<string, unknown>>;
+        expect(input.userData.email).not.toContain("secret@corp.com");
     });
 
     it("should mask PII in array inside input field", () => {
@@ -630,9 +631,10 @@ describe("Encoding bypass: PII split across fields", () => {
             message: "Batch processing",
             input: ["admin@evil.com", "user@evil.com"],
         });
-        const result = maskObj(log) as any;
-        expect(result.input[0]).not.toContain("admin@evil.com");
-        expect(result.input[1]).not.toContain("user@evil.com");
+        const result = maskObj(log);
+        const input = result.input as unknown[];
+        expect(input[0]).not.toContain("admin@evil.com");
+        expect(input[1]).not.toContain("user@evil.com");
     });
 });
 
@@ -644,21 +646,21 @@ describe("Encoding bypass: PII in JSON strings within input", () => {
     it("should mask email in stringified JSON inside input", () => {
         const jsonStr = JSON.stringify({ email: "hidden@secret.com" });
         const log = createTestLog({ message: "check", input: jsonStr });
-        const result = maskObj(log) as any;
+        const result = maskObj(log);
         expect(result.input).not.toContain("hidden@secret.com");
     });
 
     it("should mask credit card in stringified JSON inside input", () => {
         const jsonStr = JSON.stringify({ card: "4111111111111111" });
         const log = createTestLog({ message: "check", input: jsonStr });
-        const result = maskObj(log) as any;
+        const result = maskObj(log);
         expect(result.input).not.toContain("4111111111111111");
     });
 
     it("should mask phone in deeply nested JSON string input", () => {
         const nested = JSON.stringify({ a: { b: { phone: "+81-90-1234-5678" } } });
         const log = createTestLog({ message: "check", input: nested });
-        const result = maskObj(log) as any;
+        const result = maskObj(log);
         // The phone is inside a string representation, regex should still find it
         expect(result.input).not.toContain("+81-90-1234-5678");
     });
@@ -667,7 +669,7 @@ describe("Encoding bypass: PII in JSON strings within input", () => {
         const inner = JSON.stringify({ email: "deep@nested.com" });
         const outer = JSON.stringify({ data: inner });
         const log = createTestLog({ message: "check", input: outer });
-        const result = maskObj(log) as any;
+        const result = maskObj(log);
         expect(result.input).not.toContain("deep@nested.com");
     });
 });
@@ -682,9 +684,9 @@ describe("Encoding bypass: PII in tag key and category", () => {
             message: "tagged",
             tags: [{ key: "user@example.com", category: "identifier" }],
         });
-        const result = maskObj(log) as any;
-        const tagKey = result.tags[0].key;
-        expect(tagKey).not.toContain("user@example.com");
+        const result = maskObj(log);
+        const tags = result.tags as Record<string, unknown>[];
+        expect(tags[0].key).not.toContain("user@example.com");
     });
 
     it("should mask email in tag category", () => {
@@ -692,8 +694,9 @@ describe("Encoding bypass: PII in tag key and category", () => {
             message: "tagged",
             tags: [{ key: "contact", category: "admin@secret.com" }],
         });
-        const result = maskObj(log) as any;
-        expect(result.tags[0].category).not.toContain("admin@secret.com");
+        const result = maskObj(log);
+        const tags = result.tags as Record<string, unknown>[];
+        expect(tags[0].category).not.toContain("admin@secret.com");
     });
 
     it("should mask credit card in tag category", () => {
@@ -701,8 +704,9 @@ describe("Encoding bypass: PII in tag key and category", () => {
             message: "tagged",
             tags: [{ key: "payment", category: "4111111111111111" }],
         });
-        const result = maskObj(log) as any;
-        expect(result.tags[0].category).not.toContain("4111111111111111");
+        const result = maskObj(log);
+        const tags = result.tags as Record<string, unknown>[];
+        expect(tags[0].category).not.toContain("4111111111111111");
     });
 
     it("should mask phone number in tag key", () => {
@@ -710,8 +714,9 @@ describe("Encoding bypass: PII in tag key and category", () => {
             message: "tagged",
             tags: [{ key: "+81-90-1234-5678", category: "phone" }],
         });
-        const result = maskObj(log) as any;
-        expect(result.tags[0].key).not.toContain("+81-90-1234-5678");
+        const result = maskObj(log);
+        const tags = result.tags as Record<string, unknown>[];
+        expect(tags[0].key).not.toContain("+81-90-1234-5678");
     });
 
     it("should mask government ID in tag category", () => {
@@ -719,8 +724,9 @@ describe("Encoding bypass: PII in tag key and category", () => {
             message: "tagged",
             tags: [{ key: "gov", category: "123456789012" }],
         });
-        const result = maskObj(log) as any;
-        expect(result.tags[0].category).not.toContain("123456789012");
+        const result = maskObj(log);
+        const tags = result.tags as Record<string, unknown>[];
+        expect(tags[0].category).not.toContain("123456789012");
     });
 });
 
@@ -862,7 +868,7 @@ describe("Encoding bypass: KEY_MATCH rule bypass attempts", () => {
 
     it("should preserve fields listed in preserveFields", () => {
         const obj = { password: "keep-me", secret: "keep-too", message: "test" };
-        const result = MaskingService.mask(obj, ALL_RULES, ["password", "secret"]) as any;
+        const result = MaskingService.mask(obj, ALL_RULES, ["password", "secret"]) as Record<string, unknown>;
         expect(result.password).toBe("keep-me");
         expect(result.secret).toBe("keep-too");
     });

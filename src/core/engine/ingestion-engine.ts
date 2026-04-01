@@ -227,7 +227,7 @@ export class IngestionEngine implements IIngestionCoordinator {
             try {
                 this.getCallback("onError")?.(error, context);
             } catch (onErrorErr) {
-                console.error(`[Sentinel] onError handler threw:`, onErrorErr);
+                console.error(`[Sentinel] onError handler threw: ${onErrorErr instanceof Error ? onErrorErr.message : String(onErrorErr)}`);
             }
         }
     }

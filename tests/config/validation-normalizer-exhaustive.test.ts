@@ -7,7 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { validateLogInput, ValidationError } from "../../src/validation/log-validator";
 import { LogNormalizer } from "../../src/core/engine/log-normalizer";
-import type { Log, LogType, LogLevel } from "../../src/types/log";
+import type { Log, LogTag, LogType, LogLevel, AIAgentEventBacklog } from "../../src/types/log";
 import { createTestLog } from "../helpers/fixtures";
 
 // ---------------------------------------------------------------------------
@@ -169,7 +169,7 @@ describe("validateLogInput", () => {
         });
 
         it("throws on invalid origin", () => {
-            expectValidationError("origin", validInput({ origin: "HUMAN" as any }));
+            expectValidationError("origin", validInput({ origin: "HUMAN" as unknown as Log["origin"] }));
         });
 
         it("accepts undefined origin (optional)", () => {
@@ -177,7 +177,7 @@ describe("validateLogInput", () => {
         });
 
         it("throws on lowercase 'system'", () => {
-            expectValidationError("origin", validInput({ origin: "system" as any }));
+            expectValidationError("origin", validInput({ origin: "system" as unknown as Log["origin"] }));
         });
     });
 
@@ -258,23 +258,23 @@ describe("validateLogInput", () => {
 
         it("throws when tags is not an array (object)", () => {
             expectValidationError("tags", validInput({
-                tags: { key: "k", category: "c" } as any,
+                tags: { key: "k", category: "c" } as unknown as LogTag[],
             }));
         });
 
         it("throws when tags is not an array (string)", () => {
-            expectValidationError("tags", validInput({ tags: "invalid" as any }));
+            expectValidationError("tags", validInput({ tags: "invalid" as unknown as LogTag[] }));
         });
 
         it("throws when tag key is not a string", () => {
             expectValidationError("tags[0].key", validInput({
-                tags: [{ key: 123 as any, category: "c" }],
+                tags: [{ key: 123 as unknown as string, category: "c" }],
             }));
         });
 
         it("throws when tag category is not a string", () => {
             expectValidationError("tags[0].category", validInput({
-                tags: [{ key: "k", category: 456 as any }],
+                tags: [{ key: "k", category: 456 as unknown as string }],
             }));
         });
     });
@@ -300,11 +300,11 @@ describe("validateLogInput", () => {
         });
 
         it("throws when resourceIds is not an array (string)", () => {
-            expectValidationError("resourceIds", validInput({ resourceIds: "res-1" as any }));
+            expectValidationError("resourceIds", validInput({ resourceIds: "res-1" as unknown as string[] }));
         });
 
         it("throws when resourceIds is not an array (object)", () => {
-            expectValidationError("resourceIds", validInput({ resourceIds: {} as any }));
+            expectValidationError("resourceIds", validInput({ resourceIds: {} as unknown as string[] }));
         });
 
         it("accepts undefined resourceIds (optional)", () => {
@@ -366,15 +366,15 @@ describe("validateLogInput", () => {
         });
 
         it("throws when agentBackLog is an array", () => {
-            expectValidationError("agentBackLog", validInput({ agentBackLog: [] as any }));
+            expectValidationError("agentBackLog", validInput({ agentBackLog: [] as unknown as AIAgentEventBacklog }));
         });
 
         it("throws when agentBackLog is a non-object (string)", () => {
-            expectValidationError("agentBackLog", validInput({ agentBackLog: "invalid" as any }));
+            expectValidationError("agentBackLog", validInput({ agentBackLog: "invalid" as unknown as AIAgentEventBacklog }));
         });
 
         it("throws when agentBackLog is a non-object (number)", () => {
-            expectValidationError("agentBackLog", validInput({ agentBackLog: 42 as any }));
+            expectValidationError("agentBackLog", validInput({ agentBackLog: 42 as unknown as AIAgentEventBacklog }));
         });
 
         it("accepts undefined agentBackLog (optional)", () => {
@@ -382,7 +382,7 @@ describe("validateLogInput", () => {
         });
 
         it("accepts null agentBackLog", () => {
-            expectNoValidationError(validInput({ agentBackLog: null as any }));
+            expectNoValidationError(validInput({ agentBackLog: null as unknown as AIAgentEventBacklog }));
         });
     });
 
@@ -402,7 +402,7 @@ describe("validateLogInput", () => {
 
         it("throws when loopDepth is a string", () => {
             expectValidationError("aiContext.loopDepth", validInput({
-                aiContext: { agentId: "a1", taskId: "t1", loopDepth: "5" as any },
+                aiContext: { agentId: "a1", taskId: "t1", loopDepth: "5" as unknown as number },
             }));
         });
 
@@ -423,7 +423,7 @@ describe("validateLogInput", () => {
         });
 
         it("accepts null aiContext", () => {
-            expectNoValidationError(validInput({ aiContext: null as any }));
+            expectNoValidationError(validInput({ aiContext: null as unknown as Log["aiContext"] }));
         });
     });
 });
@@ -454,7 +454,7 @@ describe("LogNormalizer", () => {
         });
 
         it("returns empty string when message is non-string (number)", () => {
-            const result = normalizer.normalize({ message: 123 as any });
+            const result = normalizer.normalize({ message: 123 as unknown as string });
             expect(result.message).toBe("");
         });
 
@@ -593,7 +593,7 @@ describe("LogNormalizer", () => {
         });
 
         it("defaults invalid origin to SYSTEM", () => {
-            const result = normalizer.normalize({ message: "test", origin: "HUMAN" as any });
+            const result = normalizer.normalize({ message: "test", origin: "HUMAN" as unknown as Log["origin"] });
             expect(result.origin).toBe("SYSTEM");
         });
 
@@ -860,7 +860,7 @@ describe("Edge cases", () => {
                 message: "test",
                 unknownField: "should be ignored",
                 anotherExtra: 42,
-            } as any);
+            } as unknown as Partial<Log>);
         });
     });
 
@@ -913,8 +913,8 @@ describe("Edge cases", () => {
             const result = normalizer.normalize({
                 message: "test",
                 unknownField: "extra",
-            } as any);
-            expect((result as any).unknownField).toBeUndefined();
+            } as unknown as Partial<Log>);
+            expect((result as Record<string, unknown>).unknownField).toBeUndefined();
         });
     });
 });

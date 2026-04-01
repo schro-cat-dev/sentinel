@@ -100,8 +100,8 @@ export class Sentinel {
                     { source: "sentinel" },
                 );
             }
-            // リソースクリーンアップ（非同期closeはbest-effort）
-            try { Sentinel.instance.transportConfig.transport?.close?.(); } catch { /* */ }
+            // リソースクリーンアップ（非同期closeはbest-effort、unhandled rejection防止）
+            try { Promise.resolve(Sentinel.instance.transportConfig.transport?.close?.()).catch(() => {}); } catch { /* */ }
             Sentinel.instance.taskExecutor.clearHandlers();
             Sentinel.instance.engine.resetState();
         }

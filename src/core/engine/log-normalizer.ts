@@ -8,6 +8,9 @@ const VALID_LOG_TYPES = new Set<LogType>([
 
 const VALID_LOG_LEVELS = new Set<LogLevel>([1, 2, 3, 4, 5, 6]);
 
+/** 単調増加カウンタ（Date.now()が巻き戻っても順序保証） */
+let monotoniClock = 0;
+
 /**
  * ログ正規化 — Partial<Log> にデフォルトを注入して完全な Log を返す。
  * 入力検証は validateLogInput() (SDK境界) の責務。ここでは防御的フォールバックのみ行う。
@@ -26,7 +29,7 @@ export class LogNormalizer implements ILogNormalizer {
             type: raw.type && VALID_LOG_TYPES.has(raw.type) ? raw.type : "SYSTEM",
             level: raw.level && VALID_LOG_LEVELS.has(raw.level) ? raw.level : 3,
             timestamp: raw.timestamp || new Date().toISOString(),
-            logicalClock: raw.logicalClock ?? Date.now(),
+            logicalClock: raw.logicalClock ?? (monotoniClock = Math.max(monotoniClock + 1, Date.now())),
             boundary: raw.boundary || "unknown",
             serviceId: this.serviceId,
             projectName: this.projectName,

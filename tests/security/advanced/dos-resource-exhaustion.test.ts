@@ -45,7 +45,9 @@ describe("Security: DoS and Resource Exhaustion", () => {
             const start = performance.now();
             const result = MaskingService.mask(obj, ALL_PII_RULES);
             assertTiming(start, "10000 keys");
-            expect(result).toBeDefined();
+            expect(typeof result).toBe("object");
+            expect(result).not.toBeNull();
+            expect(Object.keys(result as Record<string, unknown>).length).toBe(10000);
         });
 
         it("handles array with 10000 string elements", () => {
@@ -53,7 +55,9 @@ describe("Security: DoS and Resource Exhaustion", () => {
             const start = performance.now();
             const result = MaskingService.mask(arr, ALL_PII_RULES);
             assertTiming(start, "10000 element array");
-            expect(result).toBeDefined();
+            expect(Array.isArray(result)).toBe(true);
+            // デフォルトmaxArrayLengthで切り詰められるが、配列として返る
+            expect((result as unknown[]).length).toBeGreaterThan(0);
         });
 
         it("handles 1MB message string with PII patterns throughout", () => {
@@ -75,7 +79,8 @@ describe("Security: DoS and Resource Exhaustion", () => {
             const start = performance.now();
             const result = MaskingService.mask(obj, ALL_PII_RULES);
             assertTiming(start, "50-level nesting");
-            expect(result).toBeDefined();
+            expect(typeof result).toBe("object");
+            expect(result).not.toBeNull();
         });
 
         it("truncates safely with maxDepth=1 on deep object", () => {
@@ -105,7 +110,11 @@ describe("Security: DoS and Resource Exhaustion", () => {
             const start = performance.now();
             const result = MaskingService.mask(a, ALL_PII_RULES);
             assertTiming(start, "multi-path circular");
-            expect(result).toBeDefined();
+            expect(typeof result).toBe("object");
+            expect(result).not.toBeNull();
+            // 循環参照はマーカー文字列で切断されるべき
+            const resultObj = result as Record<string, unknown>;
+            expect(resultObj.name).toBe("a");
         });
 
         it("handles object with shared references (same object referenced 100 times)", () => {
@@ -117,7 +126,13 @@ describe("Security: DoS and Resource Exhaustion", () => {
             const start = performance.now();
             const result = MaskingService.mask(container, ALL_PII_RULES);
             assertTiming(start, "100 shared refs");
-            expect(result).toBeDefined();
+            expect(typeof result).toBe("object");
+            expect(result).not.toBeNull();
+            // email はマスクされているべき
+            const resultObj = result as Record<string, Record<string, unknown>>;
+            const firstRef = resultObj.ref_0;
+            expect(typeof firstRef).toBe("object");
+            expect(String(firstRef.secret)).not.toContain("user@example.com");
         });
 
         it("handles empty object without crash", () => {
@@ -141,7 +156,9 @@ describe("Security: DoS and Resource Exhaustion", () => {
             const start = performance.now();
             const result = MaskingService.mask(obj, ALL_PII_RULES);
             assertTiming(start, "20000 mixed keys");
-            expect(result).toBeDefined();
+            expect(typeof result).toBe("object");
+            expect(result).not.toBeNull();
+            expect(Object.keys(result as Record<string, unknown>).length).toBe(20000);
         });
 
         it("handles deeply nested arrays", () => {
@@ -152,7 +169,7 @@ describe("Security: DoS and Resource Exhaustion", () => {
             const start = performance.now();
             const result = MaskingService.mask(arr, ALL_PII_RULES);
             assertTiming(start, "nested arrays");
-            expect(result).toBeDefined();
+            expect(Array.isArray(result)).toBe(true);
         });
 
         it("handles maxDepth=0 (immediately truncates objects)", () => {
@@ -167,7 +184,9 @@ describe("Security: DoS and Resource Exhaustion", () => {
                 structure = i % 2 === 0 ? { data: structure } : [structure];
             }
             const result = MaskingService.mask(structure, ALL_PII_RULES);
-            expect(result).toBeDefined();
+            // 最外層は奇数回（8）のイテレーションで { data: ... } になる
+            expect(typeof result === "object" || Array.isArray(result)).toBe(true);
+            expect(result).not.toBeNull();
         });
     });
 
@@ -223,7 +242,11 @@ describe("Security: DoS and Resource Exhaustion", () => {
             const start = performance.now();
             const result = MaskingService.mask(obj, rules);
             assertTiming(start, "30 mixed rules on 50 fields");
-            expect(result).toBeDefined();
+            expect(typeof result).toBe("object");
+            expect(result).not.toBeNull();
+            // sensitive_key はマスクされているべき
+            const resultObj = result as Record<string, unknown>;
+            expect(resultObj["sensitive_key_0"]).toBe("[MASKED_KEY]");
         });
 
         it("handles KEY_MATCH with 1000 sensitive keys", () => {

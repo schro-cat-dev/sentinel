@@ -39,7 +39,7 @@ export class ErrorRouter {
             );
         } catch (err) {
             // 最終防壁: route()自体のエラーはconsole.errorで終了。再帰しない。
-            console.error("[Sentinel:ErrorRouter] routing failed:", err);
+            console.error(`[Sentinel:ErrorRouter] routing failed: ${err instanceof Error ? err.message : String(err)}`);
         }
     }
 
@@ -88,7 +88,7 @@ export class ErrorRouter {
             }
         } catch (execErr) {
             // 防壁2: Executor自身のエラーはroute()に戻さない
-            console.error(`[Sentinel:ErrorRouter] executor failed for ${decision.destination}:`, execErr);
+            console.error(`[Sentinel:ErrorRouter] executor failed for ${decision.destination}: ${execErr instanceof Error ? execErr.message : String(execErr)}`);
         }
     }
 }

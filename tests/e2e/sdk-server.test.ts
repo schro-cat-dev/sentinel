@@ -75,8 +75,9 @@ function createGrpcClient(serverAddr: string): { client: any; grpc: any } {
         oneofs: true,
     });
     const protoDescriptor = grpc.loadPackageDefinition(packageDefinition);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SentinelService = (protoDescriptor.sentinel as any).v1.SentinelService;
+    const SentinelService = (
+        protoDescriptor.sentinel as unknown as { v1: { SentinelService: unknown } }
+    ).v1.SentinelService;
     const client = new SentinelService(serverAddr, grpc.credentials.createInsecure());
     return { client, grpc };
 }

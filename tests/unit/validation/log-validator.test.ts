@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { validateLogInput, ValidationError } from "../../../src/validation/log-validator";
+import type { LogType, LogLevel, LogTag, Log } from "../../../src/types/log";
 
 describe("validateLogInput", () => {
     // --- message ---
@@ -26,31 +27,31 @@ describe("validateLogInput", () => {
     // --- type ---
     it("accepts valid log types", () => {
         for (const t of ["SYSTEM", "SECURITY", "COMPLIANCE", "INFRA", "SLA", "DEBUG", "BUSINESS-AUDIT"]) {
-            expect(() => validateLogInput({ message: "test", type: t as any })).not.toThrow();
+            expect(() => validateLogInput({ message: "test", type: t as unknown as LogType })).not.toThrow();
         }
     });
 
     it("rejects invalid log type", () => {
-        expect(() => validateLogInput({ message: "test", type: "INVALID" as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", type: "INVALID" as unknown as LogType })).toThrow(ValidationError);
     });
 
     // --- level ---
     it("accepts valid levels 1-6", () => {
         for (let l = 1; l <= 6; l++) {
-            expect(() => validateLogInput({ message: "test", level: l as any })).not.toThrow();
+            expect(() => validateLogInput({ message: "test", level: l as unknown as LogLevel })).not.toThrow();
         }
     });
 
     it("rejects level 0", () => {
-        expect(() => validateLogInput({ message: "test", level: 0 as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", level: 0 as unknown as LogLevel })).toThrow(ValidationError);
     });
 
     it("rejects level 7", () => {
-        expect(() => validateLogInput({ message: "test", level: 7 as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", level: 7 as unknown as LogLevel })).toThrow(ValidationError);
     });
 
     it("rejects non-integer level", () => {
-        expect(() => validateLogInput({ message: "test", level: 3.5 as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", level: 3.5 as unknown as LogLevel })).toThrow(ValidationError);
     });
 
     // --- origin ---
@@ -63,12 +64,12 @@ describe("validateLogInput", () => {
     });
 
     it("rejects invalid origin", () => {
-        expect(() => validateLogInput({ message: "test", origin: "HACK" as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", origin: "HACK" as unknown as Log["origin"] })).toThrow(ValidationError);
     });
 
     // --- isCritical ---
     it("rejects non-boolean isCritical", () => {
-        expect(() => validateLogInput({ message: "test", isCritical: "yes" as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", isCritical: "yes" as unknown as boolean })).toThrow(ValidationError);
     });
 
     // --- tags ---
@@ -92,7 +93,7 @@ describe("validateLogInput", () => {
     });
 
     it("rejects non-array tags", () => {
-        expect(() => validateLogInput({ message: "test", tags: "bad" as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", tags: "bad" as unknown as LogTag[] })).toThrow(ValidationError);
     });
 
     // --- resourceIds ---
@@ -119,7 +120,7 @@ describe("validateLogInput", () => {
     // --- ValidationError properties ---
     it("error has field name", () => {
         try {
-            validateLogInput({ message: "valid", type: "INVALID" as any });
+            validateLogInput({ message: "valid", type: "INVALID" as unknown as LogType });
         } catch (e) {
             expect(e).toBeInstanceOf(ValidationError);
             expect((e as ValidationError).field).toBe("type");

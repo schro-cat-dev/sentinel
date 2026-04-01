@@ -497,7 +497,7 @@ describe("MaskingService — edge cases", () => {
         const obj = { a: { b: { value: "user@example.com" } } };
         const result = MaskingService.mask(obj, rules, [], { maxDepth: 2 });
         // depth 0 -> obj, depth 1 -> a, depth 2 -> b becomes too deep
-        expect((result as any).a.b).toBe("[CIRCULAR_REFERENCE_OR_TOO_DEEP]");
+        expect((result as Record<string, Record<string, unknown>>).a.b).toBe("[CIRCULAR_REFERENCE_OR_TOO_DEEP]");
     });
 
     it("handles circular references safely", () => {

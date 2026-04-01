@@ -158,26 +158,28 @@ export function validateLogInput(
             throw new ValidationError("resourceIds", `exceeds max count ${L.maxResourceIds}`);
         }
         for (let i = 0; i < input.resourceIds.length; i++) {
-            if (typeof input.resourceIds[i] === "string") {
-                if (input.resourceIds[i].length > L.maxResourceIdLength) {
-                    throw new ValidationError(`resourceIds[${i}]`, `exceeds max length ${L.maxResourceIdLength}`);
-                }
-                if (input.resourceIds[i].includes("\x00")) {
-                    throw new ValidationError(`resourceIds[${i}]`, "contains null bytes");
-                }
+            if (typeof input.resourceIds[i] !== "string") {
+                throw new ValidationError(`resourceIds[${i}]`, "must be a string");
+            }
+            if (input.resourceIds[i].length > L.maxResourceIdLength) {
+                throw new ValidationError(`resourceIds[${i}]`, `exceeds max length ${L.maxResourceIdLength}`);
+            }
+            if (input.resourceIds[i].includes("\x00")) {
+                throw new ValidationError(`resourceIds[${i}]`, "contains null bytes");
             }
         }
     }
 
     // details
     if (input.details !== undefined && input.details !== null) {
-        if (typeof input.details === "string") {
-            if (input.details.length > L.maxDetailsLength) {
-                throw new ValidationError("details", `exceeds max length ${L.maxDetailsLength}`);
-            }
-            if (input.details.includes("\x00")) {
-                throw new ValidationError("details", "contains null bytes");
-            }
+        if (typeof input.details !== "string") {
+            throw new ValidationError("details", "must be a string");
+        }
+        if (input.details.length > L.maxDetailsLength) {
+            throw new ValidationError("details", `exceeds max length ${L.maxDetailsLength}`);
+        }
+        if (input.details.includes("\x00")) {
+            throw new ValidationError("details", "contains null bytes");
         }
     }
 
@@ -213,32 +215,41 @@ export function validateLogInput(
 
 function validateStringField(value: unknown, field: string, maxLength: number): void {
     if (value === undefined || value === null) return;
-    if (typeof value === "string") {
-        if (value.length > maxLength) {
-            throw new ValidationError(field, `exceeds max length ${maxLength}`);
-        }
-        if (value.includes("\x00")) {
-            throw new ValidationError(field, "contains null bytes");
-        }
+    if (typeof value !== "string") {
+        throw new ValidationError(field, "must be a string");
+    }
+    if (value.length > maxLength) {
+        throw new ValidationError(field, `exceeds max length ${maxLength}`);
+    }
+    if (value.includes("\x00")) {
+        throw new ValidationError(field, "contains null bytes");
     }
 }
+
+const estimateJsonSizeSeen = new WeakSet<object>();
 
 function estimateJsonSize(value: unknown, depth = 0): number {
     if (depth > 20) return 0;
     if (value === null || value === undefined) return 4;
     if (typeof value === "string") return value.length + 2;
     if (typeof value === "number" || typeof value === "boolean") return 8;
-    if (Array.isArray(value)) {
-        let size = 2;
-        for (const item of value) size += estimateJsonSize(item, depth + 1) + 1;
-        return size;
-    }
     if (typeof value === "object") {
-        let size = 2;
-        for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-            size += k.length + 3 + estimateJsonSize(v, depth + 1) + 1;
+        if (estimateJsonSizeSeen.has(value as object)) return 0; // 循環参照防御
+        estimateJsonSizeSeen.add(value as object);
+        try {
+            if (Array.isArray(value)) {
+                let size = 2;
+                for (const item of value) size += estimateJsonSize(item, depth + 1) + 1;
+                return size;
+            }
+            let size = 2;
+            for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+                size += k.length + 3 + estimateJsonSize(v, depth + 1) + 1;
+            }
+            return size;
+        } finally {
+            estimateJsonSizeSeen.delete(value as object);
         }
-        return size;
     }
     return 8;
 }

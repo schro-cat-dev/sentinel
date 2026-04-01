@@ -66,7 +66,7 @@ describe("ErrorRouter", () => {
     it("PII in error context is masked before sending to sink", async () => {
         let capturedPayload: unknown = null;
         const sink: AuditSink = {
-            send: vi.fn().mockImplementation(async (p) => { capturedPayload = p; }),
+            send: vi.fn().mockImplementation(async (p: unknown) => { capturedPayload = p; }),
         };
         const router = new ErrorRouter({ enabled: true, sinks: { audit: sink } });
 
@@ -76,5 +76,50 @@ describe("ErrorRouter", () => {
         // Message should still contain original (classification doesn't mask message)
         // But meta.context should be safe
         expect(capturedPayload).toBeDefined();
+    });
+
+    it("log destination calls logger.info with structured data", async () => {
+        const logger: ErrorRoutingLogger = { info: vi.fn() };
+        // "validation(...)" messages classify as ValidationFailure → INFO severity
+        const router = new ErrorRouter({
+            enabled: true,
+            logger,
+            rules: [
+                {
+                    match: { severity: "INFO" },
+                    decisions: [{ destination: "log", action: "record", priority: 5 }],
+                },
+            ],
+        });
+
+        await router.route(new Error("validation(field) failed"), "callback", "trace-abc");
+
+        expect(logger.info).toHaveBeenCalledTimes(1);
+        const call = vi.mocked(logger.info).mock.calls[0];
+        expect(call[0]).toContain("[ErrorRouter:log]");
+        expect(call[0]).toContain("validation(field) failed");
+        expect(call[1]).toEqual(
+            expect.objectContaining({ severity: "INFO", traceId: "trace-abc" }),
+        );
+    });
+
+    it("log destination without logger does nothing (no-op)", async () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const router = new ErrorRouter({
+            enabled: true,
+            rules: [
+                {
+                    match: { severity: "INFO" },
+                    decisions: [{ destination: "log", action: "record", priority: 5 }],
+                },
+            ],
+        });
+
+        // "shutdown" in message → ShutdownViolation → INFO severity
+        await router.route(new Error("shutdown violation"), "callback");
+
+        // Should not throw or call console.error
+        expect(stderrSpy).not.toHaveBeenCalled();
+        stderrSpy.mockRestore();
     });
 });

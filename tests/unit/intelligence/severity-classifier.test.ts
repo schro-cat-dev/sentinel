@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { SeverityClassifier } from "../../../src/core/task/severity-classifier";
-import { DetectionResult, SystemEventName } from "../../../src/types/event";
+import { DetectionResult, SystemEventName, SystemEventMap } from "../../../src/types/event";
+import type { Log } from "../../../src/types/log";
 import { createTestLog, createCriticalLog, createSecurityLog } from "../../helpers/fixtures";
 
 describe("SeverityClassifier", () => {
@@ -12,7 +13,7 @@ describe("SeverityClassifier", () => {
     ): DetectionResult<SystemEventName> => ({
         eventName,
         priority,
-        payload: {} as any,
+        payload: {} as unknown as SystemEventMap[SystemEventName],
     });
 
     describe("isCritical override", () => {
@@ -101,7 +102,7 @@ describe("SeverityClassifier", () => {
         it("maps level 6 to CRITICAL", () => {
             const log = createTestLog({ level: 6 });
             const result = classifier.classify(
-                { eventName: "unknown" as any, priority: "LOW", payload: {} as any },
+                { eventName: "unknown" as unknown as SystemEventName, priority: "LOW", payload: {} as unknown as SystemEventMap[SystemEventName] },
                 log,
             );
             expect(result).toBe("CRITICAL");
@@ -110,7 +111,7 @@ describe("SeverityClassifier", () => {
         it("maps level 5 to HIGH", () => {
             const log = createTestLog({ level: 5 });
             const result = classifier.classify(
-                { eventName: "unknown" as any, priority: "LOW", payload: {} as any },
+                { eventName: "unknown" as unknown as SystemEventName, priority: "LOW", payload: {} as unknown as SystemEventMap[SystemEventName] },
                 log,
             );
             expect(result).toBe("HIGH");
@@ -119,7 +120,7 @@ describe("SeverityClassifier", () => {
         it("maps level 4 to MEDIUM", () => {
             const log = createTestLog({ level: 4 });
             const result = classifier.classify(
-                { eventName: "unknown" as any, priority: "LOW", payload: {} as any },
+                { eventName: "unknown" as unknown as SystemEventName, priority: "LOW", payload: {} as unknown as SystemEventMap[SystemEventName] },
                 log,
             );
             expect(result).toBe("MEDIUM");
@@ -128,7 +129,7 @@ describe("SeverityClassifier", () => {
         it("maps level 3 to LOW", () => {
             const log = createTestLog({ level: 3 });
             const result = classifier.classify(
-                { eventName: "unknown" as any, priority: "LOW", payload: {} as any },
+                { eventName: "unknown" as unknown as SystemEventName, priority: "LOW", payload: {} as unknown as SystemEventMap[SystemEventName] },
                 log,
             );
             expect(result).toBe("LOW");
@@ -137,7 +138,7 @@ describe("SeverityClassifier", () => {
         it("maps level 1-2 to INFO", () => {
             const log = createTestLog({ level: 1 });
             const result = classifier.classify(
-                { eventName: "unknown" as any, priority: "LOW", payload: {} as any },
+                { eventName: "unknown" as unknown as SystemEventName, priority: "LOW", payload: {} as unknown as SystemEventMap[SystemEventName] },
                 log,
             );
             expect(result).toBe("INFO");

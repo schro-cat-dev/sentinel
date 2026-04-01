@@ -64,6 +64,8 @@ export class TaskGenerator {
         const severityOrder = ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"];
         const ruleIdx = severityOrder.indexOf(rule.severity);
         const actualIdx = severityOrder.indexOf(actualSeverity);
+        // 未知のseverity（-1）はマッチしない
+        if (ruleIdx === -1 || actualIdx === -1) return false;
         // ルールの重大度以上の場合にマッチ
         return actualIdx >= ruleIdx;
     }

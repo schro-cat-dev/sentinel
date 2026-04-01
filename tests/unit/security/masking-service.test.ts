@@ -143,7 +143,7 @@ describe("MaskingService", () => {
                     },
                 },
             };
-            const result = MaskingService.mask(data, [emailRule]) as any;
+            const result = MaskingService.mask(data, [emailRule]) as Record<string, Record<string, Record<string, unknown>>>;
             expect(result.level1.level2.email).not.toContain("@");
         });
 

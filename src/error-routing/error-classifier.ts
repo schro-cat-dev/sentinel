@@ -74,10 +74,7 @@ export class ErrorClassifier {
     }
 
     private deriveKind(message: string, context: string): string {
-        if (context.startsWith("task.dispatch") && !message.toLowerCase().includes("timeout")) {
-            return "HandlerException";
-        }
-
+        // パターンマッチ先行（メッセージ内容で判断）
         for (const { pattern, context: ctxPattern, kind } of KIND_PATTERNS) {
             if (pattern.test(message)) {
                 if (ctxPattern && !ctxPattern.test(context)) continue;
@@ -86,6 +83,11 @@ export class ErrorClassifier {
         }
 
         if (message.toLowerCase().includes("validation")) return "ValidationFailure";
+
+        // パターン不一致のtask.dispatch → HandlerException
+        if (context.startsWith("task.dispatch")) {
+            return "HandlerException";
+        }
 
         return "Unknown";
     }

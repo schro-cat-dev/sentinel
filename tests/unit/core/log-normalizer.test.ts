@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { LogNormalizer } from "../../../src/core/engine/log-normalizer";
+import type { LogType, LogLevel, Log } from "../../../src/types/log";
 
 describe("LogNormalizer", () => {
     const normalizer = new LogNormalizer("test-service");
@@ -101,7 +102,7 @@ describe("LogNormalizer", () => {
         });
 
         it("falls back to SYSTEM for invalid type", () => {
-            const log = normalizer.normalize({ message: "test", type: "INVALID" as any });
+            const log = normalizer.normalize({ message: "test", type: "INVALID" as unknown as LogType });
             expect(log.type).toBe("SYSTEM");
         });
 
@@ -113,7 +114,7 @@ describe("LogNormalizer", () => {
         });
 
         it("falls back to 3 for invalid level", () => {
-            const log = normalizer.normalize({ message: "test", level: 99 as any });
+            const log = normalizer.normalize({ message: "test", level: 99 as unknown as LogLevel });
             expect(log.level).toBe(3);
         });
 
@@ -123,7 +124,7 @@ describe("LogNormalizer", () => {
         });
 
         it("falls back to SYSTEM for invalid origin", () => {
-            const log = normalizer.normalize({ message: "test", origin: "UNKNOWN" as any });
+            const log = normalizer.normalize({ message: "test", origin: "UNKNOWN" as unknown as Log["origin"] });
             expect(log.origin).toBe("SYSTEM");
         });
     });

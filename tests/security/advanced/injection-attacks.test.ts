@@ -32,7 +32,7 @@ const ALL_PII_RULES: MaskingRule[] = [
  * Helper: ingest a log with the given field overrides and verify no crash.
  * Returns the ingestion result or a caught error.
  */
-async function safeIngest(overrides: Record<string, unknown>): Promise<{ ok: boolean; error?: unknown }> {
+async function safeIngest(overrides: Record<string, unknown>): Promise<{ ok: boolean; error?: unknown; result?: import("../../../src/index").IngestionResult }> {
     Sentinel.reset();
     const config = createDefaultConfig({
         projectName: "injection-test",
@@ -44,8 +44,8 @@ async function safeIngest(overrides: Record<string, unknown>): Promise<{ ok: boo
     });
     const sentinel = Sentinel.initialize(config);
     try {
-        await sentinel.ingest({ message: "safe message", ...overrides } as never);
-        return { ok: true };
+        const result = await sentinel.ingest({ message: "safe message", ...overrides } as never);
+        return { ok: true, result };
     } catch (e) {
         return { ok: false, error: e };
     }
@@ -55,15 +55,20 @@ async function safeIngest(overrides: Record<string, unknown>): Promise<{ ok: boo
  * For each injection payload, verify it either gets rejected by validation
  * or passes through safely without code execution.
  */
-function expectSafeOrRejected(result: { ok: boolean; error?: unknown }): void {
+function expectSafeOrRejected(result: { ok: boolean; error?: unknown; result?: import("../../../src/index").IngestionResult }): void {
     if (!result.ok) {
         // If rejected, should be a ValidationError (not a runtime crash)
         expect(
             result.error instanceof ValidationError ||
             result.error instanceof Error,
         ).toBe(true);
+        return;
     }
-    // If ok === true, the payload was accepted and processed without crash
+    // ok === true: パイプライン完走。結果の構造を実質的に検証。
+    expect(result.result).toBeDefined();
+    expect(result.result!.traceId).toBeTruthy();
+    expect(typeof result.result!.masked).toBe("boolean");
+    expect(Array.isArray(result.result!.tasksGenerated)).toBe(true);
 }
 
 // =========================================================================
@@ -280,8 +285,7 @@ describe("Security: Injection Attack Vectors", () => {
         it("process.exit payload does not terminate the process", async () => {
             const result = await safeIngest({ message: "${process.exit(0)}" });
             expectSafeOrRejected(result);
-            // If we reach here, the process was not terminated
-            expect(true).toBe(true);
+            // expectSafeOrRejected が到達 = プロセスは生存。追加のトートロジー不要。
         });
     });
 

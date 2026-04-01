@@ -9,7 +9,7 @@ import { validateLogInput, ValidationError } from "../../../src/validation/log-v
 import { LogNormalizer } from "../../../src/core/engine/log-normalizer";
 import { MaskingRule } from "../../../src/configs/masking-rule";
 import { createTestLog } from "../../helpers/fixtures";
-import type { Log } from "../../../src/types/log";
+import type { Log, LogLevel, LogType } from "../../../src/types/log";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -95,40 +95,40 @@ describe("Fuzzing: random string generation", () => {
 
 describe("Fuzzing: numeric boundary values", () => {
     it("should reject level = 0 (below range)", () => {
-        expect(() => validateLogInput({ message: "test", level: 0 as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", level: 0 as unknown as LogLevel })).toThrow(ValidationError);
     });
 
     it("should reject level = 7 (above range)", () => {
-        expect(() => validateLogInput({ message: "test", level: 7 as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", level: 7 as unknown as LogLevel })).toThrow(ValidationError);
     });
 
     it("should reject level = NaN", () => {
-        expect(() => validateLogInput({ message: "test", level: NaN as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", level: NaN as unknown as LogLevel })).toThrow(ValidationError);
     });
 
     it("should reject level = Infinity", () => {
-        expect(() => validateLogInput({ message: "test", level: Infinity as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", level: Infinity as unknown as LogLevel })).toThrow(ValidationError);
     });
 
     it("should reject level = -Infinity", () => {
-        expect(() => validateLogInput({ message: "test", level: -Infinity as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", level: -Infinity as unknown as LogLevel })).toThrow(ValidationError);
     });
 
     it("should reject level = 3.5 (non-integer)", () => {
-        expect(() => validateLogInput({ message: "test", level: 3.5 as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", level: 3.5 as unknown as LogLevel })).toThrow(ValidationError);
     });
 
     it("should reject level = -0", () => {
         // -0 is 0, which is below range
-        expect(() => validateLogInput({ message: "test", level: -0 as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", level: -0 as unknown as LogLevel })).toThrow(ValidationError);
     });
 
     it("should reject level = MAX_SAFE_INTEGER", () => {
-        expect(() => validateLogInput({ message: "test", level: Number.MAX_SAFE_INTEGER as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", level: Number.MAX_SAFE_INTEGER as unknown as LogLevel })).toThrow(ValidationError);
     });
 
     it("should reject level = -MAX_SAFE_INTEGER", () => {
-        expect(() => validateLogInput({ message: "test", level: -Number.MAX_SAFE_INTEGER as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", level: -Number.MAX_SAFE_INTEGER as unknown as LogLevel })).toThrow(ValidationError);
     });
 
     it("should accept level = 1 (min valid)", () => {
@@ -188,27 +188,27 @@ describe("Fuzzing: numeric boundary values", () => {
 
 describe("Fuzzing: type coercion and exotic types", () => {
     it("should reject undefined message", () => {
-        expect(() => validateLogInput({} as any)).toThrow(ValidationError);
+        expect(() => validateLogInput({} as unknown as Partial<Log>)).toThrow(ValidationError);
     });
 
     it("should reject null message", () => {
-        expect(() => validateLogInput({ message: null } as any)).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: null } as unknown as Partial<Log>)).toThrow(ValidationError);
     });
 
     it("should reject numeric message", () => {
-        expect(() => validateLogInput({ message: 42 } as any)).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: 42 } as unknown as Partial<Log>)).toThrow(ValidationError);
     });
 
     it("should reject boolean message", () => {
-        expect(() => validateLogInput({ message: true } as any)).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: true } as unknown as Partial<Log>)).toThrow(ValidationError);
     });
 
     it("should reject Symbol message", () => {
-        expect(() => validateLogInput({ message: Symbol("test") } as any)).toThrow();
+        expect(() => validateLogInput({ message: Symbol("test") } as unknown as Partial<Log>)).toThrow();
     });
 
     it("should reject BigInt message", () => {
-        expect(() => validateLogInput({ message: BigInt(42) } as any)).toThrow();
+        expect(() => validateLogInput({ message: BigInt(42) } as unknown as Partial<Log>)).toThrow();
     });
 
     it("should reject empty string message", () => {
@@ -221,36 +221,36 @@ describe("Fuzzing: type coercion and exotic types", () => {
 
     it("should reject array as tags element (non-object)", () => {
         expect(() =>
-            validateLogInput({ message: "test", tags: ["not-an-object"] as any }),
+            validateLogInput({ message: "test", tags: ["not-an-object"] as unknown as Log["tags"] }),
         ).toThrow();
     });
 
     it("should reject tags with numeric key", () => {
         expect(() =>
-            validateLogInput({ message: "test", tags: [{ key: 123, category: "cat" }] as any }),
+            validateLogInput({ message: "test", tags: [{ key: 123, category: "cat" }] as unknown as Log["tags"] }),
         ).toThrow(ValidationError);
     });
 
     it("should reject tags with null category", () => {
         expect(() =>
-            validateLogInput({ message: "test", tags: [{ key: "k", category: null }] as any }),
+            validateLogInput({ message: "test", tags: [{ key: "k", category: null }] as unknown as Log["tags"] }),
         ).toThrow(ValidationError);
     });
 
     it("should reject non-boolean isCritical", () => {
-        expect(() => validateLogInput({ message: "test", isCritical: "yes" as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", isCritical: "yes" as unknown as boolean })).toThrow(ValidationError);
     });
 
     it("should reject isCritical = 1 (truthy number)", () => {
-        expect(() => validateLogInput({ message: "test", isCritical: 1 as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", isCritical: 1 as unknown as boolean })).toThrow(ValidationError);
     });
 
     it("should reject agentBackLog as array", () => {
-        expect(() => validateLogInput({ message: "test", agentBackLog: [] as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", agentBackLog: [] as unknown as Log["agentBackLog"] })).toThrow(ValidationError);
     });
 
     it("should reject agentBackLog as string", () => {
-        expect(() => validateLogInput({ message: "test", agentBackLog: "not-object" as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", agentBackLog: "not-object" as unknown as Log["agentBackLog"] })).toThrow(ValidationError);
     });
 
     it("should handle MaskingService.mask with null input", () => {
@@ -369,12 +369,12 @@ describe("Fuzzing: large arrays", () => {
 describe("Fuzzing: deeply nested objects", () => {
     it("should handle 100-level nested object in masking (returns sentinel value)", () => {
         const deep = deeplyNested(100);
-        const result = MaskingService.mask(deep, PII_RULES) as any;
+        const result = MaskingService.mask(deep, PII_RULES) as Record<string, unknown>;
         // maxDepth default is 10 so deep nesting returns sentinel
-        let current = result;
+        let current: unknown = result;
         for (let i = 0; i < 9; i++) {
             if (typeof current === "string") break;
-            current = current?.nested;
+            current = (current as Record<string, unknown>)?.nested;
         }
         // At depth 10 it should be the sentinel string
         expect(current).toBeDefined();
@@ -382,20 +382,22 @@ describe("Fuzzing: deeply nested objects", () => {
 
     it("should handle deeply nested input field in normalizer", () => {
         const deep = deeplyNested(100, "secret@email.com");
-        const log = normalizer.normalize({ message: "test", input: deep as any });
+        const log = normalizer.normalize({ message: "test", input: deep as unknown as Log["input"] });
         expect(log.input).toBeDefined();
     });
 
     it("should respect custom maxDepth option in masking", () => {
         const deep = deeplyNested(5);
-        const result = MaskingService.mask(deep, PII_RULES, [], { maxDepth: 3 }) as any;
-        expect(result.nested.nested.nested).toBe("[CIRCULAR_REFERENCE_OR_TOO_DEEP]");
+        const result = MaskingService.mask(deep, PII_RULES, [], { maxDepth: 3 }) as Record<string, unknown>;
+        const nested1 = result.nested as Record<string, unknown>;
+        const nested2 = nested1.nested as Record<string, unknown>;
+        expect(nested2.nested).toBe("[CIRCULAR_REFERENCE_OR_TOO_DEEP]");
     });
 
     it("should handle circular reference without infinite loop", () => {
         const obj: Record<string, unknown> = { message: "hello" };
         obj.self = obj;
-        const result = MaskingService.mask(obj, PII_RULES) as any;
+        const result = MaskingService.mask(obj, PII_RULES) as Record<string, unknown>;
         expect(result.self).toBe("[CIRCULAR_REFERENCE_OR_TOO_DEEP]");
     });
 
@@ -578,7 +580,8 @@ describe("Fuzzing: concurrent calls with conflicting data", () => {
             if (typeof result === "string") {
                 expect(result).not.toContain(`user${i}@test.com`);
             } else {
-                expect((result as any).nested.email).not.toContain(`user${i}@test.com`);
+                const nested = (result as Record<string, unknown>).nested as Record<string, unknown>;
+                expect(nested.email).not.toContain(`user${i}@test.com`);
             }
         }
     });
@@ -591,7 +594,7 @@ describe("Fuzzing: concurrent calls with conflicting data", () => {
                 } else if (i % 3 === 1) {
                     expect(() => validateLogInput({ message: "" })).toThrow(ValidationError);
                 } else {
-                    expect(() => validateLogInput({ message: "test", level: 999 as any })).toThrow(ValidationError);
+                    expect(() => validateLogInput({ message: "test", level: 999 as unknown as LogLevel })).toThrow(ValidationError);
                 }
             }),
         );
@@ -603,7 +606,7 @@ describe("Fuzzing: concurrent calls with conflicting data", () => {
             Promise.resolve(normalizer.normalize({
                 message: `concurrent-${i}`,
                 type: i % 2 === 0 ? "SECURITY" : "DEBUG",
-                level: ((i % 6) + 1) as any,
+                level: ((i % 6) + 1) as unknown as LogLevel,
             })),
         );
         const results = await Promise.all(tasks);
@@ -628,7 +631,7 @@ describe("Fuzzing: concurrent calls with conflicting data", () => {
         );
         const results = await Promise.all(tasks);
         for (const result of results) {
-            const r = result as any;
+            const r = result as Record<string, unknown>;
             expect(r.user).not.toContain("test@example.com");
             expect(r.card).not.toContain("4111 1111 1111 1111");
         }
@@ -642,8 +645,8 @@ describe("Fuzzing: concurrent calls with conflicting data", () => {
 describe("Fuzzing: additional edge cases", () => {
     it("should handle object with prototype pollution keys", () => {
         const malicious = JSON.parse('{"__proto__": {"polluted": true}, "message": "test@email.com"}');
-        const result = MaskingService.mask(malicious, PII_RULES) as any;
-        expect(({} as any).polluted).toBeUndefined();
+        const result = MaskingService.mask(malicious, PII_RULES) as Record<string, unknown>;
+        expect(({} as Record<string, unknown>).polluted).toBeUndefined();
         expect(result.message).not.toContain("test@email.com");
     });
 
@@ -658,7 +661,7 @@ describe("Fuzzing: additional edge cases", () => {
             valueOf: () => 42,
             message: "user@example.com",
         };
-        const result = MaskingService.mask(obj, PII_RULES) as any;
+        const result = MaskingService.mask(obj, PII_RULES) as Record<string, unknown>;
         expect(result.message).not.toContain("user@example.com");
     });
 
@@ -674,7 +677,7 @@ describe("Fuzzing: additional edge cases", () => {
 
     it("should handle object with numeric keys", () => {
         const obj: Record<string, unknown> = { 0: "a@b.com", 1: "hello" };
-        const result = MaskingService.mask(obj, PII_RULES) as any;
+        const result = MaskingService.mask(obj, PII_RULES) as Record<string, unknown>;
         expect(result["0"]).not.toContain("a@b.com");
     });
 
@@ -687,18 +690,18 @@ describe("Fuzzing: additional edge cases", () => {
     });
 
     it("should handle invalid type string in validation", () => {
-        expect(() => validateLogInput({ message: "test", type: "INVALID" as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", type: "INVALID" as unknown as LogType })).toThrow(ValidationError);
     });
 
     it("should handle invalid origin string in validation", () => {
-        expect(() => validateLogInput({ message: "test", origin: "HACKER" as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", origin: "HACKER" as unknown as Log["origin"] })).toThrow(ValidationError);
     });
 
     it("should handle non-array resourceIds", () => {
-        expect(() => validateLogInput({ message: "test", resourceIds: "not-array" as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", resourceIds: "not-array" as unknown as string[] })).toThrow(ValidationError);
     });
 
     it("should handle non-array tags", () => {
-        expect(() => validateLogInput({ message: "test", tags: "not-array" as any })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: "test", tags: "not-array" as unknown as Log["tags"] })).toThrow(ValidationError);
     });
 });
