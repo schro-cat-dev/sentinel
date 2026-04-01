@@ -79,4 +79,14 @@ Sentinel.onTaskAction(actionType, handler)
 | `whitelist-config-yaml.test.ts` | 9 | YAML/JSON設定シミュレーション、設定切替 |
 | `whitelist-security-level.test.ts` | 18 | strict/standard/permissive/off の各挙動 |
 | `whitelist-routing-e2e.test.ts` | 20 | 全パイプラインステージへの到達検証 |
-| **合計** | **99** | |
+| `pollution-guard.test.ts` | 11 | prototype汚染防御、messagePattern型検証 |
+| `audit-fixes.test.ts` | 7 | race condition、再初期化警告、shutdown cleanup |
+| **合計** | **117** | |
+
+## Go/TS間の値同期について
+
+TS SDK と Go Server は同じ `SystemEventName` 値（4イベント名）と `TaskActionType` 値（6アクション名）を使用する。現時点で自動同期の仕組みはなく、値の追加・変更時は両方を手動で更新する必要がある。
+
+- **TS側のソースオブトゥルース**: `src/validation/whitelists/security-whitelist.ts`, `src/types/task.ts`
+- **Go側のソースオブトゥルース**: `packages/server/config/sentinel.yaml`
+- **乖離検出**: TS側の `buildCustomResult()` exhaustive switch (`never` ガード) が新eventName追加漏れをコンパイル時に検出する。Go側は `config.go` の `validate()` で検出。

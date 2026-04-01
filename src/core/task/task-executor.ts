@@ -56,6 +56,7 @@ export class TaskExecutor {
      */
     public clearHandlers(): void {
         this.handlers.clear();
+        this.confirmHandler = undefined;
     }
 
     /**

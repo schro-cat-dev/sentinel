@@ -63,11 +63,11 @@ const config = createDefaultConfig({
 ```
 EventDetector
 ├── Built-in rules (5 hardcoded, always active, 最優先)
-│   ├── isCritical → SYSTEM_CRITICAL_FAILURE
-│   ├── SECURITY + level≥5 → SECURITY_INTRUSION_DETECTED
-│   ├── triggerAgent + level≥4 → AI_ACTION_REQUIRED
-│   ├── COMPLIANCE + "violation" → COMPLIANCE_VIOLATION
-│   └── SLA + level≥4 → SYSTEM_CRITICAL_FAILURE
+│   ├── 1. isCritical → SYSTEM_CRITICAL_FAILURE
+│   ├── 2. SECURITY + level≥5 → SECURITY_INTRUSION_DETECTED
+│   ├── 3. COMPLIANCE + "violation" → COMPLIANCE_VIOLATION
+│   ├── 4. triggerAgent + level≥4 → AI_ACTION_REQUIRED
+│   └── 5. SLA + level≥4 → SYSTEM_CRITICAL_FAILURE
 │
 └── Custom rules (config-driven, 設定順で評価)
     ├── 条件: logTypes, minLevel, maxLevel, messagePattern, tagMatch, origin, isCritical

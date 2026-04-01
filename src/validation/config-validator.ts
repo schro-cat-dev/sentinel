@@ -82,12 +82,10 @@ export function validateConfigWhitelists(
         validate("executionLevel", rule.executionLevel);
     }
 
-    // --- masking rules (PII categories) ---
-    if (config.masking.enabled) {
-        for (const rule of config.masking.rules) {
-            if (rule.type === "PII_TYPE") {
-                validate("piiCategory", rule.category);
-            }
+    // --- masking rules (PII categories — 無効時も検証して潜在的な設定ミスを検出) ---
+    for (const rule of config.masking.rules) {
+        if (rule.type === "PII_TYPE") {
+            validate("piiCategory", rule.category);
         }
     }
 

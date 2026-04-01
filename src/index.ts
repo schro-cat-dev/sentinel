@@ -67,6 +67,8 @@ export class Sentinel {
      */
     public static initialize(config: SentinelConfig, options?: SentinelOptions): Sentinel {
         if (Sentinel.instance?.initialized) {
+            const logger = config.logger ?? Sentinel.instance.config.logger;
+            logger?.warn("Sentinel.initialize() called but already initialized. Returning existing instance. Call Sentinel.reset() or shutdown() first to re-initialize.", { source: "sentinel" });
             return Sentinel.instance;
         }
         const { registry } = validateConfigWhitelists(config);
@@ -86,8 +88,18 @@ export class Sentinel {
 
     /**
      * インスタンスリセット（テスト用）
+     * 非テスト環境で呼ばれた場合は警告を出す。
      */
     public static reset(): void {
+        if (Sentinel.instance) {
+            const env = Sentinel.instance.config.environment;
+            if (env !== "test" && env !== "local") {
+                Sentinel.instance.config.logger?.warn(
+                    `Sentinel.reset() called in "${env}" environment. This method is intended for testing only.`,
+                    { source: "sentinel" },
+                );
+            }
+        }
         Sentinel.instance = null;
     }
 
