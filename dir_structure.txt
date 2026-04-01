@@ -1,251 +1,167 @@
 .
-├── DESIGN_V1.md
-├── dir_structure.txt
-├── docs
-│   ├── architecture-diagrams.md
-│   ├── architecture.md
-│   ├── coop-siem-like-tools-agent.md
-│   ├── instance-manage.md
-│   ├── security.md
-│   ├── task-gen.md
-│   └── usage-guide.md
-├── eslint.config.js
-├── examples
-│   └── grpc-transport.ts
-├── package-lock.json
-├── package.json
-├── packages
-│   └── server
-│       ├── cmd
-│       │   └── server
-│       │       └── main.go
-│       ├── config
-│       │   ├── config_test.go
-│       │   ├── config.go
-│       │   ├── security.default.json
-│       │   └── sentinel.yaml
-│       ├── docs
-│       │   ├── design
-│       │   │   ├── known-limitations.md
-│       │   │   ├── module-responsibility-map.md
-│       │   │   ├── threat-response-orchestration.md
-│       │   │   └── work-log-2026-03-27.md
-│       │   ├── docker-guide.md
-│       │   ├── extensibility-guide.md
-│       │   ├── gap-requirements.md
-│       │   ├── usage-guide.md
-│       │   └── v2-design.md
-│       ├── go.mod
-│       ├── go.sum
-│       ├── internal
-│       │   ├── agent
-│       │   │   ├── executor_test.go
-│       │   │   ├── executor.go
-│       │   │   ├── mock_provider.go
-│       │   │   └── provider.go
-│       │   ├── detection
-│       │   │   ├── anomaly_test.go
-│       │   │   ├── anomaly.go
-│       │   │   ├── dedup_test.go
-│       │   │   ├── dedup.go
-│       │   │   ├── detector_test.go
-│       │   │   ├── detector.go
-│       │   │   ├── dynamic_rule_test.go
-│       │   │   ├── dynamic_rule.go
-│       │   │   ├── ensemble_test.go
-│       │   │   ├── ensemble.go
-│       │   │   └── rules.go
-│       │   ├── domain
-│       │   │   ├── approval_test.go
-│       │   │   ├── approval.go
-│       │   │   ├── domain_test.go
-│       │   │   ├── event.go
-│       │   │   ├── log.go
-│       │   │   ├── result.go
-│       │   │   └── task.go
-│       │   ├── engine
-│       │   │   ├── agent_bridge_test.go
-│       │   │   ├── agent_bridge.go
-│       │   │   ├── benchmark_enhanced_test.go
-│       │   │   ├── benchmark_test.go
-│       │   │   ├── enhanced_pipeline_test.go
-│       │   │   ├── full_integration_test.go
-│       │   │   ├── normalizer_test.go
-│       │   │   ├── normalizer.go
-│       │   │   ├── pipeline_test.go
-│       │   │   ├── pipeline.go
-│       │   │   ├── routing.go
-│       │   │   ├── security_test.go
-│       │   │   └── threat_response_e2e_test.go
-│       │   ├── grpc
-│       │   │   ├── approval_workflow_test.go
-│       │   │   ├── e2e_comprehensive_test.go
-│       │   │   ├── enhanced_server_test.go
-│       │   │   ├── interceptors.go
-│       │   │   ├── multistep_approval_test.go
-│       │   │   ├── network_integration_test.go
-│       │   │   ├── pb
-│       │   │   │   ├── sentinel_grpc.pb.go
-│       │   │   │   └── sentinel.pb.go
-│       │   │   ├── server_test.go
-│       │   │   └── server.go
-│       │   ├── middleware
-│       │   │   ├── auth.go
-│       │   │   ├── authorizer_test.go
-│       │   │   ├── authorizer.go
-│       │   │   ├── middleware_test.go
-│       │   │   └── security_config.go
-│       │   ├── notify
-│       │   │   ├── adapters_test.go
-│       │   │   ├── adapters.go
-│       │   │   ├── mock.go
-│       │   │   ├── notifier_test.go
-│       │   │   └── notifier.go
-│       │   ├── response
-│       │   │   ├── analysis_agent_test.go
-│       │   │   ├── analysis_agent.go
-│       │   │   ├── block_agent_test.go
-│       │   │   ├── block_agent.go
-│       │   │   ├── block_provider_test.go
-│       │   │   ├── block_provider.go
-│       │   │   ├── block_ttl_test.go
-│       │   │   ├── orchestrator_test.go
-│       │   │   ├── orchestrator.go
-│       │   │   ├── strategy_test.go
-│       │   │   └── strategy.go
-│       │   ├── retry
-│       │   │   ├── retry_test.go
-│       │   │   └── retry.go
-│       │   ├── security
-│       │   │   ├── fuzz_test.go
-│       │   │   ├── key_rotation_test.go
-│       │   │   ├── masking_deep_test.go
-│       │   │   ├── masking_jp.go
-│       │   │   ├── masking_policy_test.go
-│       │   │   ├── masking_policy.go
-│       │   │   ├── masking_test.go
-│       │   │   ├── masking_verify_test.go
-│       │   │   ├── masking_verify.go
-│       │   │   ├── masking.go
-│       │   │   ├── sanitizer_test.go
-│       │   │   ├── sanitizer.go
-│       │   │   ├── signer_test.go
-│       │   │   └── signer.go
-│       │   ├── store
-│       │   │   ├── factory_test.go
-│       │   │   ├── factory.go
-│       │   │   ├── sqlite_encrypted.go
-│       │   │   ├── sqlite_test.go
-│       │   │   ├── sqlite.go
-│       │   │   └── store.go
-│       │   ├── task
-│       │   │   ├── executor_test.go
-│       │   │   ├── executor.go
-│       │   │   ├── generator_test.go
-│       │   │   └── generator.go
-│       │   └── webhook
-│       │       └── notifier.go
-│       ├── proto
-│       │   └── sentinel.proto
-│       └── testutil
-│           └── fixtures.go
-├── readme
-│   ├── en(default).md
-│   └── ja.md
-├── README.md
-├── rollup.config.js
-├── samples
-│   ├── basic_usage.ts
-│   └── security_anomaly_ai.ts
-├── src
-│   ├── configs
-│   │   ├── masking-rule.ts
-│   │   └── sentinel-config.ts
-│   ├── core
-│   │   ├── detection
-│   │   │   └── event-detector.ts
-│   │   ├── engine
-│   │   │   ├── i-interfaces.ts
-│   │   │   ├── index.ts
-│   │   │   ├── ingestion-engine.ts
-│   │   │   ├── log-normalizer.ts
-│   │   │   └── types.ts
-│   │   └── task
-│   │       ├── severity-classifier.ts
-│   │       ├── task-executor.ts
-│   │       └── task-generator.ts
-│   ├── index.ts
-│   ├── security
-│   │   ├── integrity-signer.ts
-│   │   └── masking-service.ts
-│   ├── shared
-│   │   ├── constants
-│   │   │   ├── error-layer.ts
-│   │   │   ├── error-protocol-kind.ts
-│   │   │   ├── http-status.ts
-│   │   │   ├── index.ts
-│   │   │   └── kinds
-│   │   │       ├── application
-│   │   │       │   ├── access.ts
-│   │   │       │   ├── auth.ts
-│   │   │       │   ├── index.ts
-│   │   │       │   ├── limit-over.ts
-│   │   │       │   ├── permission.ts
-│   │   │       │   ├── security.ts
-│   │   │       │   └── validation.ts
-│   │   │       ├── index.ts
-│   │   │       └── persistence
-│   │   │           ├── cache-error-kind.ts
-│   │   │           ├── datastore-error-kind.ts
-│   │   │           ├── db-error-kind.ts
-│   │   │           ├── index.ts
-│   │   │           └── storage-error-kind.ts
-│   │   ├── errors
-│   │   │   ├── application
-│   │   │   │   ├── auth-error.ts
-│   │   │   │   └── validation-error.ts
-│   │   │   ├── error-payload-protocol.ts
-│   │   │   ├── index.ts
-│   │   │   └── persistence
-│   │   ├── functional
-│   │   │   └── result.ts
-│   │   └── utils
-│   │       ├── error-utils.ts
-│   │       └── seed-to-union-types.ts
-│   ├── transport
-│   │   └── transport.ts
-│   ├── types
-│   │   ├── event.ts
-│   │   ├── log.ts
-│   │   └── task.ts
-│   └── validation
-│       └── log-validator.ts
-├── tests
-│   ├── helpers
-│   │   └── fixtures.ts
-│   ├── integration
-│   │   └── pipeline.test.ts
-│   └── unit
-│       ├── core
-│       │   ├── event-detector.test.ts
-│       │   └── log-normalizer.test.ts
-│       ├── intelligence
-│       │   ├── severity-classifier.test.ts
-│       │   ├── task-executor.test.ts
-│       │   └── task-generator.test.ts
-│       ├── security
-│       │   ├── integrity-signer.test.ts
-│       │   └── masking-service.test.ts
-│       ├── shared
-│       │   └── result.test.ts
-│       ├── transport
-│       │   └── transport.test.ts
-│       └── validation
-│           └── log-validator.test.ts
-├── tsconfig.json
-├── types
-│   └── global.d.ts
-├── util-commands.md
-└── vitest.config.ts
+├── README.md                                    # プロジェクトルート README（全ドキュメントのエントリポイント）
+├── DESIGN_V1.md                                 # v1 設計仕様書
+├── package.json                                 # npm パッケージ定義（zero runtime deps）
+├── package-lock.json                            # 依存関係ロックファイル（SHA-512 integrity）
+├── tsconfig.json                                # TypeScript コンパイラ設定（strict, ESNext, Node.js only）
+├── rollup.config.js                             # Rollup バンドル設定（ESM + CJS dual output）
+├── eslint.config.js                             # ESLint 設定（typescript-eslint）
+├── vitest.config.ts                             # Vitest テスト設定
+├── .gitignore                                   # Git 除外設定（.security/ 含む）
+├── .npmignore                                   # npm publish 除外（src, tests, *.map）
+├── util-commands.md                             # dir_structure.txt 生成用コマンド
+├── dir_structure.txt                            # 本ファイル（プロジェクト構造 + 責務コメント）
+│
+├── src/                                         # ── TypeScript Client SDK ソースコード ──
+│   ├── index.ts                                 # 公開API: Sentinel class, initialize/ingest/shutdown/onTaskAction/onTaskConfirm
+│   ├── configs/
+│   │   ├── sentinel-config.ts                   # SentinelConfig 型定義 + createDefaultConfig（deep-merge）+ SentinelLogger I/F
+│   │   └── masking-rule.ts                      # MaskingRule union type（REGEX | PII_TYPE | KEY_MATCH）
+│   ├── core/
+│   │   ├── engine/
+│   │   │   ├── ingestion-engine.ts              # パイプラインオーケストレーター（normalize→mask→detect→task→hash→callback）
+│   │   │   ├── log-normalizer.ts                # ログ正規化（防御的デフォルト注入、バリデーションは行わない）
+│   │   │   ├── i-interfaces.ts                  # IIngestionCoordinator, ILogNormalizer インターフェース
+│   │   │   ├── types.ts                         # IngestionResult 型（traceId, hash, tasks, detection）
+│   │   │   └── index.ts                         # barrel export
+│   │   ├── detection/
+│   │   │   └── event-detector.ts                # ルールベースイベント検知（5種: CRITICAL, SECURITY, AI_ACTION, COMPLIANCE, SLA）
+│   │   └── task/
+│   │       ├── task-generator.ts                # ルールインデックス + 重大度マッチング → GeneratedTask 生成
+│   │       ├── task-executor.ts                 # ディスパッチ（AUTO/SEMI_AUTO/MANUAL/MONITOR + timeoutMs + confirmHandler）
+│   │       └── severity-classifier.ts           # イベント種別 × ログレベル → TaskSeverity 分類
+│   ├── security/
+│   │   ├── integrity-signer.ts                  # SHA-256 hash chain（timingSafeEqual, NaN拒否, 決定論的シリアライズ）
+│   │   └── masking-service.ts                   # PIIマスキング（8パターン + REGEX + KEY_MATCH、ログ全体再帰、logger DI）
+│   ├── transport/
+│   │   └── transport.ts                         # RemoteTransport I/F, TransportConfig（local/remote/dual + timeoutMs）
+│   ├── validation/
+│   │   └── log-validator.ts                     # SDK公開API境界のランタイム入力検証（message必須, 型, 長さ, null byte）
+│   ├── types/
+│   │   ├── log.ts                               # Log ドメインモデル（30+フィールド, agentBackLog, aiContext含む）
+│   │   ├── task.ts                              # TaskRule, GeneratedTask, TaskResult, 実行レベル/重大度の型定義
+│   │   └── event.ts                             # SystemEventMap, DetectionResult, SafeLogSubset
+│   └── shared/
+│       ├── functional/
+│       │   └── result.ts                        # Result<T,E> monad（success/failure/map/flatMap/safe）— SDK公開ユーティリティ候補
+│       ├── errors/
+│       │   └── error-payload-protocol.ts        # ErrorPayloadProtocol 型（error-utils.ts 用）
+│       └── utils/
+│           └── error-utils.ts                   # isPiiSafe, maskPiiContext, classifyError（パイプライン未使用、ユーティリティ）
+│
+├── tests/                                       # ── テストスイート（671テスト）──
+│   ├── helpers/
+│   │   └── fixtures.ts                          # テストファクトリ（createTestLog, createTestConfig, createTestTaskRule）
+│   ├── unit/                                    # ユニットテスト（220テスト）
+│   │   ├── core/
+│   │   │   ├── ingestion-engine.test.ts         # エンジン: フィールドパススルー, コールバック接続, mutex, エラー耐性 (12)
+│   │   │   ├── event-detector.test.ts           # 検知: 5イベントタイプ全分岐, AIループ防止 (19)
+│   │   │   ├── log-normalizer.test.ts           # 正規化: 全デフォルト値, 防御的フォールバック (26)
+│   │   │   └── task-executor-extended.test.ts   # 実行: removeHandler, timeoutMs, clearHandlers (6)
+│   │   ├── intelligence/
+│   │   │   ├── task-generator.test.ts           # タスク生成: ルールインデックス, 重大度フィルタ (15)
+│   │   │   ├── task-executor.test.ts            # ディスパッチ: 実行レベル4種, ガードレール (15)
+│   │   │   └── severity-classifier.test.ts      # 重大度: イベント種別×レベルのマッピング (13)
+│   │   ├── security/
+│   │   │   ├── integrity-signer.test.ts         # hash chain: 計算, 検証, チェーン状態 (15)
+│   │   │   └── masking-service.test.ts          # マスキング: 全ルールタイプ, 循環参照, depth (23)
+│   │   ├── validation/
+│   │   │   └── log-validator.test.ts            # 入力検証: 全フィールドの正常/異常 (24)
+│   │   ├── transport/
+│   │   │   └── transport.test.ts                # Transport: local/remote/dual 基本動作 (7)
+│   │   ├── shared/
+│   │   │   └── result.test.ts                   # Result monad: 全関数のテスト (33)
+│   │   └── remaining-backlog.test.ts            # バックログ修正: Logger, SEMI_AUTO, AI_ACTION, onError (14)
+│   ├── security/                                # セキュリティテスト（94テスト）
+│   │   ├── redos.test.ts                        # ReDoS耐性: 全PIIパターン + カスタムRegex (5)
+│   │   ├── prototype-pollution.test.ts          # Prototype Pollution: __proto__/constructor注入防御 (5)
+│   │   ├── input-validation-bypass.test.ts      # 入力検証バイパス: null byte, 型強制, 境界値 (19)
+│   │   ├── masking-bypass.test.ts               # PIIマスキング回避: エンコード, 構造, KEY_MATCH (18)
+│   │   ├── integrity-chain.test.ts              # hash chain改竄: フィールド変更, 順序, 検証 (16)
+│   │   ├── information-leakage.test.ts          # 情報漏洩: エラーメッセージ, PII除去 (5)
+│   │   └── new-findings-v2.test.ts              # v2修正: timing, race, transport, config, NaN (21)
+│   ├── config/                                  # 設定マトリクステスト（322テスト）
+│   │   ├── config-matrix.test.ts                # createDefaultConfig: defaults, deep-merge, environment (14)
+│   │   ├── config-pipeline-reflection.test.ts   # 設定→パイプライン反映: 全フィールドE2E (38)
+│   │   ├── transport-modes.test.ts              # Transport全モード: timeout, fallback, dual, shutdown (34)
+│   │   ├── masking-rules-exhaustive.test.ts     # マスキング全パターン: PII/REGEX/KEY_MATCH/edge (73)
+│   │   └── validation-normalizer-exhaustive.test.ts # 全フィールド検証+正規化: 正常/異常/edge (159)
+│   ├── integration/
+│   │   └── pipeline.test.ts                     # SDKパイプラインE2E: ingest→detect→task→hash (18)
+│   └── e2e/
+│       ├── sdk-server.test.ts                   # クロスコンポーネントE2E: SDK→Go gRPC実通信 (15)
+│       └── test-server-config.yaml              # E2Eテスト用Goサーバ設定（インメモリDB）
+│
+├── docs/                                        # ── ドキュメント ──
+│   ├── architecture.md                          # SDK + Server パイプラインフロー, モジュール責務
+│   ├── architecture-diagrams.md                 # システム構成図, データフロー図
+│   ├── security.md                              # 脅威モデル, HMAC, PII masking, バリデーション境界
+│   ├── usage-guide.md                           # SDK使い方ガイド, 設定詳細
+│   ├── task-gen.md                              # タスク生成設計
+│   ├── coop-siem-like-tools-agent.md            # SIEM連携・AIエージェント連携設計
+│   ├── instance-manage.md                       # インスタンス管理設計
+│   ├── testing/                                 # テスト戦略ドキュメント
+│   │   ├── README.md                            # テスト戦略索引・分類・設計原則
+│   │   ├── unit-tests.md                        # 220テスト一覧・設計根拠
+│   │   ├── security-tests.md                    # 94テスト・17攻撃ベクトルカバレッジ
+│   │   ├── config-tests.md                      # 322テスト・全設定パターン検証
+│   │   ├── integration-e2e-tests.md             # 33テスト・SDK→Go通信テスト
+│   │   └── quality-checklist.md                 # 50+項目の定性的チェックリスト
+│   └── analysis/                                # 内部品質解析ログ
+│       ├── README.md                            # 解析索引・タイムスタンプ規約
+│       ├── functional/
+│       │   ├── config-reflection.md             # 設定フィールドの実装反映状況
+│       │   ├── module-integration.md            # モジュール間連携・データフロー検証
+│       │   └── feature-completeness.md          # 機能実装状況・TODO追跡
+│       ├── non-functional/
+│       │   ├── performance.md                   # パフォーマンス解析
+│       │   ├── resilience.md                    # 耐障害性
+│       │   ├── observability.md                 # 可観測性
+│       │   └── compatibility.md                 # ESM/CJS互換性
+│       ├── dead-code/
+│       │   └── inventory.md                     # 未使用コード棚卸し
+│       └── roadmap/
+│           └── improvement-backlog.md           # 37件改善バックログ（35完了）
+│
+├── packages/                                    # ── Go Backend Server ──
+│   └── server/
+│       ├── cmd/server/main.go                   # エントリポイント（全モジュールワイヤリング）
+│       ├── config/
+│       │   ├── config.go                        # YAML読込 + env override + validation（HMAC鍵32B, API key16C, 暗号鍵32B）
+│       │   ├── config_test.go                   # 設定バリデーションテスト
+│       │   ├── sentinel.yaml                    # デフォルト設定ファイル
+│       │   └── security.default.json            # セキュリティヘッダ・レートリミット・ハニーポット設定
+│       ├── proto/sentinel.proto                 # gRPC Protocol Buffers 定義
+│       ├── internal/
+│       │   ├── engine/                          # 10ステージパイプライン + normalizer + agent bridge
+│       │   ├── detection/                       # アンサンブル検知 + 動的ルール + 異常検知 + 重複排除
+│       │   ├── security/                        # HMAC signer, マスキング, ポリシーエンジン, 検証器, サニタイザ
+│       │   ├── domain/                          # ドメインモデル（Log, Task, Event, Approval, Result）
+│       │   ├── grpc/                            # gRPC server + interceptors + pb（生成コード）
+│       │   ├── middleware/                       # Auth + RBAC authorizer + セキュリティヘッダ
+│       │   ├── task/                            # タスク生成 + 実行
+│       │   ├── agent/                           # AIエージェント provider(I/F) + executor + mock
+│       │   ├── response/                        # 脅威レスポンスオーケストレーター + ブロック + 分析
+│       │   ├── notify/                          # 通知アダプタ（Slack/Gmail/Discord/Webhook/Log）
+│       │   ├── store/                           # SQLite/SQLCipher永続化（ログ/タスク/承認/脅威レスポンス）
+│       │   ├── retry/                           # 指数バックオフ + ジッター（共有モジュール）
+│       │   └── webhook/                         # Webhook通知（承認ワークフロー用）
+│       ├── docs/
+│       │   ├── usage-guide.md                   # Server 使い方ガイド
+│       │   ├── extensibility-guide.md           # 拡張ガイド
+│       │   ├── docker-guide.md                  # Docker/Kubernetes 導入ガイド
+│       │   └── design/                          # 設計ドキュメント
+│       └── testutil/fixtures.go                 # テストフィクスチャ
+│
+├── examples/
+│   └── grpc-transport.ts                        # SDK→Go Server gRPC Transport 実装例
+├── samples/
+│   ├── basic_usage.ts                           # 基本的な使い方サンプル
+│   └── security_anomaly_ai.ts                   # セキュリティ異常検知 + AI連携サンプル
+├── readme/
+│   ├── en(default).md                           # 英語README
+│   └── ja.md                                    # 日本語README
+└── types/
+    └── global.d.ts                              # グローバル型定義
 
-60 directories, 189 files
+64 directories, 201 files

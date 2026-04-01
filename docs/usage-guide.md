@@ -107,7 +107,7 @@ Sentinel.reset(); // Clears singleton, allows re-initialization
 ```bash
 npm run build      # TypeScript compile + Rollup bundle
 npm run typecheck   # Type check only
-npm run test        # Run 349 tests (Vitest)
+npm run test        # Run 671 tests (Vitest)
 npm run lint        # ESLint
 ```
 

@@ -8,7 +8,7 @@ Sentinel detects events from application logs and automatically generates remedi
 
 The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **Go backend server** communicating over gRPC.
 
-[Architecture](docs/architecture.md) | [Security](docs/security.md) | [Usage Guide](docs/usage-guide.md) | [日本語](readme/ja.md)
+[Architecture](docs/architecture.md) | [Security](docs/security.md) | [Testing](docs/testing/) | [Analysis](docs/analysis/) | [Usage Guide](docs/usage-guide.md) | [日本語](readme/ja.md)
 
 ---
 
@@ -16,11 +16,11 @@ The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
-| Client SDK | TypeScript (zero dependencies) | Implemented | 349 tests (Vitest) — 208 unit/integration + 94 security + 33 engine + 14 E2E |
+| Client SDK | TypeScript (zero dependencies) | Implemented | 671 tests (Vitest) — unit 220 + security 94 + config 322 + integration 18 + E2E 15 |
 | Backend Server | Go 1.22+ / gRPC | Implemented | 689 tests (`-race` verified, fuzz tested) |
 | gRPC Communication | Protocol Buffers v3 | Implemented | E2E verified (SDK→Server 15 tests via real gRPC connection) |
 
-**Total: 1,038 tests, 0 FAIL**
+**Total: 1,360 tests, 0 FAIL**
 
 ---
 
@@ -149,6 +149,8 @@ await sentinel.shutdown();
 ---
 
 ## Project Structure
+
+> 全ファイルの責務コメント付き詳細は [dir_structure.txt](dir_structure.txt) を参照。
 
 ```
 sentinel/
@@ -308,33 +310,75 @@ authorization:
 ## Testing
 
 ```bash
-# TypeScript SDK (349 tests: unit + security + E2E)
+# TypeScript SDK (671 tests: unit + security + config + E2E)
 npm test
 
 # Go Server (689 tests)
 cd packages/server
 go test ./... -race -count=1
-
-# Go Server with verbose output
-go test ./... -race -v -count=1
 ```
+
+**Total: 1,360 tests**
+
+| カテゴリ | テスト数 | 詳細ドキュメント |
+|---------|---------|----------------|
+| Unit | 220 | [docs/testing/unit-tests.md](docs/testing/unit-tests.md) |
+| Security | 94 | [docs/testing/security-tests.md](docs/testing/security-tests.md) |
+| Config Matrix | 322 | [docs/testing/config-tests.md](docs/testing/config-tests.md) |
+| Integration | 18 | [docs/testing/integration-e2e-tests.md](docs/testing/integration-e2e-tests.md) |
+| E2E (SDK→Go) | 15 | [docs/testing/integration-e2e-tests.md](docs/testing/integration-e2e-tests.md) |
+| Go Server | 689 | `go test ./... -race` |
+| **品質チェックリスト** | — | [docs/testing/quality-checklist.md](docs/testing/quality-checklist.md) |
 
 ---
 
 ## Documentation
 
+### アーキテクチャ・設計
+
 | Document | Content |
 |----------|---------|
-| [Server 使い方ガイド](packages/server/docs/usage-guide.md) | 設定詳細、環境変数、gRPC API、セキュリティレベル別推奨設定、SDK連携 |
+| [Architecture](docs/architecture.md) | SDK + Server パイプラインフロー、モジュール責務マップ |
+| [Security](docs/security.md) | 脅威モデル、HMAC hash chain、PII masking、バリデーション境界 |
+| [Architecture Diagrams](docs/architecture-diagrams.md) | システム構成図、データフロー図 |
+
+### テスト
+
+| Document | Content |
+|----------|---------|
+| [Testing Overview](docs/testing/README.md) | テスト戦略・分類・設計原則 |
+| [Unit Tests](docs/testing/unit-tests.md) | 220テストの一覧・各テストの設計根拠 |
+| [Security Tests](docs/testing/security-tests.md) | 94テスト・17攻撃ベクトルのカバレッジ |
+| [Config Tests](docs/testing/config-tests.md) | 322テスト・全設定パターンの正常/異常/エッジケース |
+| [Integration & E2E](docs/testing/integration-e2e-tests.md) | 33テスト・SDK→Go gRPC通信テスト |
+| [Quality Checklist](docs/testing/quality-checklist.md) | 50+項目の定性的チェックリスト |
+
+### 内部品質解析
+
+| Document | Content |
+|----------|---------|
+| [Analysis Overview](docs/analysis/README.md) | 解析ログの索引・タイムスタンプ規約 |
+| [Config Reflection](docs/analysis/functional/config-reflection.md) | 設定フィールドの実装反映状況 |
+| [Module Integration](docs/analysis/functional/module-integration.md) | モジュール間連携の完全性・データフロー検証 |
+| [Feature Completeness](docs/analysis/functional/feature-completeness.md) | 機能実装状況・TODO追跡 |
+| [Performance](docs/analysis/non-functional/performance.md) | パフォーマンス解析 |
+| [Resilience](docs/analysis/non-functional/resilience.md) | 耐障害性・フォールトトレランス |
+| [Observability](docs/analysis/non-functional/observability.md) | 可観測性・ログ・メトリクス |
+| [Compatibility](docs/analysis/non-functional/compatibility.md) | ESM/CJS・Node.js互換性 |
+| [Dead Code Inventory](docs/analysis/dead-code/inventory.md) | 未使用コードの棚卸し |
+| [Improvement Backlog](docs/analysis/roadmap/improvement-backlog.md) | 37件の優先度付き改善バックログ（35完了） |
+
+### Go Server
+
+| Document | Content |
+|----------|---------|
+| [使い方ガイド](packages/server/docs/usage-guide.md) | 設定詳細、環境変数、gRPC API、セキュリティレベル別推奨設定 |
 | [拡張ガイド](packages/server/docs/extensibility-guide.md) | 検知ルール/ブロック手段/通知/AI/ストレージの拡張方法 |
 | [Docker導入ガイド](packages/server/docs/docker-guide.md) | Dockerfile、docker-compose、Kubernetes manifest |
-| [既知の制約 (N/A)](packages/server/docs/design/known-limitations.md) | 未対応項目・Mock/I/Fのみの機能一覧 |
+| [既知の制約](packages/server/docs/design/known-limitations.md) | 未対応項目・Mock/I/Fのみの機能一覧 |
 | [モジュール責務マップ](packages/server/docs/design/module-responsibility-map.md) | パッケージ構成 + 10ステージデータフロー |
 | [脅威レスポンス設計](packages/server/docs/design/threat-response-orchestration.md) | 戦略パターン/ブロック/通知の設計仕様 |
 | [v2 作業ログ](packages/server/docs/design/work-log-2026-03-27.md) | 全実装フェーズの詳細記録 |
-| [docs/architecture.md](docs/architecture.md) | SDK + Server アーキテクチャ（パイプラインフロー） |
-| [docs/security.md](docs/security.md) | HMAC、PII masking、脅威モデル、バリデーション境界 |
-| [docs/analysis/](docs/analysis/) | 内部品質解析ログ（機能、非機能、dead code、改善バックログ） |
 
 ---
 
