@@ -105,7 +105,7 @@ export class EventDetector {
                 payload: {
                     reason: log.message,
                     suggestedTask: log.type === "SECURITY" ? "AI_ANALYZE" : "SYSTEM_NOTIFICATION",
-                    context: log.aiContext ?? null,
+                    context: (log.aiContext as Record<string, string | number | boolean | null> | undefined) ?? null,
                 },
             };
         }
@@ -224,7 +224,7 @@ export class EventDetector {
                     payload: {
                         reason: log.message,
                         suggestedTask: "SYSTEM_NOTIFICATION",
-                        context: log.aiContext ?? null,
+                        context: (log.aiContext as Record<string, string | number | boolean | null> | undefined) ?? null,
                     },
                 };
             default: {

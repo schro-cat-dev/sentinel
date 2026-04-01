@@ -19,6 +19,38 @@ import { join, resolve } from "node:path";
 import * as net from "node:net";
 
 // ---------------------------------------------------------------------------
+// gRPC client type definitions (replaces `any` for dynamic proto-loader)
+// ---------------------------------------------------------------------------
+
+/** gRPC client instance with dynamic method dispatch */
+interface GrpcClient {
+    [method: string]: (
+        request: Record<string, unknown>,
+        callback: (err: Error | null, response: Record<string, unknown>) => void,
+    ) => void;
+}
+
+/** Subset of @grpc/grpc-js used in this test */
+interface GrpcModule {
+    credentials: { createInsecure(): unknown };
+    loadPackageDefinition(def: unknown): Record<string, unknown>;
+    Metadata: new () => { set(key: string, value: string): void };
+}
+
+/** gRPC call response shapes */
+interface HealthCheckResponse {
+    status: string;
+    version: string;
+}
+
+interface IngestResponse {
+    traceId: string;
+    hashChainValid: boolean;
+    masked: boolean;
+    tasksGenerated: Array<{ ruleId: string; status: string }>;
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -60,12 +92,13 @@ function commandExists(cmd: string): boolean {
  * Create a gRPC client for the Sentinel server using dynamic proto loading.
  * Returns { client, grpc } so the caller can build metadata etc.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function createGrpcClient(serverAddr: string): { client: any; grpc: any } {
+function createGrpcClient(serverAddr: string): { client: GrpcClient; grpc: GrpcModule } {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const grpc = require("@grpc/grpc-js");
+    const grpc = require("@grpc/grpc-js") as GrpcModule;
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const protoLoader = require("@grpc/proto-loader");
+    const protoLoader = require("@grpc/proto-loader") as {
+        loadSync(path: string, options: Record<string, unknown>): unknown;
+    };
 
     const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
         keepCase: false,
@@ -75,36 +108,32 @@ function createGrpcClient(serverAddr: string): { client: any; grpc: any } {
         oneofs: true,
     });
     const protoDescriptor = grpc.loadPackageDefinition(packageDefinition);
-    const SentinelService = (
-        protoDescriptor.sentinel as unknown as { v1: { SentinelService: unknown } }
-    ).v1.SentinelService;
+    const sentinel = protoDescriptor.sentinel as Record<string, Record<string, new (addr: string, creds: unknown) => GrpcClient>>;
+    const SentinelService = sentinel.v1.SentinelService;
     const client = new SentinelService(serverAddr, grpc.credentials.createInsecure());
     return { client, grpc };
 }
 
 /** Promisified unary gRPC call. */
-function grpcCall<TReq, TRes>(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    client: any,
+function grpcCall<TRes>(
+    client: GrpcClient,
     method: string,
-    request: TReq,
+    request: Record<string, unknown>,
 ): Promise<TRes> {
     return new Promise((resolve, reject) => {
-        client[method](request, (err: Error | null, response: TRes) => {
+        client[method](request, (err: Error | null, response: Record<string, unknown>) => {
             if (err) reject(err);
-            else resolve(response);
+            else resolve(response as TRes);
         });
     });
 }
 
 /** Wait until the server health check returns "SERVING", up to maxMs. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function waitForServer(client: any, maxMs = 15_000): Promise<void> {
+async function waitForServer(client: GrpcClient, maxMs = 15_000): Promise<void> {
     const start = Date.now();
     while (Date.now() - start < maxMs) {
         try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const res: any = await grpcCall(client, "HealthCheck", {});
+            const res = await grpcCall<HealthCheckResponse>(client, "HealthCheck", {});
             if (res.status === "SERVING") return;
         } catch {
             // Server not ready yet — retry
@@ -139,8 +168,7 @@ describeE2E("E2E: TypeScript SDK <-> Go gRPC Server", () => {
     let serverProcess: ChildProcess | null = null;
     let serverPort: number;
     let serverAddr: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let grpcClient: any;
+    let grpcClient: GrpcClient;
     let tmpDir: string;
 
     // SDK imports (resolved lazily to avoid import errors when skipped)
@@ -710,8 +738,7 @@ describeE2E("E2E: TypeScript SDK <-> Go gRPC Server", () => {
     // ------------------------------------------------------------------
     describe("Server health check", () => {
         it("returns SERVING status via gRPC health check", async () => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const res: any = await grpcCall(grpcClient, "HealthCheck", {});
+            const res = await grpcCall<HealthCheckResponse>(grpcClient, "HealthCheck", {});
             expect(res.status).toBe("SERVING");
             expect(res.version).toBeTruthy();
         });
@@ -729,8 +756,7 @@ describeE2E("E2E: TypeScript SDK <-> Go gRPC Server", () => {
     // ------------------------------------------------------------------
     describe("Direct gRPC ingest", () => {
         it("returns expected response fields from a direct gRPC ingest call", async () => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const res: any = await grpcCall(grpcClient, "Ingest", {
+            const res = await grpcCall<IngestResponse>(grpcClient, "Ingest", {
                 traceId: "",
                 type: "SYSTEM",
                 level: 3,
@@ -755,8 +781,7 @@ describeE2E("E2E: TypeScript SDK <-> Go gRPC Server", () => {
         });
 
         it("generates tasks for critical logs via direct gRPC", async () => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const res: any = await grpcCall(grpcClient, "Ingest", {
+            const res = await grpcCall<IngestResponse>(grpcClient, "Ingest", {
                 traceId: "",
                 type: "SYSTEM",
                 level: 6,

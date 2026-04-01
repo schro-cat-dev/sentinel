@@ -54,24 +54,28 @@ export class IngestionEngine implements IIngestionCoordinator {
         }
     }
 
-    private static readonly VALID_CALLBACK_KEYS = new Set([
-        "onLogProcessed", "onTaskGenerated", "onTaskDispatched", "onError",
-    ]);
-
     /**
      * コールバックを動的に更新する。nullで明示的にクリア。undefinedで変更なし。
-     * 不正なキーは無視、不正な型はエラー。
+     * 不正な型はエラー。
      */
     updateCallbacks(callbacks: typeof this.callbackOverrides): void {
-        for (const [key, value] of Object.entries(callbacks)) {
-            if (!IngestionEngine.VALID_CALLBACK_KEYS.has(key)) continue;
-            if (value !== undefined && value !== null && typeof value !== "function") {
-                throw new Error(`updateCallbacks: "${key}" must be a function or null, got ${typeof value}`);
-            }
-            if (value !== undefined) {
-                (this.callbackOverrides as Record<string, unknown>)[key] = value;
-            }
+        // 型安全な個別代入（Record<string, unknown>キャスト不要）
+        this.applyCallback("onLogProcessed", callbacks);
+        this.applyCallback("onTaskGenerated", callbacks);
+        this.applyCallback("onTaskDispatched", callbacks);
+        this.applyCallback("onError", callbacks);
+    }
+
+    private applyCallback<K extends keyof typeof this.callbackOverrides>(
+        key: K,
+        callbacks: typeof this.callbackOverrides,
+    ): void {
+        const value = callbacks[key];
+        if (value === undefined) return;
+        if (value !== null && typeof value !== "function") {
+            throw new Error(`updateCallbacks: "${key}" must be a function or null, got ${typeof value}`);
         }
+        this.callbackOverrides[key] = value;
     }
 
     /** コールバックを取得（オーバーライド優先、なければconfig） */

@@ -102,7 +102,7 @@ export class IntegritySigner {
 
         if (type === "object") {
             if (Object.prototype.toString.call(val) !== "[object Object]") return false;
-            return Object.values(val as Record<string, unknown>).every((item) =>
+            return Object.values(val as JsonObject).every((item) =>
                 IntegritySigner.isJsonValue(item),
             );
         }

@@ -688,8 +688,11 @@ describe("Advanced PII Masking Bypass", () => {
                     },
                 },
             };
-            const masked = maskObj(data) as any;
-            expect(masked.input.nested.deep.email).not.toContain("test@example.com");
+            const masked = maskObj(data) as Record<string, unknown>;
+            const input = masked.input as Record<string, unknown>;
+            const nested = input.nested as Record<string, unknown>;
+            const deep = nested.deep as Record<string, unknown>;
+            expect(deep.email).not.toContain("test@example.com");
         });
 
         it("STRUCT-03: PII in tag key should still be processed", () => {
@@ -697,9 +700,9 @@ describe("Advanced PII Masking Bypass", () => {
             const log = createTestLog({
                 tags: [{ key: "test@example.com", category: "email" }],
             });
-            const masked = maskObj(log) as any;
-            const tagKey = masked.tags[0].key;
-            expect(tagKey).not.toContain("test@example.com");
+            const masked = maskObj(log) as Record<string, unknown>;
+            const tags = masked.tags as Record<string, unknown>[];
+            expect(tags[0].key).not.toContain("test@example.com");
         });
 
         it("STRUCT-04: reversed PII should not contain original email", () => {
@@ -739,17 +742,18 @@ describe("Advanced PII Masking Bypass", () => {
         it("STRUCT-08: PII in array elements should be masked", () => {
             // WHY: array items must be individually checked for PII
             const data = { input: ["test@example.com", "4111-1111-1111-1111"] };
-            const masked = maskObj(data) as any;
-            expect(masked.input[0]).not.toContain("test@example.com");
-            expect(masked.input[1]).not.toContain("4111-1111-1111-1111");
+            const masked = maskObj(data) as Record<string, unknown>;
+            const input = masked.input as unknown[];
+            expect(input[0]).not.toContain("test@example.com");
+            expect(input[1]).not.toContain("4111-1111-1111-1111");
         });
 
         it("STRUCT-09: PII as object key - documents that keys are NOT masked", () => {
             // WHY: MaskingService only masks values, not keys. This is a KNOWN LIMITATION.
             // Object keys containing PII will leak. This test documents the behavior.
             const data = { input: { "test@example.com": true } };
-            const masked = maskObj(data) as any;
-            const keys = Object.keys(masked.input);
+            const masked = maskObj(data) as Record<string, unknown>;
+            const keys = Object.keys(masked.input as Record<string, unknown>);
             // Keys are NOT masked by MaskingService (known behavior)
             expect(keys).toContain("test@example.com");
         });
@@ -818,25 +822,28 @@ describe("Advanced PII Masking Bypass", () => {
                     { name: "Alice", phones: ["+81-90-1234-5678"] },
                 ],
             };
-            const masked = maskObj(data) as any;
-            expect(masked.contacts[0].phones[0]).not.toContain("+81-90-1234-5678");
+            const masked = maskObj(data) as Record<string, unknown>;
+            const contacts = masked.contacts as Record<string, unknown>[];
+            const phones = contacts[0].phones as unknown[];
+            expect(phones[0]).not.toContain("+81-90-1234-5678");
         });
 
         it("STRUCT-18: govID in string field should be masked", () => {
             // WHY: string values are directly matched by PII regex
             const data = { id: "123456789012" };
-            const masked = maskObj(data) as any;
+            const masked = maskObj(data) as Record<string, unknown>;
             expect(masked.id).not.toContain("123456789012");
         });
 
         it("STRUCT-19: PII in mixed-type array should be masked", () => {
             // WHY: arrays with mixed types (number, string, object) must all be checked
             const data = { items: [42, "test@example.com", null, { cc: "4111-1111-1111-1111" }] };
-            const masked = maskObj(data) as any;
-            expect(masked.items[0]).toBe(42);
-            expect(masked.items[1]).not.toContain("test@example.com");
-            expect(masked.items[2]).toBeNull();
-            expect(masked.items[3].cc).not.toContain("4111-1111-1111-1111");
+            const masked = maskObj(data) as Record<string, unknown>;
+            const items = masked.items as unknown[];
+            expect(items[0]).toBe(42);
+            expect(items[1]).not.toContain("test@example.com");
+            expect(items[2]).toBeNull();
+            expect((items[3] as Record<string, unknown>).cc).not.toContain("4111-1111-1111-1111");
         });
 
         it("STRUCT-20: multiple overlapping PII patterns in one string", () => {
@@ -898,8 +905,9 @@ describe("Advanced PII Masking Bypass", () => {
         it("STRUCT-28: PII in deeply nested array > 3 levels", () => {
             // WHY: deep array nesting tests recursion limit handling
             const data = { a: [[[["test@example.com"]]]] };
-            const masked = maskObj(data) as any;
-            expect(masked.a[0][0][0][0]).not.toContain("test@example.com");
+            const masked = maskObj(data) as Record<string, unknown>;
+            const a = masked.a as unknown[][][][];
+            expect(a[0][0][0][0]).not.toContain("test@example.com");
         });
 
         it("STRUCT-29: PII string only (no wrapping object)", () => {
@@ -927,14 +935,14 @@ describe("Advanced PII Masking Bypass", () => {
         it("RULE-01: preserveFields should override PII detection for specified field", () => {
             // WHY: preserveFields explicitly keeps a field unmasked; this is intentional behavior
             const data = { email: "test@example.com", name: "Alice" };
-            const masked = maskObj(data, ALL_PII_RULES, ["email"]) as any;
+            const masked = maskObj(data, ALL_PII_RULES, ["email"]) as Record<string, unknown>;
             expect(masked.email).toBe("test@example.com"); // preserved
         });
 
         it("RULE-02: preserveFields should not affect non-listed fields", () => {
             // WHY: only explicitly listed fields should be preserved; others must still be masked
             const data = { email: "test@example.com", backup_email: "admin@example.com" };
-            const masked = maskObj(data, ALL_PII_RULES, ["email"]) as any;
+            const masked = maskObj(data, ALL_PII_RULES, ["email"]) as Record<string, unknown>;
             expect(masked.email).toBe("test@example.com");
             expect(masked.backup_email).not.toContain("admin@example.com");
         });
@@ -946,7 +954,7 @@ describe("Advanced PII Masking Bypass", () => {
                 { type: "PII_TYPE", category: "EMAIL" },
             ];
             const data = { password: "test@example.com" };
-            const masked = maskObj(data, rules) as any;
+            const masked = maskObj(data, rules) as Record<string, unknown>;
             expect(masked.password).toBe("[REDACTED]");
         });
 
@@ -1016,7 +1024,7 @@ describe("Advanced PII Masking Bypass", () => {
                 { type: "KEY_MATCH", sensitiveKeys: ["password"], replacement: "[REDACTED]" },
             ];
             const data = { Password: "secret123", PASSWORD: "secret456" };
-            const masked = maskObj(data, rules) as any;
+            const masked = maskObj(data, rules) as Record<string, unknown>;
             expect(masked.Password).toBe("[REDACTED]");
             expect(masked.PASSWORD).toBe("[REDACTED]");
         });
@@ -1027,14 +1035,14 @@ describe("Advanced PII Masking Bypass", () => {
                 { type: "KEY_MATCH", sensitiveKeys: ["secret"] },
             ];
             const data = { secret: "test@example.com" };
-            const masked = maskObj(data, rules) as any;
+            const masked = maskObj(data, rules) as Record<string, unknown>;
             expect(masked.secret).toBe("[MASKED_KEY]");
         });
 
         it("RULE-12: empty rules array should not mask anything", () => {
             // WHY: with no rules, data should pass through unchanged
             const data = { email: "test@example.com" };
-            const masked = maskObj(data, []) as any;
+            const masked = maskObj(data, []) as Record<string, unknown>;
             expect(masked.email).toBe("test@example.com");
         });
 
@@ -1066,7 +1074,7 @@ describe("Advanced PII Masking Bypass", () => {
         it("RULE-16: preserveFields with nested path should only preserve that key name", () => {
             // WHY: preserveFields uses key name matching, not path-based matching
             const data = { user: { email: "test@example.com" }, email: "admin@example.com" };
-            const masked = maskObj(data, ALL_PII_RULES, ["email"]) as any;
+            const masked = maskObj(data, ALL_PII_RULES, ["email"]) as Record<string, unknown>;
             // Both 'email' keys at any depth should be preserved (key-name based)
             expect(masked.email).toBe("admin@example.com");
         });
@@ -1099,7 +1107,7 @@ describe("Advanced PII Masking Bypass", () => {
                 { type: "KEY_MATCH", sensitiveKeys: ["token", "secret"], replacement: "[SECRET_MASKED]" },
             ];
             const data = { token: "abc123" };
-            const masked = maskObj(data, rules) as any;
+            const masked = maskObj(data, rules) as Record<string, unknown>;
             // First matching rule should be applied
             expect(masked.token).toBe("[TOKEN_MASKED]");
         });
@@ -1112,7 +1120,7 @@ describe("Advanced PII Masking Bypass", () => {
         it("EDGE-01: PII at maxDepth boundary should be replaced with depth marker", () => {
             // WHY: at maxDepth, traversal stops; objects are replaced with sentinel string
             const data = { a: { b: { email: "test@example.com" } } };
-            const masked = maskObj(data, ALL_PII_RULES, [], { maxDepth: 2 }) as any;
+            const masked = maskObj(data, ALL_PII_RULES, [], { maxDepth: 2 }) as Record<string, unknown>;
             // At depth 2, the inner object should hit the depth limit
             expect(JSON.stringify(masked)).not.toContain("test@example.com");
         });
@@ -1120,7 +1128,7 @@ describe("Advanced PII Masking Bypass", () => {
         it("EDGE-02: PII exactly at maxDepth should be caught", () => {
             // WHY: off-by-one in depth counting could leave PII exposed at the boundary
             const data = { level1: { level2: { email: "test@example.com" } } };
-            const masked = maskObj(data, ALL_PII_RULES, [], { maxDepth: 3 }) as any;
+            const masked = maskObj(data, ALL_PII_RULES, [], { maxDepth: 3 }) as Record<string, unknown>;
             expect(JSON.stringify(masked)).not.toContain("test@example.com");
         });
 
@@ -1129,9 +1137,9 @@ describe("Advanced PII Masking Bypass", () => {
             const arr = new Array(51).fill("safe");
             arr[50] = "test@example.com";
             const data = { items: arr };
-            const masked = maskObj(data) as any;
+            const masked = maskObj(data) as Record<string, unknown>;
             // Element at index 50 is the 51st element; it should be truncated
-            expect(masked.items.length).toBeLessThanOrEqual(50);
+            expect((masked.items as unknown[]).length).toBeLessThanOrEqual(50);
         });
 
         it("EDGE-04: PII in 50th array element (at maxArrayLength boundary)", () => {
@@ -1139,25 +1147,25 @@ describe("Advanced PII Masking Bypass", () => {
             const arr = new Array(50).fill("safe");
             arr[49] = "test@example.com";
             const data = { items: arr };
-            const masked = maskObj(data) as any;
-            expect(masked.items[49]).not.toContain("test@example.com");
+            const masked = maskObj(data) as Record<string, unknown>;
+            expect((masked.items as unknown[])[49]).not.toContain("test@example.com");
         });
 
         it("EDGE-05: circular reference containing PII should not cause infinite loop", () => {
             // WHY: circular refs cause infinite recursion; WeakSet tracking must prevent it
-            const obj: any = { email: "test@example.com" };
+            const obj: Record<string, unknown> = { email: "test@example.com" };
             obj.self = obj;
-            const masked = maskObj(obj) as any;
+            const masked = maskObj(obj) as Record<string, unknown>;
             expect(masked.email).not.toContain("test@example.com");
             expect(masked.self).toBe("[CIRCULAR_REFERENCE_OR_TOO_DEEP]");
         });
 
         it("EDGE-06: mutual circular reference with PII should be handled", () => {
             // WHY: A -> B -> A creates mutual cycle; both must be caught
-            const a: any = { email: "test@example.com" };
-            const b: any = { cc: "4111-1111-1111-1111", ref: a };
+            const a: Record<string, unknown> = { email: "test@example.com" };
+            const b: Record<string, unknown> = { cc: "4111-1111-1111-1111", ref: a };
             a.ref = b;
-            const masked = maskObj(a) as any;
+            const masked = maskObj(a) as Record<string, unknown>;
             expect(masked.email).not.toContain("test@example.com");
         });
 
@@ -1288,11 +1296,12 @@ describe("Advanced PII Masking Bypass", () => {
                 details: { cc: "4111-1111-1111-1111", phone: "+81-90-1234-5678" },
                 tags: [{ key: "govid", category: "123456789012" }],
             });
-            const masked = maskObj(log) as any;
+            const masked = maskObj(log) as Record<string, unknown>;
             expect(String(masked.message)).not.toContain("test@example.com");
             expect(String(masked.actorId)).not.toContain("test@example.com");
-            expect(String(masked.details.cc)).not.toContain("4111-1111-1111-1111");
-            expect(String(masked.details.phone)).not.toContain("+81-90-1234-5678");
+            const details = masked.details as Record<string, unknown>;
+            expect(String(details.cc)).not.toContain("4111-1111-1111-1111");
+            expect(String(details.phone)).not.toContain("+81-90-1234-5678");
         });
 
         it("COMBO-03: repeated same PII should all be masked", () => {

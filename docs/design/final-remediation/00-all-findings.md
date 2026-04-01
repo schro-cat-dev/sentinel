@@ -2,7 +2,7 @@
 
 ```yaml
 created_at: "2026-04-02"
-status: remediation
+status: implemented
 total_findings: 30
 ```
 

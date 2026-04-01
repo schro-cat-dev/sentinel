@@ -70,7 +70,7 @@ export interface AIAgentEventBacklog {
     actionType: string; // TODO "analyze", "alert", "remediate"
     model: string; // "gpt-4o", "llama3-70b"
     inputHash: string; // 入力データのハッシュ
-    output?: unknown; // TODO AI出力
+    output?: AIAgentOutput;
     isAsynchronous: boolean;
     generatedAt: string;
     triggeredAt?: string;
@@ -78,6 +78,14 @@ export interface AIAgentEventBacklog {
     confidence?: number; // 信頼度スコア（0.0-1.0）
     status: "pending" | "success" | "failed"; // 実行状態
     error?: string; // エラー詳細
+}
+
+/** AI エージェントの出力構造 */
+export interface AIAgentOutput {
+    text?: string;
+    structured?: Record<string, JSONValue>;
+    confidence?: number;
+    metadata?: Record<string, string>;
 }
 
 export interface AIAgentProcessorInfo {

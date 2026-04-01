@@ -27,17 +27,13 @@ export const isPiiSafe = (value: string): boolean => {
 };
 
 /** 循環参照安全Object.keys（再帰深度修正） */
-const safeObjectKeys = (obj: unknown, maxDepth: number = 5): number => {
-    if (typeof obj !== "object" || obj === null) return 0;
-
+const safeObjectKeys = (obj: object, maxDepth: number = 5): number => {
     const seen = new WeakSet<object>();
 
-    const countKeys = (target: unknown, depth: number): number => {
-        if (depth > maxDepth || seen.has(target as object)) return 0;
-        if (typeof target !== "object" || target === null) return 0;
-
-        seen.add(target as object);
-        return Object.keys(target as Record<string, unknown>).length;
+    const countKeys = (target: object, depth: number): number => {
+        if (depth > maxDepth || seen.has(target)) return 0;
+        seen.add(target);
+        return Object.keys(target).length;
     };
 
     return countKeys(obj, 0);
@@ -120,7 +116,7 @@ export const serializeForAudit = (error: ErrorPayloadProtocol): string => {
 /** 運用ログ用（非破壊・完全型安全） */
 export const logFinancialError = (error: ErrorPayloadProtocol): void => {
     const safeContextData = error.meta.context
-        ? safeContext(error.meta.context as Record<string, unknown>)
+        ? safeContext(error.meta.context)
         : null;
 
     // ログ用一時オブジェクト（元オブジェクト非破壊）

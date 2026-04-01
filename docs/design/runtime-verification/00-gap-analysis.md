@@ -2,7 +2,7 @@
 
 ```yaml
 created_at: "2026-04-02"
-status: remediation
+status: implemented
 ```
 
 ## 発見された粗 4件

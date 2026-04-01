@@ -61,12 +61,11 @@ export class ErrorClassifier {
         }
     }
 
+    // ランタイムで非Error値が渡される可能性に対応（as unknown as Error キャスト経由）
     private safeMessage(error: unknown): string {
         try {
-            if (typeof error === "object" && error !== null && "message" in error) {
-                const msg = (error as { message: unknown }).message;
-                return typeof msg === "string" ? msg : String(msg);
-            }
+            if (error instanceof Error) return error.message;
+            if (typeof error === "string") return error;
             return String(error);
         } catch {
             return "unknown error";

@@ -73,6 +73,7 @@
 │   │   │   ├── custom-detection-rules.test.ts   # カスタム検知ルール
 │   │   │   ├── log-normalizer.test.ts           # 正規化: 全デフォルト値
 │   │   │   ├── remaining-gaps.test.ts           # projectName伝播, REGEXフラグ保持
+│   │   │   ├── sentinel.test.ts                 # Sentinelパブリック API ユニットテスト
 │   │   │   └── task-executor-extended.test.ts   # removeHandler, timeoutMs
 │   │   ├── intelligence/
 │   │   │   ├── task-generator.test.ts           # タスク生成: ルールインデックス, 重大度フィルタ (15)
@@ -104,7 +105,8 @@
 │   │   ├── transport/
 │   │   │   └── transport.test.ts                # Transport: local/remote/dual 基本動作 (7)
 │   │   ├── shared/
-│   │   │   └── result.test.ts                   # Result monad: 全関数のテスト (33)
+│   │   │   ├── result.test.ts                   # Result monad
+│   │   │   └── error-utils.test.ts              # isPiiSafe, maskPiiContext, safeContext
 │   │   └── remaining-backlog.test.ts            # バックログ修正: Logger, SEMI_AUTO, AI_ACTION, onError (14)
 │   ├── security/                                # セキュリティテスト
 │   │   ├── redos.test.ts                        # ReDoS耐性
@@ -159,7 +161,17 @@
 │   │       ├── 04-lifecycle.md                  # ライフサイクル管理
 │   │       ├── 05-risk-mitigation.md            # デメリット4件の全回避策
 │   │       ├── 06-module-map.md                 # モジュール構成・依存・データフロー
-│   │       └── 07-tdd-plan.md                   # TDD計画(45テスト)
+│   │       └── 07-tdd-plan.md                   # TDD計画
+│   ├── gap-remediation/                         # 設計↔実装ギャップ修正
+│   │   ├── 00-gap-analysis.md                   # 6件のギャップ分析
+│   │   └── 01-tdd-plan.md                       # TDD計画
+│   ├── config-security-audit/                   # Config/YAMLセキュリティ監査
+│   │   ├── 00-findings.md                       # 11件の発見事項
+│   │   └── 01-remediation-plan.md               # 修正計画+テストケース
+│   ├── runtime-verification/                    # ランタイム動作検証
+│   │   └── 00-gap-analysis.md                   # deepFreeze/async/logicalClock修正
+│   ├── final-remediation/                       # 最終30件修正
+│   │   └── 00-all-findings.md                   # テスト誤魔化し/脆弱性/ロジックバグ全件
 │   ├── quality-benchmark/                       # 品質ベンチマーク（Google PRR水準）
 │   │   ├── standards.md                         # 10カテゴリ49項目のMUST/SHOULD/NICE基準
 │   │   ├── checklist-results.md                 # 全項目のPASS/FAIL結果と修正記録

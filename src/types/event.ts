@@ -37,7 +37,7 @@ export interface SystemEventMap {
     AI_ACTION_REQUIRED: {
         reason: string;
         suggestedTask: string;
-        context: unknown;
+        context: Record<string, string | number | boolean | null> | null;
     };
 }
 
