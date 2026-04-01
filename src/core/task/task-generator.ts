@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Log } from "../../types/log";
-import { TaskRule, GeneratedTask } from "../../types/task";
+import { TaskRule, GeneratedTask, TaskSeverity } from "../../types/task";
 import { DetectionResult, SystemEventName } from "../../types/event";
 import { SeverityClassifier } from "./severity-classifier";
 
@@ -60,7 +60,7 @@ export class TaskGenerator {
         return this.ruleIndex.get(eventName) ?? [];
     }
 
-    private matchesSeverityThreshold(rule: TaskRule, actualSeverity: string): boolean {
+    private matchesSeverityThreshold(rule: TaskRule, actualSeverity: TaskSeverity): boolean {
         const severityOrder = ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"];
         const ruleIdx = severityOrder.indexOf(rule.severity);
         const actualIdx = severityOrder.indexOf(actualSeverity);
@@ -74,27 +74,20 @@ export class TaskGenerator {
         rule: TaskRule,
         detection: DetectionResult<SystemEventName>,
         log: Log,
-        severity: string,
+        severity: TaskSeverity,
     ): GeneratedTask {
         return {
             taskId: randomUUID(),
             ruleId: rule.ruleId,
             eventName: detection.eventName,
-            severity: severity as GeneratedTask["severity"],
+            severity,
             actionType: rule.actionType,
             executionLevel: rule.executionLevel,
             priority: rule.priority,
             description: rule.description,
-            executionParams: Object.fromEntries(
-                Object.entries(rule.executionParams).filter(
-                    ([k]) => k !== "__proto__" && k !== "constructor",
-                ),
-            ) as typeof rule.executionParams,
-            guardrails: Object.fromEntries(
-                Object.entries(rule.guardrails).filter(
-                    ([k]) => k !== "__proto__" && k !== "constructor",
-                ),
-            ) as typeof rule.guardrails,
+            // サニタイズ済み（buildIndex時に __proto__/constructor 除去済み）
+            executionParams: rule.executionParams,
+            guardrails: rule.guardrails,
             sourceLog: {
                 traceId: log.traceId,
                 message: log.message,
@@ -106,12 +99,28 @@ export class TaskGenerator {
         };
     }
 
+    /** prototype pollution 防御: __proto__/constructor キーを初期化時に除去 */
+    private static sanitizeRule(rule: TaskRule): TaskRule {
+        return {
+            ...rule,
+            executionParams: TaskGenerator.filterProtoKeys(rule.executionParams) as typeof rule.executionParams,
+            guardrails: TaskGenerator.filterProtoKeys(rule.guardrails) as typeof rule.guardrails,
+        };
+    }
+
+    private static filterProtoKeys<T extends object>(obj: T): T {
+        return Object.fromEntries(
+            Object.entries(obj).filter(([k]) => k !== "__proto__" && k !== "constructor"),
+        ) as T;
+    }
+
     private static buildIndex(rules: TaskRule[]): Map<string, TaskRule[]> {
         const index = new Map<string, TaskRule[]>();
         for (const rule of rules) {
-            const existing = index.get(rule.eventName) ?? [];
-            existing.push(rule);
-            index.set(rule.eventName, existing);
+            const sanitized = TaskGenerator.sanitizeRule(rule);
+            const existing = index.get(sanitized.eventName) ?? [];
+            existing.push(sanitized);
+            index.set(sanitized.eventName, existing);
         }
         return index;
     }

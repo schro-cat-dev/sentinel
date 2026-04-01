@@ -76,7 +76,7 @@ describe("Advanced PII Masking Bypass", () => {
     describe("1. Spacing and formatting bypass", () => {
         // --- CREDIT_CARD ---
         // KNOWN BYPASS: CC regex [\s-]? allows only single whitespace; double spaces evade it
-        it.fails("CC-SPACE-01: extra spaces between digit groups should not bypass CC masking", () => {
+        it("CC-SPACE-01: extra spaces between digit groups should not bypass CC masking", () => {
             // WHY: regex uses [\s-]? which allows only single whitespace; double spaces slip through
             const result = maskStr("4111  1111  1111  1111", CC_RULE);
             expect(result).not.toContain("4111");
@@ -103,7 +103,7 @@ describe("Advanced PII Masking Bypass", () => {
         // KNOWN BYPASS: zero-width space is not whitespace (\s), not a dash, and not empty;
         // it sits between digits making the regex see "4111<ZWS>1111" as one 8+ digit run
         // but the \b word boundary and grouping assumptions break.
-        it.fails("CC-SPACE-05: zero-width space (U+200B) between digits should not bypass CC masking", () => {
+        it("CC-SPACE-05: zero-width space (U+200B) between digits should not bypass CC masking", () => {
             // WHY: invisible char splits digits in a way [\s-]? cannot match; human sees valid CC
             const result = maskStr("4111\u200B1111\u200B1111\u200B1111", CC_RULE);
             expect(result).not.toContain("4111");
@@ -111,7 +111,7 @@ describe("Advanced PII Masking Bypass", () => {
 
         // --- PHONE ---
         // KNOWN BYPASS: phone regex uses [- ]? allowing only single space/dash; double spaces evade
-        it.fails("PHONE-SPACE-01: extra spaces in phone should not bypass masking", () => {
+        it("PHONE-SPACE-01: extra spaces in phone should not bypass masking", () => {
             // WHY: phone regex uses [- ]? allowing single space; double spaces bypass
             const result = maskStr("+81  90  1234  5678", PHONE_RULE);
             expect(result).not.toContain("1234");
@@ -132,14 +132,14 @@ describe("Advanced PII Masking Bypass", () => {
         });
 
         // KNOWN BYPASS: phone regex [- ]? does not include U+00A0
-        it.fails("PHONE-SPACE-04: non-breaking space in phone should not bypass masking", () => {
+        it("PHONE-SPACE-04: non-breaking space in phone should not bypass masking", () => {
             // WHY: U+00A0 is not matched by literal space in [- ]; phone pattern fails
             const result = maskStr("+81\u00A090\u00A01234\u00A05678", PHONE_RULE);
             expect(result).not.toContain("1234");
         });
 
         // KNOWN BYPASS: zero-width space breaks digit adjacency for phone regex
-        it.fails("PHONE-SPACE-05: zero-width space in phone should not bypass masking", () => {
+        it("PHONE-SPACE-05: zero-width space in phone should not bypass masking", () => {
             // WHY: invisible characters break the digit group pattern
             const result = maskStr("+81\u200B90\u200B1234\u200B5678", PHONE_RULE);
             expect(result).not.toContain("1234");
@@ -215,7 +215,7 @@ describe("Advanced PII Masking Bypass", () => {
         // --- CREDIT_CARD ---
         // KNOWN BYPASS: full-width digits are not matched by \d in JS regex (non-unicode mode)
         // but the remaining ASCII portion "1111-1111-1111" still partially leaks
-        it.fails("CC-UNICODE-01: full-width digits should not bypass CC masking", () => {
+        it("CC-UNICODE-01: full-width digits should not bypass CC masking", () => {
             // WHY: full-width digits render visually identical to ASCII but \d won't match them
             const result = maskStr("\uFF14\uFF11\uFF11\uFF11-1111-1111-1111", CC_RULE);
             expect(result).not.toContain("1111-1111-1111");
@@ -236,14 +236,14 @@ describe("Advanced PII Masking Bypass", () => {
         });
 
         // KNOWN BYPASS: superscript chars are not \d; ASCII portion leaks
-        it.fails("CC-UNICODE-04: superscript digits should not bypass CC masking", () => {
+        it("CC-UNICODE-04: superscript digits should not bypass CC masking", () => {
             // WHY: superscript numerals (U+2074 etc.) won't match \d
             const result = maskStr("\u2074\u00B9\u00B9\u00B9-1111-1111-1111", CC_RULE);
             expect(result).not.toContain("1111-1111-1111");
         });
 
         // KNOWN BYPASS: subscript chars are not \d; ASCII portion leaks
-        it.fails("CC-UNICODE-05: subscript digits should not bypass CC masking", () => {
+        it("CC-UNICODE-05: subscript digits should not bypass CC masking", () => {
             // WHY: subscript numerals won't match \d but visually suggest credit card
             const result = maskStr("\u2084\u2081\u2081\u2081-1111-1111-1111", CC_RULE);
             expect(result).not.toContain("1111-1111-1111");
@@ -269,7 +269,7 @@ describe("Advanced PII Masking Bypass", () => {
         });
 
         // KNOWN BYPASS: circled digits break the group but trailing ASCII digits leak
-        it.fails("PHONE-UNICODE-03: circled digits in phone should not bypass", () => {
+        it("PHONE-UNICODE-03: circled digits in phone should not bypass", () => {
             // WHY: circled digits are not ASCII; remaining phone digits leak
             const result = maskStr("+81-\u2469\u2460-1234-5678", PHONE_RULE);
             expect(result).not.toContain("1234");
@@ -283,7 +283,7 @@ describe("Advanced PII Masking Bypass", () => {
         });
 
         // KNOWN BYPASS: superscript chars break middle group; last group leaks
-        it.fails("PHONE-UNICODE-05: superscript digits in phone should not bypass", () => {
+        it("PHONE-UNICODE-05: superscript digits in phone should not bypass", () => {
             // WHY: superscript digits are not \d; remaining phone digits leak
             const result = maskStr("+81-90-\u00B9\u00B2\u00B3\u2074-5678", PHONE_RULE);
             expect(result).not.toContain("5678");
@@ -292,35 +292,35 @@ describe("Advanced PII Masking Bypass", () => {
         // --- EMAIL ---
         // KNOWN BYPASS: full-width digit is not in [a-zA-Z0-9]; but "user" portion matches and
         // the regex captures "user" + full-width char is not in class, so partial match may occur
-        it.fails("EMAIL-UNICODE-01: full-width digits in email local part should not bypass", () => {
+        it("EMAIL-UNICODE-01: full-width digits in email local part should not bypass", () => {
             // WHY: full-width chars are outside [a-zA-Z0-9._%+-]; local part gets split
             const result = maskStr("user\uFF11@example.com", EMAIL_RULE);
             expect(result).not.toContain("user");
         });
 
         // KNOWN BYPASS: full-width @ is not literal @; email regex doesn't match
-        it.fails("EMAIL-UNICODE-02: full-width @ sign (U+FF20) should not bypass email masking", () => {
+        it("EMAIL-UNICODE-02: full-width @ sign (U+FF20) should not bypass email masking", () => {
             // WHY: U+FF20 looks like @ but regex literal @ won't match; "test" leaks
             const result = maskStr("test\uFF20example.com", EMAIL_RULE);
             expect(result).not.toContain("test");
         });
 
         // KNOWN BYPASS: full-width dot breaks the domain; local@domain leaks
-        it.fails("EMAIL-UNICODE-03: full-width dot in domain should not bypass", () => {
+        it("EMAIL-UNICODE-03: full-width dot in domain should not bypass", () => {
             // WHY: U+FF0E looks like . but regex \. won't match it
             const result = maskStr("test@example\uFF0Ecom", EMAIL_RULE);
             expect(result).not.toContain("test@");
         });
 
         // KNOWN BYPASS: circled letters are not in [a-zA-Z]; the @ and domain may still leak
-        it.fails("EMAIL-UNICODE-04: circled letters in email should not bypass", () => {
+        it("EMAIL-UNICODE-04: circled letters in email should not bypass", () => {
             // WHY: circled letters are not in [a-zA-Z0-9]; regex does not match but parts leak
             const result = maskStr("\u24E3\u24D4\u24E2\u24E3@example.com", EMAIL_RULE);
             expect(result).not.toContain("@example.com");
         });
 
         // KNOWN BYPASS: mathematical bold digit in local part; domain portion leaks
-        it.fails("EMAIL-UNICODE-05: mathematical bold digits in email should not bypass", () => {
+        it("EMAIL-UNICODE-05: mathematical bold digits in email should not bypass", () => {
             // WHY: math symbols look like digits but are not in [a-zA-Z0-9]
             const result = maskStr("user\uD835\uDFD2@example.com", EMAIL_RULE);
             expect(result).not.toContain("@example.com");
@@ -343,7 +343,7 @@ describe("Advanced PII Masking Bypass", () => {
 
         // KNOWN BYPASS: mixing full-width into ASCII digits breaks \d{12} but the ASCII portions
         // "1234" and "789012" are still visible in plaintext
-        it.fails("GOVID-UNICODE-03: mixed ASCII and full-width digits should not bypass", () => {
+        it("GOVID-UNICODE-03: mixed ASCII and full-width digits should not bypass", () => {
             // WHY: partial substitution defeats \d{12} but ASCII digits leak
             const result = maskStr("1234\uFF15\uFF16789012", GOVID_RULE);
             expect(result).not.toContain("1234");
@@ -400,7 +400,7 @@ describe("Advanced PII Masking Bypass", () => {
         });
 
         // KNOWN BYPASS: full-width @ is not literal @; no email match occurs
-        it.fails("EMAIL-HOMO-05: full-width @ (U+FF20) should not bypass email masking", () => {
+        it("EMAIL-HOMO-05: full-width @ (U+FF20) should not bypass email masking", () => {
             // WHY: U+FF20 visually identical to @ but regex @ won't match; "test" leaks
             const result = maskStr("test\uFF20example.com", EMAIL_RULE);
             expect(result).not.toContain("test");
@@ -429,7 +429,7 @@ describe("Advanced PII Masking Bypass", () => {
 
         // --- CREDIT_CARD ---
         // KNOWN BYPASS: full-width hyphen is not ASCII -; CC regex [\s-]? won't match
-        it.fails("CC-HOMO-01: full-width hyphen (U+FF0D) should not bypass CC masking", () => {
+        it("CC-HOMO-01: full-width hyphen (U+FF0D) should not bypass CC masking", () => {
             // WHY: U+FF0D looks like - but is not matched by literal - in regex
             const result = maskStr("4111\uFF0D1111\uFF0D1111\uFF0D1111", CC_RULE);
             expect(result).not.toContain("4111");
@@ -489,7 +489,7 @@ describe("Advanced PII Masking Bypass", () => {
         });
 
         // KNOWN BYPASS: full-width digits and separators break all regex classes
-        it.fails("PHONE-HOMO-04: full-width digits in phone should not bypass", () => {
+        it("PHONE-HOMO-04: full-width digits in phone should not bypass", () => {
             // WHY: all full-width chars break the ASCII-based phone regex
             const result = maskStr("\uFF0B\uFF18\uFF11\uFF0D\uFF19\uFF10\uFF0D1234\uFF0D5678", PHONE_RULE);
             expect(result).not.toContain("1234");
@@ -511,7 +511,7 @@ describe("Advanced PII Masking Bypass", () => {
         });
 
         // KNOWN BYPASS: mathematical monospace digits are supplementary plane; ASCII "789012" leaks
-        it.fails("GOVID-HOMO-03: mathematical monospace digits should not bypass govID", () => {
+        it("GOVID-HOMO-03: mathematical monospace digits should not bypass govID", () => {
             // WHY: monospace math symbols not matched by \d; trailing ASCII digits leak
             const result = maskStr("ID: \uD835\uDFF6\uD835\uDFF7\uD835\uDFF8\uD835\uDFF9\uD835\uDFFA\uD835\uDFFB789012", GOVID_RULE);
             expect(result).not.toContain("789012");

@@ -564,6 +564,10 @@ func validate(cfg *Config) error {
 		if rule.Priority != "" && !validDetectionPriorities[rule.Priority] {
 			return fmt.Errorf("ensemble.dynamic_rules[%d].priority %q is not valid (allowed: HIGH, MEDIUM, LOW)", i, rule.Priority)
 		}
+		// GO-02: スコア範囲検証 [0, 1]
+		if rule.Score < 0 || rule.Score > 1.0 {
+			return fmt.Errorf("ensemble.dynamic_rules[%d].score must be between 0.0 and 1.0, got %f", i, rule.Score)
+		}
 	}
 
 	// detection_rules validation

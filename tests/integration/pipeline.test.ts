@@ -221,8 +221,8 @@ describe("Sentinel v1 Pipeline Integration", () => {
                 level: 6,
             });
 
-            // onTaskDispatched is called from the engine
-            // This verifies the callback wiring works
+            // onTaskDispatched should have been called
+            expect(results.length).toBeGreaterThan(0);
         });
     });
 

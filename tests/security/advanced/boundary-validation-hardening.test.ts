@@ -41,9 +41,10 @@ describe("#1: updateCallbacks validation", () => {
             security: { enableHashChain: false },
         }));
 
-        // unknown key should be ignored or rejected
-        sentinel.updateCallbacks({ unknownKey: vi.fn() } as never);
-        // At minimum, unknown keys should NOT be stored
+        // unknown key should be silently ignored (not throw, not stored)
+        expect(() =>
+            sentinel.updateCallbacks({ unknownKey: vi.fn() } as never),
+        ).not.toThrow();
     });
 
     it("accepts valid function values", () => {

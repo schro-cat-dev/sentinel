@@ -6,7 +6,7 @@ Sentinel processes application logs that may contain PII, security events, and c
 
 | Threat | Mitigation | Status |
 |--------|-----------|--------|
-| **Log tampering** | HMAC-SHA256 hash chain with secret key | Implemented |
+| **Log tampering** | Hash chain — SDK: SHA-256 (keyless, local integrity), Server: HMAC-SHA256 (keyed, tamper proof) | Implemented |
 | **PII exposure in logs** | Multi-pattern masking (regex, category, key-match) | Implemented |
 | **Timing attacks on hash verification** | `crypto/subtle.ConstantTimeCompare` (Go), `crypto.timingSafeEqual` (TS SDK) | Implemented |
 | **Replay attacks** | Hash chain links each log to its predecessor | Implemented |
@@ -31,6 +31,7 @@ Sentinel processes application logs that may contain PII, security events, and c
 
 ### Algorithm
 
+**Go Server (keyed HMAC):**
 ```
 H_n = HMAC-SHA256(key, serialize(L_n) + H_{n-1})
 
@@ -39,6 +40,14 @@ Where:
   L_n      = Log entry with hash and signature fields zeroed
   H_{n-1}  = Previous log's hash (empty string for first log)
   serialize = Deterministic JSON (keys sorted alphabetically at every depth)
+```
+
+**TypeScript SDK (keyless SHA-256):**
+```
+H_n = SHA-256(serialize(L_n) + H_{n-1})
+
+SDK uses keyless SHA-256 for local integrity verification.
+For authenticated tamper detection, use remote/dual mode with the Go Server.
 ```
 
 ### Properties
@@ -126,7 +135,7 @@ preserveFields: ["traceId", "spanId"]
 | Phone patterns | Japan-format (+81/0XX) supported. Other international formats not covered. |
 | Credit card validation | Pattern-based only. No Luhn algorithm check. |
 | Unicode normalization | Different Unicode representations of the same character may bypass regex. |
-| Custom REGEX safety | User-provided `REGEX` rule patterns are not validated for ReDoS. Users are responsible for pattern safety. |
+| Custom REGEX safety | User-provided `REGEX` patterns are validated at config load time: pattern length limit (256), nested quantifier detection (`detectReDoSRisk`), and runtime input length guard (65536). See `config-loader.ts` and `masking-service.ts`. |
 
 ---
 
@@ -254,7 +263,7 @@ Server-side structured logs (JSON via `log/slog`) include:
 | tags 数/長さ | `log-validator.ts`: 100件/key128/value1024 | `normalizer.go`: 100件上限 |
 | resourceIds 数 | `log-validator.ts`: 100件 | `normalizer.go`: 100件上限 |
 | PII マスキング | `MaskingService` | `MaskingService` + `MaskingPolicyEngine` + `MaskingVerifier` |
-| ReDoS 防止 | 組込みパターンはReDoS-safe。ユーザーREGEXは未検証 | `sanitizer.go`: `ValidateRegexSafety` |
+| ReDoS 防止 | `detectReDoSRisk` (パターン長256 + ネスト量指定子検出) + 入力長ガード (65536) | `sanitizer.go`: `ValidateRegexSafety` |
 | RBAC 認可 | なし（SDKはクライアント側） | `authorizer.go`: ロール→権限 |
 
 | actorId/traceId/spanId/boundary/traceInfo | `log-validator.ts`: maxStringFieldLength (default 512) | サーバ側でも同様の制限 |

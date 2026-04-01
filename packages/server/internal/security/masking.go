@@ -104,6 +104,17 @@ func (m *MaskingService) MaskValue(v interface{}, depth int) interface{} {
 			}
 		}
 		return result
+	case map[string]string:
+		// GO-03: map[string]string もマスキング対象（type switch else分岐バイパス防止）
+		result := make(map[string]string, len(val))
+		for k, item := range val {
+			if m.preserveFields[k] {
+				result[k] = item
+			} else {
+				result[k] = m.maskString(item)
+			}
+		}
+		return result
 	case []interface{}:
 		result := make([]interface{}, len(val))
 		for i, item := range val {

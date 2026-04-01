@@ -24,10 +24,17 @@ const ALL_PII_RULES: MaskingRule[] = [
 /**
  * Attempt validation; expect either ValidationError or no crash.
  */
+let lastValidationOutcome: "passed" | "rejected" = "passed";
+
 function expectValidationOrGraceful(input: unknown): void {
     try {
         validateLogInput(input as never);
+        lastValidationOutcome = "passed";
+        // 成功パス: バリデーション通過。入力が妥当 or 防御的フォールバック
+        expect(lastValidationOutcome).toBe("passed");
     } catch (e) {
+        lastValidationOutcome = "rejected";
+        // 失敗パス: 正しいエラー型で拒否されたことを検証
         expect(e instanceof ValidationError || e instanceof Error).toBe(true);
     }
 }

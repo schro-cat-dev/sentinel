@@ -1,7 +1,7 @@
 # テスト戦略・網羅性ドキュメント
 
 **最終更新:** 2026-04-02
-**テスト総数:** 2,453 (TS SDK) + 786 (Go Server) = 3,239
+**テスト総数:** 2,498 (TS SDK) + 786 (Go Server) = 3,284
 
 ## ディレクトリ構成
 
@@ -19,12 +19,12 @@ docs/testing/
 
 | カテゴリ | ディレクトリ | テスト数 | 目的 |
 |---------|------------|---------|------|
-| Unit | `tests/unit/` | 220+ | 各モジュールの単体責務を孤立検証 |
-| Security | `tests/security/` | 1,250+ | 攻撃ベクトル別のペネトレーションテスト + セキュリティ監査修正テスト |
-| Config | `tests/config/` | 350+ | 全設定パターンの正常系/異常系/エッジケース |
+| Unit | `tests/unit/` | 606 | 各モジュールの単体責務を孤立検証 |
+| Security | `tests/security/` | 992 | 攻撃ベクトル別のペネトレーションテスト + セキュリティ監査修正テスト |
+| Config | `tests/config/` | 432 | 全設定パターンの正常系/異常系/エッジケース |
 | Integration | `tests/integration/` | 18 | SDK内パイプラインE2E |
-| E2E | `tests/e2e/` | 15 | TS SDK → Go Server 実gRPC通信 |
-| **合計** | | **2,453** | (`npx vitest run` で最新数を確認) |
+| E2E | `tests/e2e/` | 22 | TS SDK → Go Server 実gRPC通信 + SDK動作検証 |
+| **合計** | | **2,498** | (`npx vitest run` で最新数を確認) |
 
 ## テスト設計原則
 

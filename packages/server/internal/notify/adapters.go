@@ -135,8 +135,8 @@ func (s *SlackNotifier) Send(ctx context.Context, n Notification) error {
 	var fields []map[string]interface{}
 	for k, v := range n.Fields {
 		fields = append(fields, map[string]interface{}{
-			"title": k,
-			"value": v,
+			"title": sanitizeSlackText(k),
+			"value": sanitizeSlackText(v),
 			"short": len(v) < 40,
 		})
 	}
@@ -316,8 +316,8 @@ func (d *DiscordNotifier) Send(ctx context.Context, n Notification) error {
 	var fields []map[string]interface{}
 	for k, v := range n.Fields {
 		fields = append(fields, map[string]interface{}{
-			"name":   k,
-			"value":  v,
+			"name":   sanitizeDiscordText(k),
+			"value":  sanitizeDiscordText(v),
 			"inline": len(v) < 40,
 		})
 	}
@@ -377,6 +377,21 @@ func discordColor(severity string) int {
 // --- Log Adapter (fallback / testing) ---
 
 // LogNotifier はslogに通知内容を書き出すフォールバックアダプタ
+// sanitizeSlackText はSlack特殊文字をエスケープし、@mention/リンクインジェクションを防止する
+func sanitizeSlackText(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	return s
+}
+
+// sanitizeDiscordText はDiscordマークダウンの危険な構文をエスケープする
+func sanitizeDiscordText(s string) string {
+	s = strings.ReplaceAll(s, "@everyone", "@\u200Beveryone")
+	s = strings.ReplaceAll(s, "@here", "@\u200Bhere")
+	return s
+}
+
 type LogNotifier struct{}
 
 func NewLogNotifier() *LogNotifier { return &LogNotifier{} }

@@ -34,7 +34,9 @@
 │   │       └── severity-classifier.ts           # イベント種別 × ログレベル → TaskSeverity 分類
 │   ├── security/
 │   │   ├── integrity-signer.ts                  # SHA-256 hash chain（timingSafeEqual, NaN拒否, 決定論的シリアライズ）
-│   │   └── masking-service.ts                   # PIIマスキング（8パターン + REGEX + KEY_MATCH、ログ全体再帰、logger DI）
+│   │   ├── masking-service.ts                   # PIIマスキング（pii-patterns参照 + REGEX + KEY_MATCH、入力長ガード付き）
+│   │   ├── pii-patterns.ts                      # PII正規表現パターンの単一ソース定義（マスキング用/検出用の生成関数）
+│   │   └── pii-context-masker.ts                # エラーcontext用PIIマスキング（isPiiSafe, maskPiiContext）
 │   ├── transport/
 │   │   └── transport.ts                         # RemoteTransport I/F, TransportConfig（local/remote/dual + timeoutMs）
 │   ├── validation/
@@ -56,7 +58,7 @@
 │       ├── errors/
 │       │   └── error-payload-protocol.ts        # ErrorPayloadProtocol 型（error-utils.ts 用）
 │       └── utils/
-│           └── error-utils.ts                   # isPiiSafe, maskPiiContext, serializeForAudit, classifyError（Datadog/Sentry連携用）
+│           └── error-utils.ts                   # safeContext, serializeForAudit, classifyError（PII関数はsecurity/pii-context-maskerから再export）
 │   ├── error-routing/                           # エラールーティング層（分類→ルーティング→実行）
 │   │   ├── types.ts                             # ClassifiedError, RoutingRule, AuditSink, DeadLetterQueue
 │   │   ├── error-classifier.ts                  # Error+context→ClassifiedError (kind+severity分類)
@@ -118,7 +120,7 @@
 │   │   ├── integrity-chain.test.ts              # hash chain改竄検知
 │   │   ├── information-leakage.test.ts          # 情報漏洩防止
 │   │   ├── new-findings-v2.test.ts              # v2修正: timing, race, transport
-│   │   ├── sdk-audit-fixes.test.ts             # セキュリティ監査v1修正テスト（ReDoS, surrogate, handler limit等 42テスト）
+│   │   ├── sdk-audit-fixes.test.ts             # セキュリティ監査修正テスト（ReDoS強化, surrogate, handler limit, REDOS-003/004等 47テスト）
 │   │   ├── sdk-audit-v2-fixes.test.ts          # セキュリティ監査v2修正テスト（再帰防止, PII切詰, preserveFields警告 12テスト）
 │   │   └── advanced/                            # 高度なセキュリティテスト
 │   │       ├── config-injection.test.ts         # prototype pollution, deep-merge攻撃

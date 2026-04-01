@@ -28,8 +28,9 @@ func TestAnomalyDetector_NormalTraffic(t *testing.T) {
 		})
 		result := ad.Analyze(log)
 		// 通常のトラフィックなので異常検知されないはず
-		if result != nil && !result.Suppressed {
-			// 初期段階でベースライン未確立の場合は無視
+		// ベースライン未確立の初期段階を除き、検知されたらテスト失敗
+		if i >= 5 && result != nil && !result.Suppressed {
+			t.Errorf("iteration %d: expected no anomaly in normal traffic, got detection", i)
 		}
 	}
 }

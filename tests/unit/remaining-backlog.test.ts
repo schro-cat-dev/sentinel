@@ -35,7 +35,8 @@ describe("OBS-03: SentinelLogger interface", () => {
         );
 
         // Logger should NOT be called for valid regex operations
-        // (the above regex is valid, so no warn expected)
+        expect(logger.warn).not.toHaveBeenCalled();
+        expect(logger.error).not.toHaveBeenCalled();
     });
 
     it("logger.warn is NOT called when rule succeeds", () => {

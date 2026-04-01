@@ -143,11 +143,17 @@ export function validateLogInput(
             if (tag.key.includes("\x00")) {
                 throw new ValidationError(`tags[${i}].key`, "contains null bytes");
             }
+            if (containsLoneSurrogate(tag.key)) {
+                throw new ValidationError(`tags[${i}].key`, "contains invalid UTF-16 lone surrogate");
+            }
             if (typeof tag.category !== "string" || tag.category.length > L.maxTagValueLength) {
                 throw new ValidationError(`tags[${i}].category`, `invalid or too long`);
             }
             if (tag.category.includes("\x00")) {
                 throw new ValidationError(`tags[${i}].category`, "contains null bytes");
+            }
+            if (containsLoneSurrogate(tag.category)) {
+                throw new ValidationError(`tags[${i}].category`, "contains invalid UTF-16 lone surrogate");
             }
         }
     }
@@ -170,6 +176,9 @@ export function validateLogInput(
             if (input.resourceIds[i].includes("\x00")) {
                 throw new ValidationError(`resourceIds[${i}]`, "contains null bytes");
             }
+            if (containsLoneSurrogate(input.resourceIds[i])) {
+                throw new ValidationError(`resourceIds[${i}]`, "contains invalid UTF-16 lone surrogate");
+            }
         }
     }
 
@@ -183,6 +192,9 @@ export function validateLogInput(
         }
         if (input.details.includes("\x00")) {
             throw new ValidationError("details", "contains null bytes");
+        }
+        if (containsLoneSurrogate(input.details)) {
+            throw new ValidationError("details", "contains invalid UTF-16 lone surrogate");
         }
     }
 

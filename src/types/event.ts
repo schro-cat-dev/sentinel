@@ -1,4 +1,4 @@
-import { Log } from "./log";
+import type { Log } from "./log";
 
 /**
  * rawLogから安全に公開可能なフィールドのみ抽出したサブセット。
@@ -37,7 +37,7 @@ export interface SystemEventMap {
     AI_ACTION_REQUIRED: {
         reason: string;
         suggestedTask: string;
-        context: Record<string, string | number | boolean | null> | null;
+        context: Log["aiContext"] | null;
     };
 }
 

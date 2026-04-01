@@ -105,7 +105,7 @@ export class EventDetector {
                 payload: {
                     reason: log.message,
                     suggestedTask: log.type === "SECURITY" ? "AI_ANALYZE" : "SYSTEM_NOTIFICATION",
-                    context: (log.aiContext as Record<string, string | number | boolean | null> | undefined) ?? null,
+                    context: log.aiContext ?? null,
                 },
             };
         }
@@ -233,7 +233,7 @@ export class EventDetector {
                     payload: {
                         reason: log.message,
                         suggestedTask: "SYSTEM_NOTIFICATION",
-                        context: (log.aiContext as Record<string, string | number | boolean | null> | undefined) ?? null,
+                        context: log.aiContext ?? null,
                     },
                 };
             /* v8 ignore start -- exhaustive check: unreachable at runtime, compile-time guard */

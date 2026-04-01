@@ -395,7 +395,7 @@ describe("Sentinel.onTaskConfirm", () => {
         const sentinel = Sentinel.initialize(defaultConfig());
         const handler = vi.fn().mockReturnValue(true);
         // Should not throw
-        sentinel.onTaskConfirm(handler);
+        expect(() => sentinel.onTaskConfirm(handler)).not.toThrow();
     });
 
     it("confirm handler that returns false blocks SEMI_AUTO task", async () => {

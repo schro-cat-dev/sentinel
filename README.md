@@ -16,11 +16,11 @@ The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
-| Client SDK | TypeScript (zero dependencies) | Implemented | 2,453 tests (Vitest) |
+| Client SDK | TypeScript (zero dependencies) | Implemented | 2,498 tests (Vitest) |
 | Backend Server | Go 1.22+ / gRPC | Implemented | 786 tests (`-race` verified, fuzz tested) |
-| gRPC Communication | Protocol Buffers v3 | Implemented | E2E verified (SDK→Server 15 tests via real gRPC connection) |
+| gRPC Communication | Protocol Buffers v3 | Implemented | E2E verified (SDK→Server 22 tests via real gRPC connection) |
 
-**Total: 3,239 tests (SDK 2,453 + Server 786), 0 FAIL**
+**Total: 3,284 tests (SDK 2,498 + Server 786), 0 FAIL**
 
 ---
 
@@ -28,17 +28,26 @@ The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **
 
 ```
 Application log arrives
+
+  ── SDK Pipeline (TypeScript, runs locally or before remote send) ──
+    -> [Validate]       Runtime input validation (null bytes, size limits, surrogate pairs)
+    -> [Normalize]      Defaults, sanitize, monotonic clock
+    -> [Mask PII]       8-category PII masking (email, phone, credit card, gov ID, etc.)
+    -> [Hash-chain]     SHA-256 tamper detection (constant-time comparison, async mutex)
+    -> [Detect]         Rule-based event detection (built-in + custom rules)
+    -> [Generate Task]  Rule-based, severity-filtered, priority-sorted
+    -> [Dispatch]       AUTO / SEMI_AUTO / MANUAL / MONITOR + handler callbacks
+
+  ── Go Server Pipeline (additional stages when remote/dual mode) ──
     -> [Authorization]  RBAC access control (per-client log type/level restrictions)
-    -> [Normalize]      Validate, defaults, sanitize (null bytes, control chars, UTF-8)
-    -> [Mask PII]       Context-dependent policy (email, phone, credit card, gov ID)
-    -> [Verify]         Post-mask PII residual detection with fallback re-masking
-    -> [Hash-chain]     HMAC-SHA256 tamper detection (constant-time comparison, async mutex)
-    -> [Persist]        SQLite/SQLCipher with WAL (parameterized queries, SQL injection safe)
-    -> [Detect]         Ensemble detection (all rules + dynamic rules + score aggregation)
+    -> [Normalize]      Re-validate, UTF-8 enforcement, field length limits
+    -> [Mask PII]       Policy-based masking + post-mask residual PII verification
+    -> [Hash-chain]     HMAC-SHA256 tamper detection (keyed, with key rotation)
+    -> [Persist]        SQLite/SQLCipher with WAL (parameterized queries)
+    -> [Detect]         Ensemble detection (rules + dynamic rules + score aggregation)
     -> [Anomaly]        Statistical frequency-based anomaly detection
     -> [Threat Response] Strategy-based: Block IP / Analyze with AI / Notify team
-    -> [Generate Task]  Rule-based, severity-filtered, priority-sorted
-    -> [Dispatch]       AUTO / SEMI_AUTO / MANUAL / MONITOR + AI agent delegation
+    -> [Generate Task]  Server-side task generation + AI agent delegation
 ```
 
 ---
@@ -156,14 +165,15 @@ await sentinel.shutdown();
 sentinel/
 ├── src/                          # TypeScript Client SDK
 │   ├── index.ts                  # Public API (Sentinel class + SentinelOptions)
-│   ├── configs/                  # Configuration types
+│   ├── configs/                  # Configuration types, YAML loader
 │   ├── core/
 │   │   ├── engine/               # Ingestion pipeline (IngestionEngine)
 │   │   ├── detection/            # Event detection rules (EventDetector)
 │   │   └── task/                 # Task generation + execution
 │   ├── transport/                # RemoteTransport I/F (local/remote/dual)
-│   ├── validation/               # Runtime input validator (zero-dep)
-│   ├── security/                 # Hash-chain, PII masking
+│   ├── validation/               # Runtime input validator, whitelist registry (zero-dep)
+│   ├── security/                 # Hash-chain, PII masking, PII patterns, context masker
+│   ├── error-routing/            # Error classification, routing engine, audit sinks
 │   ├── shared/                   # Error taxonomy, Result monad
 │   └── types/                    # Domain models (Log, Task, Event)
 ├── tests/                        # TS tests (`npm test` で確認)
@@ -171,19 +181,21 @@ sentinel/
 │   │   ├── core/                 # Engine, detection, normalizer, custom rules tests
 │   │   ├── security/             # Masking, signer tests
 │   │   ├── intelligence/         # Task generator, executor, severity tests
-│   │   ├── validation/           # Whitelist, config validator, lifecycle, metrics tests
+│   │   ├── validation/           # Whitelist, config validator, lifecycle, metrics, input tests
+│   │   ├── error-routing/        # Error classifier, routing engine, integration tests
 │   │   ├── transport/            # Transport mode tests (local/remote/dual)
-│   │   ├── validation/           # Input validator tests
 │   │   └── shared/               # Result monad tests
-│   ├── security/                 # Security tests (94 cases)
+│   ├── security/                 # Security + advanced tests (992 cases)
 │   │   ├── redos.test.ts         # ReDoS resistance (CWE-1333)
+│   │   ├── sdk-audit-fixes       # Cross-cutting audit fixes (VULN-001~015, GAP-02)
 │   │   ├── prototype-pollution   # Prototype pollution (CWE-1321)
 │   │   ├── input-validation-*    # Validation bypass (CWE-20/626)
 │   │   ├── masking-bypass        # PII masking evasion (CWE-200)
 │   │   ├── integrity-chain       # Hash chain tamper/replay (CWE-354)
 │   │   ├── information-leakage   # Info leak prevention (CWE-209)
-│   │   └── new-findings-v2       # Timing, race condition, transport masking
-│   ├── e2e/                      # Cross-component E2E (SDK→Go gRPC, 15 cases)
+│   │   ├── new-findings-v2       # Timing, race condition, transport masking
+│   │   └── advanced/             # Fuzzing, DoS, encoding bypass, type confusion, etc.
+│   ├── e2e/                      # Cross-component E2E (SDK→Go gRPC, 22 cases)
 │   └── integration/              # Pipeline E2E tests
 ├── packages/
 │   └── server/                   # Go Backend Server
@@ -311,24 +323,24 @@ authorization:
 ## Testing
 
 ```bash
-# TypeScript SDK (2,319 tests)
+# TypeScript SDK (2,498 tests)
 npm test
 
-# Go Server (689 tests)
+# Go Server (786 tests)
 cd packages/server
 go test ./... -race -count=1
 ```
 
-**Total: 3,145 tests (SDK 2,377 + Server 768), 0 FAIL**
+**Total: 3,284 tests (SDK 2,498 + Server 786), 0 FAIL**
 
 | カテゴリ | テスト数 | 詳細ドキュメント |
 |---------|---------|----------------|
-| Unit + Core | `npm test` | [docs/testing/unit-tests.md](docs/testing/unit-tests.md) |
-| Security + Advanced | `npm test` | [docs/testing/security-tests.md](docs/testing/security-tests.md) |
-| Config + Whitelist | `npm test` | [docs/testing/config-tests.md](docs/testing/config-tests.md) |
+| Unit + Core | 606 | [docs/testing/unit-tests.md](docs/testing/unit-tests.md) |
+| Config + Whitelist | 432 | [docs/testing/config-tests.md](docs/testing/config-tests.md) |
+| Security + Advanced | 992 | [docs/testing/security-tests.md](docs/testing/security-tests.md) |
 | Error Routing | `npm test` | Classifier, routing engine, executor, integration |
-| E2E + Integration | `npm test` | [docs/testing/integration-e2e-tests.md](docs/testing/integration-e2e-tests.md) |
-| Go Server | 689 | `go test ./... -race` |
+| E2E + Integration | 40 | [docs/testing/integration-e2e-tests.md](docs/testing/integration-e2e-tests.md) |
+| Go Server | 786 | `go test ./... -race` |
 | **品質ベンチマーク** | 48/48 | [docs/quality-benchmark/checklist-results.md](docs/quality-benchmark/checklist-results.md) |
 
 ---
@@ -340,7 +352,7 @@ go test ./... -race -count=1
 | Document | Content |
 |----------|---------|
 | [Architecture](docs/architecture.md) | SDK + Server パイプラインフロー、モジュール責務マップ |
-| [Security](docs/security.md) | 脅威モデル、HMAC hash chain、PII masking、バリデーション境界 |
+| [Security](docs/security.md) | 脅威モデル、hash chain (SDK: SHA-256 / Server: HMAC-SHA256)、PII masking、バリデーション境界 |
 | [Architecture Diagrams](docs/architecture-diagrams.md) | システム構成図、データフロー図 |
 | [Whitelist Management](docs/design/whitelist-management.md) | モジュラーホワイトリスト管理・2階層構造・セキュリティレベル制御 |
 | [Intrusion Detection](docs/design/intrusion-detection.md) | 不正アクセス検知設計・カスタムルール・責務分担 |
@@ -359,10 +371,10 @@ go test ./... -race -count=1
 | Document | Content |
 |----------|---------|
 | [Testing Overview](docs/testing/README.md) | テスト戦略・分類・設計原則 |
-| [Unit Tests](docs/testing/unit-tests.md) | 220テストの一覧・各テストの設計根拠 |
-| [Security Tests](docs/testing/security-tests.md) | 94テスト・17攻撃ベクトルのカバレッジ |
-| [Config Tests](docs/testing/config-tests.md) | 322テスト・全設定パターンの正常/異常/エッジケース |
-| [Integration & E2E](docs/testing/integration-e2e-tests.md) | 33テスト・SDK→Go gRPC通信テスト |
+| [Unit Tests](docs/testing/unit-tests.md) | 606テストの一覧・各テストの設計根拠 |
+| [Security Tests](docs/testing/security-tests.md) | 992テスト・17+攻撃ベクトルのカバレッジ |
+| [Config Tests](docs/testing/config-tests.md) | 432テスト・全設定パターンの正常/異常/エッジケース |
+| [Integration & E2E](docs/testing/integration-e2e-tests.md) | 40テスト・SDK→Go gRPC通信テスト |
 | [Quality Checklist](docs/testing/quality-checklist.md) | 50+項目の定性的チェックリスト |
 
 ### 内部品質解析
