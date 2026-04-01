@@ -109,7 +109,7 @@ export class Sentinel {
      * - "dual":   ローカル処理 + リモート送信の両方
      */
     public async ingest(log: Partial<Log>): Promise<IngestionResult> {
-        validateLogInput(log);
+        validateLogInput(log, this.config.validationLimits);
 
         const mode = this.transportConfig.mode;
 
@@ -201,4 +201,5 @@ export type { SystemEventName, DetectionResult } from "./types/event";
 export type { TaskDispatchHandler, TaskConfirmHandler } from "./core/task/task-executor";
 export type { SentinelLogger } from "./configs/sentinel-config";
 export type { RemoteTransport, TransportMode, TransportConfig } from "./transport/transport";
-export { validateLogInput, ValidationError } from "./validation/log-validator";
+export { validateLogInput, ValidationError, DEFAULT_VALIDATION_LIMITS } from "./validation/log-validator";
+export type { ValidationLimits } from "./validation/log-validator";

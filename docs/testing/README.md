@@ -1,7 +1,7 @@
 # テスト戦略・網羅性ドキュメント
 
 **最終更新:** 2026-04-01
-**テスト総数:** 671 (TS SDK) + 689 (Go Server) = 1,360
+**テスト総数:** 1,899 (TS SDK) + 689 (Go Server) = 2,588
 
 ## ディレクトリ構成
 
@@ -24,7 +24,7 @@ docs/testing/
 | Config | `tests/config/` | 322 | 全設定パターンの正常系/異常系/エッジケース |
 | Integration | `tests/integration/` | 18 | SDK内パイプラインE2E |
 | E2E | `tests/e2e/` | 15 | TS SDK → Go Server 実gRPC通信 |
-| **合計** | | **671** | |
+| **合計** | | **1,899** | |
 
 ## テスト設計原則
 

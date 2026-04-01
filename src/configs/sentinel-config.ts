@@ -50,6 +50,9 @@ export interface SentinelConfig {
 
     /** SDK内部ログ出力先（省略時は環境に応じたデフォルト） */
     logger?: SentinelLogger;
+
+    /** バリデーション制限値のオーバーライド（省略時はDEFAULT_VALIDATION_LIMITS） */
+    validationLimits?: Partial<import("../validation/log-validator").ValidationLimits>;
 }
 
 /**
