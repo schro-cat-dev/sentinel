@@ -15,6 +15,7 @@ type Config struct {
 	Store         StoreConfig         `yaml:"store"`
 	Auth          AuthConfig          `yaml:"auth"`
 	Webhook       WebhookConfig       `yaml:"webhook"`
+	Notify        NotifyConfig           `yaml:"notify"`
 	Agent         AgentConfig            `yaml:"agent"`
 	Ensemble      EnsembleConfig         `yaml:"ensemble"`
 	Authorization AuthorizationConfig    `yaml:"authorization"`
@@ -99,6 +100,48 @@ type WebhookConfig struct {
 	URL        string `yaml:"url"`
 	TimeoutSec int    `yaml:"timeout_sec"`
 	Secret     string `yaml:"secret"`
+}
+
+// NotifyConfig は通知プロバイダの統合設定
+// 各プロバイダの接続情報をYAMLで一元管理する。
+// 環境変数でもオーバーライド可能（後方互換）。
+type NotifyConfig struct {
+	Slack   SlackProviderConfig   `yaml:"slack"`
+	Discord DiscordProviderConfig `yaml:"discord"`
+	Gmail   GmailProviderConfig   `yaml:"gmail"`
+	// ルーティング: notify_targets の prefix → プロバイダのマッピング
+	// 例: "#" → slack, "@" → gmail, "https://" → webhook
+	Routing []NotifyRoutingRule `yaml:"routing"`
+}
+
+// SlackProviderConfig はSlack Incoming Webhook設定
+type SlackProviderConfig struct {
+	Enabled    bool   `yaml:"enabled"`
+	WebhookURL string `yaml:"webhook_url"` // or SENTINEL_SLACK_WEBHOOK_URL env
+	Channel    string `yaml:"channel"`     // デフォルトチャネル（省略時はWebhook設定に従う）
+}
+
+// DiscordProviderConfig はDiscord Webhook設定
+type DiscordProviderConfig struct {
+	Enabled    bool   `yaml:"enabled"`
+	WebhookURL string `yaml:"webhook_url"` // or SENTINEL_DISCORD_WEBHOOK_URL env
+	Username   string `yaml:"username"`    // Bot表示名
+}
+
+// GmailProviderConfig はSMTP (Gmail) 設定
+type GmailProviderConfig struct {
+	Enabled  bool     `yaml:"enabled"`
+	From     string   `yaml:"from"`      // or SENTINEL_GMAIL_FROM env
+	Password string   `yaml:"password"`  // or SENTINEL_GMAIL_PASSWORD env（App Password推奨）
+	SMTPHost string   `yaml:"smtp_host"` // デフォルト: smtp.gmail.com
+	SMTPPort string   `yaml:"smtp_port"` // デフォルト: 587
+	To       []string `yaml:"to"`        // デフォルト送信先
+}
+
+// NotifyRoutingRule は notify_targets のプレフィックスによるプロバイダルーティング
+type NotifyRoutingRule struct {
+	Prefix   string `yaml:"prefix"`   // "#" → Slack, "@" → Gmail, "https://" → Webhook
+	Provider string `yaml:"provider"` // "slack", "discord", "gmail", "webhook"
 }
 
 // AgentConfig はAIエージェント設定
@@ -292,6 +335,22 @@ func applyEnvOverrides(cfg *Config) {
 	if v := os.Getenv("SENTINEL_RESPONSE_DEFAULT_STRATEGY"); v != "" {
 		cfg.Response.DefaultStrategy = v
 	}
+	// Notify provider overrides (backward compatible with existing env vars)
+	if v := os.Getenv("SENTINEL_SLACK_WEBHOOK_URL"); v != "" {
+		cfg.Notify.Slack.Enabled = true
+		cfg.Notify.Slack.WebhookURL = v
+	}
+	if v := os.Getenv("SENTINEL_DISCORD_WEBHOOK_URL"); v != "" {
+		cfg.Notify.Discord.Enabled = true
+		cfg.Notify.Discord.WebhookURL = v
+	}
+	if v := os.Getenv("SENTINEL_GMAIL_FROM"); v != "" {
+		cfg.Notify.Gmail.Enabled = true
+		cfg.Notify.Gmail.From = v
+	}
+	if v := os.Getenv("SENTINEL_GMAIL_PASSWORD"); v != "" {
+		cfg.Notify.Gmail.Password = v
+	}
 }
 
 func applyDefaults(cfg *Config) {
@@ -359,6 +418,21 @@ func applyDefaults(cfg *Config) {
 	// Response defaults
 	if cfg.Response.DefaultStrategy == "" {
 		cfg.Response.DefaultStrategy = "NOTIFY_ONLY"
+	}
+	// Notify defaults
+	if cfg.Notify.Gmail.SMTPHost == "" {
+		cfg.Notify.Gmail.SMTPHost = "smtp.gmail.com"
+	}
+	if cfg.Notify.Gmail.SMTPPort == "" {
+		cfg.Notify.Gmail.SMTPPort = "587"
+	}
+	// Default routing rules if none specified
+	if len(cfg.Notify.Routing) == 0 {
+		cfg.Notify.Routing = []NotifyRoutingRule{
+			{Prefix: "#", Provider: "slack"},
+			{Prefix: "@", Provider: "gmail"},
+			{Prefix: "https://", Provider: "webhook"},
+		}
 	}
 }
 

@@ -221,30 +221,42 @@ func main() {
 		multiNotifier := notify.NewMultiNotifier()
 		multiNotifier.Register(notify.NewLogNotifier()) // fallback: 常にログ出力
 
+		// Webhook provider (legacy config path)
 		if cfg.Webhook.Enabled && cfg.Webhook.URL != "" {
 			multiNotifier.Register(notify.NewWebhookNotifier(notify.WebhookConfig{
 				URL: cfg.Webhook.URL, TimeoutSec: cfg.Webhook.TimeoutSec, Secret: cfg.Webhook.Secret,
 			}))
-			multiNotifier.SetRouting("https://", []string{"webhook"})
+			slog.Info("webhook notifier registered", "url", cfg.Webhook.URL)
 		}
-		// Slack: SENTINEL_SLACK_WEBHOOK_URL 環境変数で設定
-		if slackURL := os.Getenv("SENTINEL_SLACK_WEBHOOK_URL"); slackURL != "" {
-			multiNotifier.Register(notify.NewSlackNotifier(notify.SlackConfig{WebhookURL: slackURL}))
-			multiNotifier.SetRouting("#", []string{"slack"})
+		// Slack provider (config.notify.slack or SENTINEL_SLACK_WEBHOOK_URL)
+		if cfg.Notify.Slack.Enabled && cfg.Notify.Slack.WebhookURL != "" {
+			multiNotifier.Register(notify.NewSlackNotifier(notify.SlackConfig{
+				WebhookURL: cfg.Notify.Slack.WebhookURL,
+			}))
 			slog.Info("slack notifier registered")
 		}
-		// Discord: SENTINEL_DISCORD_WEBHOOK_URL 環境変数で設定
-		if discordURL := os.Getenv("SENTINEL_DISCORD_WEBHOOK_URL"); discordURL != "" {
-			multiNotifier.Register(notify.NewDiscordNotifier(notify.DiscordConfig{WebhookURL: discordURL}))
+		// Discord provider (config.notify.discord or SENTINEL_DISCORD_WEBHOOK_URL)
+		if cfg.Notify.Discord.Enabled && cfg.Notify.Discord.WebhookURL != "" {
+			multiNotifier.Register(notify.NewDiscordNotifier(notify.DiscordConfig{
+				WebhookURL: cfg.Notify.Discord.WebhookURL,
+				Username:   cfg.Notify.Discord.Username,
+			}))
 			slog.Info("discord notifier registered")
 		}
-		// Gmail: SENTINEL_GMAIL_FROM + SENTINEL_GMAIL_PASSWORD 環境変数で設定
-		if gmailFrom := os.Getenv("SENTINEL_GMAIL_FROM"); gmailFrom != "" {
+		// Gmail/SMTP provider (config.notify.gmail or SENTINEL_GMAIL_FROM)
+		if cfg.Notify.Gmail.Enabled && cfg.Notify.Gmail.From != "" {
 			multiNotifier.Register(notify.NewGmailNotifier(notify.GmailConfig{
-				From: gmailFrom, Password: os.Getenv("SENTINEL_GMAIL_PASSWORD"),
+				From:     cfg.Notify.Gmail.From,
+				Password: cfg.Notify.Gmail.Password,
+				SMTPHost: cfg.Notify.Gmail.SMTPHost,
+				SMTPPort: cfg.Notify.Gmail.SMTPPort,
+				To:       cfg.Notify.Gmail.To,
 			}))
-			multiNotifier.SetRouting("@", []string{"gmail"})
-			slog.Info("gmail notifier registered")
+			slog.Info("gmail notifier registered", "from", cfg.Notify.Gmail.From)
+		}
+		// Apply routing rules from config
+		for _, rule := range cfg.Notify.Routing {
+			multiNotifier.SetRouting(rule.Prefix, []string{rule.Provider})
 		}
 
 		orchOpts = append(orchOpts, response.WithNotifyFunc(func(ctx context.Context, record response.ThreatResponseRecord) error {

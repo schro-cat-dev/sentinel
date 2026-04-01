@@ -90,6 +90,34 @@ webhook:
   timeout_sec: 10
   # secret: HMAC secret for webhook payload signing
 
+# --- Notification Providers ---
+# 通知先の接続情報。環境変数でもオーバーライド可能。
+notify:
+  slack:
+    enabled: false
+    # webhook_url: "https://hooks.slack.com/services/..."  # or SENTINEL_SLACK_WEBHOOK_URL
+    # channel: "#alerts"                                    # デフォルトチャネル
+  discord:
+    enabled: false
+    # webhook_url: "https://discord.com/api/webhooks/..."  # or SENTINEL_DISCORD_WEBHOOK_URL
+    # username: "Sentinel Bot"
+  gmail:
+    enabled: false
+    # from: "sentinel@example.com"    # or SENTINEL_GMAIL_FROM
+    # password: ""                     # or SENTINEL_GMAIL_PASSWORD (App Password推奨)
+    # smtp_host: "smtp.gmail.com"
+    # smtp_port: "587"
+    # to: ["admin@example.com"]
+  # ルーティング: notify_targets のプレフィックスでプロバイダを自動選択
+  # デフォルト: "#" → slack, "@" → gmail, "https://" → webhook
+  routing:
+    - prefix: "#"
+      provider: slack
+    - prefix: "@"
+      provider: gmail
+    - prefix: "https://"
+      provider: webhook
+
 # --- Enhanced Modules (all opt-in) ---
 
 ensemble:
