@@ -131,4 +131,71 @@ describe("validateLogInput", () => {
     it("rejects undefined message", () => {
         expect(() => validateLogInput({})).toThrow(ValidationError);
     });
+
+    // --- estimateJsonSize: array branch (lines 240-243) ---
+    it("accepts input with nested arrays (exercises estimateJsonSize array branch)", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            input: { data: [1, "two", [3, 4], { nested: true }] },
+        })).not.toThrow();
+    });
+
+    // --- estimateJsonSize: non-object/non-primitive fallback (line 254) ---
+    it("accepts input containing a Symbol-like value (exercises estimateJsonSize fallback)", () => {
+        // Symbol values are not standard JSON, but estimateJsonSize should handle them gracefully
+        const input = { val: Symbol("test") };
+        expect(() => validateLogInput({
+            message: "test",
+            input: input as unknown as Record<string, unknown>,
+        })).not.toThrow();
+    });
+
+    // --- large agentBackLog/aiContext exercises object branch of estimateJsonSize ---
+    it("accepts log with large agentBackLog object (exercises estimateJsonSize object branch)", () => {
+        const largeObj: Record<string, string> = {};
+        for (let i = 0; i < 50; i++) {
+            largeObj[`key${i}`] = `value${i}`;
+        }
+        expect(() => validateLogInput({
+            message: "test",
+            agentBackLog: largeObj as unknown as Record<string, unknown>,
+        })).not.toThrow();
+    });
+
+    it("accepts log with aiContext containing various fields (exercises estimateJsonSize)", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            aiContext: {
+                agentId: "a1",
+                taskId: "t1",
+                loopDepth: 5,
+                modelId: "gpt-4",
+                prompt: "analyze this data",
+            },
+        })).not.toThrow();
+    });
+
+    // --- validateStringField: typeof value !== "string" (line 218-219) ---
+    it("rejects non-string actorId at runtime (exercises validateStringField type check)", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            actorId: 12345 as unknown as string,
+        })).toThrow(ValidationError);
+    });
+
+    // --- validateStringField: exceeds max length (line 221-222) ---
+    it("rejects actorId exceeding max string field length", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            actorId: "x".repeat(513),
+        })).toThrow(ValidationError);
+    });
+
+    // --- validateStringField: contains null bytes (line 224-225) ---
+    it("rejects traceId containing null bytes", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            traceId: "trace\x00id",
+        })).toThrow(ValidationError);
+    });
 });

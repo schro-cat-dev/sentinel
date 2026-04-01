@@ -57,6 +57,34 @@ describe("IntegritySigner", () => {
             expect(hash).toMatch(/^[a-f0-9]{64}$/);
         });
 
+        it("handles object with undefined value deterministically", () => {
+            const log1 = createTestLog({ aiContext: undefined });
+            const log2 = createTestLog({ aiContext: undefined });
+            const hash1 = IntegritySigner.calculateHash(log1, "");
+            const hash2 = IntegritySigner.calculateHash(log2, "");
+            expect(hash1).toBe(hash2);
+            expect(hash1).toMatch(/^[a-f0-9]{64}$/);
+        });
+
+        it("handles log with explicitly undefined field in metadata", () => {
+            const log = createTestLog({
+                metadata: { key1: "value1", key2: undefined as unknown as string },
+            });
+            const hash1 = IntegritySigner.calculateHash(log, "");
+            const hash2 = IntegritySigner.calculateHash(log, "");
+            expect(hash1).toBe(hash2);
+        });
+
+        it("handles non-plain objects gracefully (Date is not a valid JSON value)", () => {
+            // Date object in metadata should not break hashing
+            const log = createTestLog({
+                metadata: { timestamp: new Date("2026-01-01") as unknown as string },
+            });
+            // Should not throw
+            const hash = IntegritySigner.calculateHash(log, "");
+            expect(hash).toMatch(/^[a-f0-9]{64}$/);
+        });
+
         it("object key order does not affect hash (deterministic serialization)", () => {
             const log1 = createTestLog({ message: "test", boundary: "a" });
             const log2 = createTestLog({ boundary: "a", message: "test" });

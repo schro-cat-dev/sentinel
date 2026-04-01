@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { MaskingService } from "../../../src/security/masking-service";
 import { MaskingRule } from "../../../src/configs/masking-rule";
+import type { SentinelLogger } from "../../../src/configs/sentinel-config";
 
 describe("MaskingService", () => {
     describe("primitive handling", () => {
@@ -190,6 +191,46 @@ describe("MaskingService", () => {
             const data = { email: "user@test.com" };
             const result = MaskingService.mask(data, []) as Record<string, unknown>;
             expect(result.email).toBe("user@test.com");
+        });
+    });
+
+    describe("maskString catch block", () => {
+        it("logs warning and continues when a REGEX rule throws during replace", () => {
+            const throwingPattern = {
+                get flags(): string { return "i"; },
+                get source(): string { throw new Error("bad regex source"); },
+            } as unknown as RegExp;
+
+            const throwingRule: MaskingRule = {
+                type: "REGEX",
+                pattern: throwingPattern,
+                replacement: "[REDACTED]",
+                description: "Throwing rule",
+            };
+
+            const normalRule: MaskingRule = {
+                type: "REGEX",
+                pattern: /secret/,
+                replacement: "[HIDDEN]",
+                description: "Normal rule",
+            };
+
+            const logger: SentinelLogger = {
+                info: vi.fn(),
+                warn: vi.fn(),
+                error: vi.fn(),
+                debug: vi.fn(),
+            };
+
+            // The throwing rule should be caught, warn logged, and the normal rule still applied
+            const result = MaskingService.mask(
+                "this is a secret message",
+                [throwingRule, normalRule],
+                [],
+                { logger },
+            );
+            expect(result).toBe("this is a [HIDDEN] message");
+            expect(logger.warn).toHaveBeenCalledWith("Masking rule failed: REGEX");
         });
     });
 });

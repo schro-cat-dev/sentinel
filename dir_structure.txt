@@ -11,11 +11,13 @@
 ├── .npmignore                                   # npm publish 除外（src, tests, *.map）
 ├── util-commands.md                             # dir_structure.txt 生成用コマンド
 ├── dir_structure.txt                            # 本ファイル（プロジェクト構造 + 責務コメント）
+├── sentinel.config.yaml.example                 # SDK用YAML設定ファイルの例（Go server sentinel.yamlとは別）
 │
 ├── src/                                         # ── TypeScript Client SDK ソースコード ──
 │   ├── index.ts                                 # 公開API: Sentinel class, initialize/ingest/shutdown/onTaskAction/onTaskConfirm
 │   ├── configs/
 │   │   ├── sentinel-config.ts                   # SentinelConfig 型定義 + createDefaultConfig（deep-merge）+ SentinelLogger I/F
+│   │   ├── config-loader.ts                     # YAML/JSON設定ファイルローダー（parseConfigYaml, loadConfigFromYaml）
 │   │   └── masking-rule.ts                      # MaskingRule union type（REGEX | PII_TYPE | KEY_MATCH）
 │   ├── core/
 │   │   ├── engine/
@@ -133,6 +135,7 @@
 │   │   ├── config-pipeline-reflection.test.ts   # 設定→パイプライン反映: 全フィールドE2E
 │   │   ├── config-server-exhaustive.test.ts     # 全設定組合せ + 侵入経路 + トレーシング
 │   │   ├── config-security-audit.test.ts        # RegExpフラグ, errorRouting/conditions検証
+│   │   ├── config-loader.test.ts               # YAML/JSONローダー: パース, バリデーション, エラー
 │   │   ├── size-limits.test.ts                  # サイズ制限: デフォルト, カスタム, フィールド別
 │   │   ├── transport-modes.test.ts              # Transport全モード: timeout, fallback, dual, shutdown
 │   │   ├── masking-rules-exhaustive.test.ts     # マスキング全パターン: PII/REGEX/KEY_MATCH/edge
@@ -208,7 +211,8 @@
 │       ├── cmd/server/main.go                   # エントリポイント（全モジュールワイヤリング）
 │       ├── config/
 │       │   ├── config.go                        # YAML読込 + env override + validation（HMAC鍵32B, API key16C, 暗号鍵32B）
-│       │   ├── config_test.go                   # 設定バリデーションテスト
+│       │   ├── config_test.go                   # 設定バリデーションテスト（24テスト）
+│       │   ├── config_extended_test.go          # detection_rules/error_routing検証テスト
 │       │   ├── sentinel.yaml                    # デフォルト設定ファイル
 │       │   └── security.default.json            # セキュリティヘッダ・レートリミット・ハニーポット設定
 │       ├── proto/sentinel.proto                 # gRPC Protocol Buffers 定義
@@ -219,13 +223,13 @@
 │       │   ├── domain/                          # ドメインモデル（Log, Task, Event, Approval, Result）
 │       │   ├── grpc/                            # gRPC server + interceptors + pb（生成コード）
 │       │   ├── middleware/                       # Auth + RBAC authorizer + セキュリティヘッダ
-│       │   ├── task/                            # タスク生成 + 実行
+│       │   ├── task/                            # タスク生成 + 実行 + executor/generator包括テスト
 │       │   ├── agent/                           # AIエージェント provider(I/F) + executor + mock
 │       │   ├── response/                        # 脅威レスポンスオーケストレーター + ブロック + 分析
 │       │   ├── notify/                          # 通知アダプタ（Slack/Gmail/Discord/Webhook/Log）
 │       │   ├── store/                           # SQLite/SQLCipher永続化（ログ/タスク/承認/脅威レスポンス）
 │       │   ├── retry/                           # 指数バックオフ + ジッター（共有モジュール）
-│       │   └── webhook/                         # Webhook通知（承認ワークフロー用）
+│       │   └── webhook/                         # Webhook通知 + notifier_test.go (HMAC署名/タイムアウト)
 │       ├── docs/
 │       │   ├── usage-guide.md                   # Server 使い方ガイド
 │       │   ├── extensibility-guide.md           # 拡張ガイド
@@ -237,6 +241,7 @@
 │   └── grpc-transport.ts                        # SDK→Go Server gRPC Transport 実装例
 ├── samples/
 │   ├── basic_usage.ts                           # 基本的な使い方サンプル
+│   ├── advanced_usage.ts                        # 全新機能デモ（検知ルール/whitelist/metrics/tracer/errorRouting）
 │   └── security_anomaly_ai.ts                   # セキュリティ異常検知 + AI連携サンプル
 ├── readme/
 │   ├── en(default).md                           # 英語README

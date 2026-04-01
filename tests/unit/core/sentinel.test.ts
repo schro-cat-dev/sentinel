@@ -149,6 +149,17 @@ describe("Sentinel.shutdown", () => {
         // Should not throw
         await expect(sentinel.shutdown()).resolves.toBeUndefined();
     });
+
+    it("is idempotent — second call is a no-op", async () => {
+        const closeFn = vi.fn().mockResolvedValue(undefined);
+        const transport = { send: vi.fn(), close: closeFn };
+        const sentinel = Sentinel.initialize(defaultConfig(), {
+            transport: { mode: "local", transport },
+        });
+        await sentinel.shutdown();
+        await sentinel.shutdown(); // second call — hits early return (line 116)
+        expect(closeFn).toHaveBeenCalledTimes(1);
+    });
 });
 
 // =========================================================================
@@ -209,6 +220,18 @@ describe("Sentinel.ingest", () => {
 
         const result = await sentinel.ingest({ message: "fallback test", level: 3 });
         expect(result.traceId).toBeDefined();
+    });
+
+    it("dual mode handles non-Error thrown from transport", async () => {
+        const sendFn = vi.fn().mockRejectedValue("string-error");
+        const transport = { send: sendFn, close: vi.fn() };
+        const sentinel = Sentinel.initialize(defaultConfig(), {
+            transport: { mode: "dual", transport },
+        });
+
+        const result = await sentinel.ingest({ message: "non-error test", level: 3 });
+        expect(result.traceId).toBeDefined();
+        expect(result.transportError).toBe("string-error");
     });
 
     it("remote mode without fallback rethrows transport error", async () => {
@@ -314,6 +337,117 @@ describe("Sentinel.getConfig", () => {
         const cfg = sentinel.getConfig();
         expect(cfg.projectName).toBe("my-project");
         expect(cfg.serviceId).toBe("my-svc");
+    });
+});
+
+// =========================================================================
+// Sentinel.onTaskConfirm
+// =========================================================================
+describe("Sentinel.onTaskConfirm", () => {
+    it("registers a confirm handler on the task executor", () => {
+        const sentinel = Sentinel.initialize(defaultConfig());
+        const handler = vi.fn().mockReturnValue(true);
+        // Should not throw
+        sentinel.onTaskConfirm(handler);
+    });
+
+    it("confirm handler that returns false blocks SEMI_AUTO task", async () => {
+        const confirmHandler = vi.fn().mockReturnValue(false);
+        const actionHandler = vi.fn();
+        const sentinel = Sentinel.initialize(defaultConfig({
+            taskRules: [createTestTaskRule({
+                eventName: "SYSTEM_CRITICAL_FAILURE",
+                severity: "CRITICAL",
+                actionType: "SYSTEM_NOTIFICATION",
+                executionLevel: "SEMI_AUTO",
+            })],
+        }));
+
+        sentinel.onTaskConfirm(confirmHandler);
+        sentinel.onTaskAction("SYSTEM_NOTIFICATION", actionHandler);
+
+        await sentinel.ingest({
+            message: "critical failure",
+            isCritical: true,
+            level: 6,
+        });
+
+        expect(confirmHandler).toHaveBeenCalled();
+        // Handler should NOT be called because confirm returned false
+        expect(actionHandler).not.toHaveBeenCalled();
+    });
+});
+
+// =========================================================================
+// sendWithTimeout — timer undefined branch
+// =========================================================================
+describe("Sentinel.sendWithTimeout — timer branch", () => {
+    it("times out when transport send is slow", async () => {
+        const sendFn = vi.fn().mockImplementation(
+            () => new Promise((resolve) => setTimeout(resolve, 5000)),
+        );
+        const transport = { send: sendFn, close: vi.fn() };
+        const sentinel = Sentinel.initialize(defaultConfig(), {
+            transport: { mode: "remote", transport, timeoutMs: 10, fallbackToLocal: false },
+        });
+
+        await expect(sentinel.ingest({ message: "slow send", level: 3 })).rejects.toThrow(
+            "Transport timeout after 10ms",
+        );
+    });
+
+    it("covers the finally branch where timer is defined (immediate resolve)", async () => {
+        // Transport that resolves immediately — timer IS assigned (setTimeout is sync)
+        // but the send resolves quickly. The finally block still runs clearTimeout.
+        const sendFn = vi.fn().mockResolvedValue({
+            traceId: "immediate-trace",
+            tasksGenerated: [],
+            detection: null,
+            hashChainValid: false,
+        });
+        const transport = { send: sendFn, close: vi.fn() };
+        const sentinel = Sentinel.initialize(defaultConfig(), {
+            transport: { mode: "remote", transport, timeoutMs: 30000 },
+        });
+
+        const result = await sentinel.ingest({ message: "fast send", level: 3 });
+        expect(result.traceId).toBe("immediate-trace");
+        expect(sendFn).toHaveBeenCalled();
+    });
+});
+
+// =========================================================================
+// warnIfTooManyHandlers
+// =========================================================================
+describe("Sentinel.warnIfTooManyHandlers", () => {
+    it("warns when more than 10 handlers are registered for same actionType", () => {
+        const warnFn = vi.fn();
+        const sentinel = Sentinel.initialize(defaultConfig({
+            logger: { warn: warnFn, error: vi.fn() },
+        }));
+
+        // Register 11 handlers for the same actionType
+        for (let i = 0; i < 11; i++) {
+            sentinel.onTaskAction("SYSTEM_NOTIFICATION", vi.fn());
+        }
+
+        expect(warnFn).toHaveBeenCalledWith(
+            expect.stringContaining("11 handlers registered"),
+            expect.objectContaining({ source: "sentinel" }),
+        );
+    });
+
+    it("does not warn when 10 or fewer handlers are registered", () => {
+        const warnFn = vi.fn();
+        const sentinel = Sentinel.initialize(defaultConfig({
+            logger: { warn: warnFn, error: vi.fn() },
+        }));
+
+        for (let i = 0; i < 10; i++) {
+            sentinel.onTaskAction("SYSTEM_NOTIFICATION", vi.fn());
+        }
+
+        expect(warnFn).not.toHaveBeenCalled();
     });
 });
 

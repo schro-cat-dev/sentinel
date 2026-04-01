@@ -246,5 +246,56 @@ describe("IngestionEngine", () => {
 
             expect(callCount).toBe(2);
         });
+
+        it("ErrorRouter.route rejection inside emitSafe logs to console.error", async () => {
+            // To cover lines 225-226, we need ErrorRouter.route() to reject.
+            // route() has an internal try/catch, so we must make that catch block throw.
+            // Strategy: mock console.error to throw on the specific call from route()'s catch,
+            // which will cause the async route() promise to reject and hit the .catch() in emitSafe.
+
+            // Step 1: create engine with errorRouting enabled and a throwing callback
+            const { engine } = createEngine({
+                errorRouting: {
+                    enabled: true,
+                    rules: [
+                        {
+                            match: {
+                                severity: "WARNING",
+                                kindPattern: {
+                                    test: () => { throw new Error("regex exploded"); },
+                                } as unknown as RegExp,
+                            },
+                            decisions: [],
+                        },
+                    ],
+                },
+                onLogProcessed: () => { throw new Error("callback boom"); },
+            });
+
+            // Step 2: intercept console.error — make first call (route's internal catch) throw
+            let callIdx = 0;
+            const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {
+                callIdx++;
+                if (callIdx === 1) {
+                    // This is route()'s internal "routing failed" console.error
+                    // Making it throw causes route() to reject
+                    throw new Error("console.error blew up");
+                }
+                // Subsequent calls (emitSafe .catch, onError handler) succeed
+            });
+
+            await engine.handle({ message: "trigger error" });
+
+            // Wait for the async .catch() on route() to fire
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            const calls = stderrSpy.mock.calls.map((c) => c.map(String).join(" "));
+            const hasRouterCatch = calls.some((msg) =>
+                msg.includes("[Sentinel] ErrorRouter.route failed:"),
+            );
+            expect(hasRouterCatch).toBe(true);
+
+            stderrSpy.mockRestore();
+        });
     });
 });
