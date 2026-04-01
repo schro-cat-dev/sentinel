@@ -151,9 +151,11 @@ export class MaskingService {
             try {
                 switch (rule.type) {
                     case "REGEX": {
+                        // 元のフラグを保持しつつ、gフラグを追加（replaceAllに必要）
+                        const originalFlags = rule.pattern.flags.replace(/[gy]/g, "");
                         const globalPattern = new RegExp(
                             rule.pattern.source,
-                            "g",
+                            originalFlags + "g",
                         );
                         result = result.replace(
                             globalPattern,

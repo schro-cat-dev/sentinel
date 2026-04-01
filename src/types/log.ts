@@ -37,6 +37,7 @@ export interface Log {
     // 発生源（トレーサビリティ責務）
     boundary: string; // 発生箇所情報: サービス名やモジュール名
     serviceId: string; // どのインスタンスか（Configから自動注入）
+    projectName?: string; // プロジェクト名（Configから自動注入）
 
     // 制御メタデータ（安全性責務）
     origin: "SYSTEM" | "AI_AGENT";

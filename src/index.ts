@@ -44,7 +44,7 @@ export class Sentinel {
         this.whitelistRegistry = registry;
         this.transportConfig = options?.transport ?? { mode: "local" };
 
-        const normalizer = new LogNormalizer(config.serviceId);
+        const normalizer = new LogNormalizer(config.serviceId, config.projectName);
         const signer = new IntegritySigner();
         const detector = new EventDetector(config.detectionRules);
         const taskGenerator = new TaskGenerator(config.taskRules);

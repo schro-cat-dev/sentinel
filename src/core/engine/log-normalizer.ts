@@ -13,7 +13,10 @@ const VALID_LOG_LEVELS = new Set<LogLevel>([1, 2, 3, 4, 5, 6]);
  * 入力検証は validateLogInput() (SDK境界) の責務。ここでは防御的フォールバックのみ行う。
  */
 export class LogNormalizer implements ILogNormalizer {
-    constructor(private readonly serviceId: string) {}
+    constructor(
+        private readonly serviceId: string,
+        private readonly projectName?: string,
+    ) {}
 
     normalize(raw: Partial<Log>): Log {
         const message = typeof raw.message === "string" ? raw.message.trim() : "";
@@ -26,6 +29,7 @@ export class LogNormalizer implements ILogNormalizer {
             logicalClock: raw.logicalClock ?? Date.now(),
             boundary: raw.boundary || "unknown",
             serviceId: this.serviceId,
+            projectName: this.projectName,
             isCritical: raw.isCritical ?? false,
             message,
             origin: raw.origin === "AI_AGENT" ? "AI_AGENT" : "SYSTEM",

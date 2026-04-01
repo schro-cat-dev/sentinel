@@ -75,6 +75,9 @@ func main() {
 		DedupWindowSec:        cfg.Ensemble.DedupWindowSec,
 		DynamicDetectionRules: convertDynamicRules(cfg.Ensemble.DynamicRules),
 
+		// Custom detection rules (from detection_rules in YAML, TS SDK compatible)
+		DetectionRules: convertDetectionRules(cfg.DetectionRules),
+
 		// Anomaly detection
 		EnableAnomalyDetection: cfg.Anomaly.Enabled,
 		AnomalyConfig: detection.AnomalyConfig{
@@ -368,6 +371,26 @@ func convertDynamicRules(cfgRules []config.DynamicRuleConfig) []detection.Dynami
 				MaxLevel: r.Conditions.MaxLevel, MessagePattern: r.Conditions.MessagePattern,
 				RequireCritical: r.Conditions.RequireCritical, TagKeys: r.Conditions.TagKeys,
 				Origins: r.Conditions.Origins,
+			},
+		})
+	}
+	return rules
+}
+
+func convertDetectionRules(cfgRules []config.DetectionRuleConfig) []detection.DynamicRuleConfig {
+	var rules []detection.DynamicRuleConfig
+	for _, r := range cfgRules {
+		rules = append(rules, detection.DynamicRuleConfig{
+			RuleID:    r.RuleID,
+			EventName: r.EventName,
+			Priority:  r.Priority,
+			Score:     1.0, // detection_rules are binary (match/no-match), always score 1.0
+			Conditions: detection.DynamicRuleConditions{
+				LogTypes:       r.Conditions.LogTypes,
+				MinLevel:       r.Conditions.MinLevel,
+				MaxLevel:       r.Conditions.MaxLevel,
+				MessagePattern: r.Conditions.MessagePattern,
+				Origins:        []string{r.Conditions.Origin},
 			},
 		})
 	}

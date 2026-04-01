@@ -62,6 +62,9 @@ type PipelineConfig struct {
 	// AgentBridgeConfig はエージェントブリッジ設定
 	AgentBridge AgentBridgeConfig
 
+	// DetectionRules はカスタム検知ルール（TS SDK互換、config.detection_rulesから）
+	DetectionRules []detection.DynamicRuleConfig
+
 	// FailOnPersistError はtrue時に永続化失敗でエラーを返す（デフォルトfalse=degraded mode）
 	FailOnPersistError bool
 }
