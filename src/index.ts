@@ -41,7 +41,7 @@ export class Sentinel {
 
         const normalizer = new LogNormalizer(config.serviceId);
         const signer = new IntegritySigner();
-        const detector = new EventDetector();
+        const detector = new EventDetector(config.detectionRules);
         const taskGenerator = new TaskGenerator(config.taskRules);
         this.taskExecutor = new TaskExecutor();
 
@@ -197,7 +197,7 @@ export type {
     TaskSeverity,
     TaskExecutionLevel,
 } from "./types/task";
-export type { SystemEventName, DetectionResult } from "./types/event";
+export type { SystemEventName, DetectionResult, DetectionRule, DetectionRuleConditions } from "./types/event";
 export type { TaskDispatchHandler, TaskConfirmHandler } from "./core/task/task-executor";
 export type { SentinelLogger } from "./configs/sentinel-config";
 export type { RemoteTransport, TransportMode, TransportConfig } from "./transport/transport";
