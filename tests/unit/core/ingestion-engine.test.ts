@@ -268,7 +268,7 @@ describe("IngestionEngine", () => {
             expect(error.message).toBe("string-error");
         });
 
-        it("emitSafe handles onError callback that throws (line 234)", async () => {
+        it("emitSafe handles onError callback that throws Error (line 234)", async () => {
             const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
             const { engine } = createEngine({
                 onLogProcessed: () => { throw new Error("primary-boom"); },
@@ -280,6 +280,24 @@ describe("IngestionEngine", () => {
             const calls = stderrSpy.mock.calls.map((c) => c.map(String).join(" "));
             const hasOnErrorCatch = calls.some((msg) =>
                 msg.includes("[Sentinel] onError handler threw:") && msg.includes("onError-boom"),
+            );
+            expect(hasOnErrorCatch).toBe(true);
+
+            stderrSpy.mockRestore();
+        });
+
+        it("emitSafe handles onError callback that throws non-Error value", async () => {
+            const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+            const { engine } = createEngine({
+                onLogProcessed: () => { throw new Error("primary-boom"); },
+                onError: () => { throw "string-onError-thrown" as unknown; },
+            });
+
+            await engine.handle({ message: "trigger non-error onError" });
+
+            const calls = stderrSpy.mock.calls.map((c) => c.map(String).join(" "));
+            const hasOnErrorCatch = calls.some((msg) =>
+                msg.includes("[Sentinel] onError handler threw:") && msg.includes("string-onError-thrown"),
             );
             expect(hasOnErrorCatch).toBe(true);
 

@@ -155,6 +155,60 @@ describe("EventDetector", () => {
         });
     });
 
+    describe("AI_ACTION_REQUIRED detection", () => {
+        it("detects AI_ACTION_REQUIRED with SECURITY type level=4 → AI_ANALYZE", () => {
+            // level=4 (not >=5) to avoid matching SECURITY_INTRUSION_DETECTED first
+            const log = createTestLog({
+                type: "SECURITY",
+                level: 4,
+                triggerAgent: true,
+                message: "AI analysis needed",
+            });
+            const result = detector.detect(log);
+            expect(result).not.toBeNull();
+            expect(result!.eventName).toBe("AI_ACTION_REQUIRED");
+            expect(result!.priority).toBe("MEDIUM");
+            expect(result!.payload.suggestedTask).toBe("AI_ANALYZE");
+        });
+
+        it("detects AI_ACTION_REQUIRED with non-SECURITY type → SYSTEM_NOTIFICATION", () => {
+            const log = createTestLog({
+                type: "SYSTEM",
+                level: 4,
+                triggerAgent: true,
+                message: "AI notification needed",
+            });
+            const result = detector.detect(log);
+            expect(result).not.toBeNull();
+            expect(result!.eventName).toBe("AI_ACTION_REQUIRED");
+            expect(result!.priority).toBe("MEDIUM");
+            expect(result!.payload.suggestedTask).toBe("SYSTEM_NOTIFICATION");
+        });
+
+        it("does not detect AI_ACTION_REQUIRED when triggerAgent=false", () => {
+            const log = createTestLog({
+                type: "SYSTEM",
+                level: 5,
+                triggerAgent: false,
+                message: "No trigger",
+            });
+            const result = detector.detect(log);
+            // triggerAgent=false かつ他の条件にもマッチしない
+            expect(result).toBeNull();
+        });
+
+        it("does not detect AI_ACTION_REQUIRED when level < 4", () => {
+            const log = createTestLog({
+                type: "SYSTEM",
+                level: 3,
+                triggerAgent: true,
+                message: "Low level trigger",
+            });
+            const result = detector.detect(log);
+            expect(result).toBeNull();
+        });
+    });
+
     describe("no detection", () => {
         it("returns null for normal SYSTEM log", () => {
             const log = createTestLog();

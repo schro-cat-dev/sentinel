@@ -39,7 +39,10 @@ export class ErrorRouter {
             );
         } catch (err) {
             // 最終防壁: route()自体のエラーはconsole.errorで終了。再帰しない。
-            console.error(`[Sentinel:ErrorRouter] routing failed: ${err instanceof Error ? err.message : String(err)}`);
+            const safeMsg = err instanceof Error
+                ? err.message.substring(0, 200)
+                : "[non-Error thrown]";
+            console.error(`[Sentinel:ErrorRouter] routing failed: ${safeMsg}`);
         }
     }
 
@@ -87,8 +90,11 @@ export class ErrorRouter {
                     break;
             }
         } catch (execErr) {
-            // 防壁2: Executor自身のエラーはroute()に戻さない
-            console.error(`[Sentinel:ErrorRouter] executor failed for ${decision.destination}: ${execErr instanceof Error ? execErr.message : String(execErr)}`);
+            // 防壁2: Executor自身のエラーはroute()に戻さない。PII漏洩防止のため200文字に切り詰め。
+            const safeMsg = execErr instanceof Error
+                ? execErr.message.substring(0, 200)
+                : "[non-Error thrown]";
+            console.error(`[Sentinel:ErrorRouter] executor failed for ${decision.destination}: ${safeMsg}`);
         }
     }
 }

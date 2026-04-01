@@ -109,7 +109,7 @@ describe("Sentinel.reset", () => {
         expect(() => Sentinel.reset()).not.toThrow();
     });
 
-    it("handles transport close error gracefully", () => {
+    it("handles transport close error gracefully (sync throw)", () => {
         const transport = {
             send: vi.fn(),
             close: () => { throw new Error("close failed"); },
@@ -119,6 +119,20 @@ describe("Sentinel.reset", () => {
         });
         // Should not throw
         expect(() => Sentinel.reset()).not.toThrow();
+    });
+
+    it("handles transport close returning rejected promise (async .catch branch)", async () => {
+        const transport = {
+            send: vi.fn(),
+            close: () => Promise.reject(new Error("async close failed")),
+        };
+        Sentinel.initialize(defaultConfig(), {
+            transport: { mode: "local", transport },
+        });
+        // Should not throw — the .catch(() => {}) on line 104 swallows the rejection
+        expect(() => Sentinel.reset()).not.toThrow();
+        // Wait for the microtask queue to flush (the .catch runs asynchronously)
+        await new Promise((resolve) => setTimeout(resolve, 50));
     });
 });
 

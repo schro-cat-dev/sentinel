@@ -18,8 +18,8 @@ pattern: new RegExp(raw.pattern!, raw.description?.includes("global") ? "g" : ""
 
 | チェック項目 | 判定 | 詳細 |
 |-------------|------|------|
-| パターン長制限 | **NG** | 入力文字列長のチェックなし |
-| ReDoSパターン検出 | **NG** | ネスト量指定子 `(a+)+` 等を検出しない |
+| パターン長制限 | **OK（修正済み）** | `config-loader.ts:320-322` — 256文字制限 |
+| ReDoSパターン検出 | **OK（修正済み）** | `config-loader.ts:324-343` — ネスト量指定子(`+`,`*`,`?`,`{n,m}`)の検出 |
 | コンパイル例外ハンドリング | **OK** | `new RegExp()` が例外を投げた場合はそのまま伝播 |
 | フラグ制限 | **部分的** | global以外の危険なフラグ（`u` の一部パターンで問題あり）はチェックなし |
 
@@ -105,8 +105,8 @@ if (raw.conditions.message_pattern) conditions.messagePattern = new RegExp(raw.c
 
 | チェック項目 | 判定 | 詳細 |
 |-------------|------|------|
-| パターン長制限 | **NG** | チェックなし |
-| ReDoSパターン検出 | **NG** | チェックなし |
+| パターン長制限 | **OK（修正済み）** | `config-loader.ts:417` — `validateRegexPattern()` で256文字制限を適用 |
+| ReDoSパターン検出 | **OK（修正済み）** | `config-loader.ts:417` — ネスト量指定子検出を適用 |
 | フラグ制限 | **OK** | フラグなしで生成されるため `global` / `sticky` のリスクなし |
 
 **攻撃シナリオ**: 悪意ある検出ルールの `message_pattern` にReDoSパターンを設定すると、`event-detector.ts:153` の `.test(log.message)` でCPUがブロックされる。
@@ -173,14 +173,14 @@ if (conditions.messagePattern && !conditions.messagePattern.test(log.message)) {
 
 ## Go サーバとの比較
 
-| 項目 | SDK (TypeScript) | Server (Go) |
-|------|-----------------|-------------|
-| パターン長制限 | **なし** | **あり** (256文字) |
-| ReDoS検出ヒューリスティック | **なし** | **あり** (ネスト量指定子、繰り返し回数) |
-| コンパイル検証 | `new RegExp()` 例外 | `regexp.Compile()` |
-| global/sticky フラグ制限 | 検出ルールのみ | N/A (Go regexp にgフラグなし) |
+| 項目 | SDK (TypeScript) | Server (Go) | 整合 |
+|------|-----------------|-------------|------|
+| パターン長制限 | **あり（修正済み）** (256文字) | **あり** (256文字) | **一致** |
+| ReDoS検出ヒューリスティック | **あり（修正済み）** (ネスト量指定子+繰り返し) | **あり** (ネスト量指定子、繰り返し回数) | **一致** |
+| コンパイル検証 | `new RegExp()` 例外 | `regexp.Compile()` | **一致** |
+| global/sticky フラグ制限 | 検出ルールのみ | N/A (Go regexp にgフラグなし) | — |
 
-**ギャップ**: Go サーバは `sanitizer.go:101-145` で包括的なReDoS対策を持つが、SDK側には同等の保護がない。SDK単体（ローカルモード）で使用する場合、この差は直接的なリスクとなる。
+**修正後**: SDK と Go サーバの ReDoS 保護は同等レベルに整合。`detectReDoSRisk()` は `+`, `*`, `?`, `{n,m}` の全量指定子をネスト検出対象とし、Go サーバと同等の保護を提供。
 
 ---
 
@@ -205,16 +205,21 @@ SDK内蔵のPIIパターン（`masking-service.ts:12-19`）はハードコード
 
 ## 総合判定
 
-**評価: B-（改善必要）**
+**評価: A-（修正済み — ヒューリスティック検出実装完了）**
 
 | 脆弱性ID | 重大度 | 箇所 | ステータス |
 |----------|--------|------|-----------|
-| REDOS-001 | HIGH | config-loader.ts:311 マスキングルールパターン | **未対策** |
-| REDOS-002 | HIGH | config-loader.ts:355 検出ルールパターン | **未対策** |
-| REDOS-003 | MEDIUM | masking-service.ts:174 replace() タイムアウト | **未対策** |
-| REDOS-004 | LOW | event-detector.ts:153 test() タイムアウト | **未対策** |
+| REDOS-001 | HIGH | config-loader.ts マスキングルールパターン | **✅ 対策済み** — `validateRegexPattern()` + `detectReDoSRisk()` |
+| REDOS-002 | HIGH | config-loader.ts 検出ルールパターン | **✅ 対策済み** — 同上 |
+| REDOS-003 | MEDIUM | masking-service.ts:174 replace() タイムアウト | **残課題** |
+| REDOS-004 | LOW | event-detector.ts:153 test() タイムアウト | **残課題** |
 
-**優先アクション**:
-1. **即時**: config-loader.ts にパターン長制限（256文字）とReDoSヒューリスティック検出を追加
-2. **次フェーズ**: Node.js 20+ の `RegExp.prototype[Symbol.match]` にタイムアウトラッパーを実装するか、`re2` パッケージ（線形時間正規表現エンジン）の導入を検討
-3. **ドキュメント**: ユーザ向けに「カスタム正規表現パターンのガイドライン」を提供し、ネスト量指定子を避けるよう記載
+**修正内容（2026-04-02）**:
+- `detectReDoSRisk()`: ネスト量指定子検出に `?` と `{n,m}` を追加。`+`, `*`, `?`, `{` の全量指定子をグループ外部の量指定子として検出
+- パターン長制限: 256文字
+- 繰り返し回数制限: `{n}` で n > 1000 を拒否
+- テスト: `tests/security/sdk-audit-fixes.test.ts` — 17テストケース（`(a+)+`, `(a*)*`, `(a?)+`, `(a+){2,}`, `([a-zA-Z]+)+`, `(.*a)+` 等）
+
+**残課題**:
+1. REDOS-003/004: `re2` パッケージ（線形時間正規表現エンジン）の導入を検討。ただしゼロ依存方針との兼ね合い
+2. ドキュメント: ユーザ向けに「カスタム正規表現パターンのガイドライン」を提供し、ネスト量指定子を避けるよう記載

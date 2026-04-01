@@ -90,6 +90,12 @@ export interface ConfigLoaderOptions {
     expandEnv?: boolean;
     /** 環境変数のソース（テスト用にオーバーライド可能） */
     envSource?: Record<string, string | undefined>;
+    /**
+     * 未定義環境変数（デフォルト値なし）をエラーにする（デフォルト: false）。
+     * true の場合、${VAR} が未定義で :-default もない場合に ConfigLoadError をスローする。
+     * 本番環境でAPIキー等の必須変数の設定漏れを防ぐために使用。
+     */
+    strictEnvExpansion?: boolean;
     /** YAMLパーサー関数（省略時は `yaml` パッケージを使用） */
     yamlParser?: (content: string) => RawYamlConfig;
     /**
@@ -146,10 +152,11 @@ export function parseConfigYaml(
 ): SentinelConfig {
     const expandEnv = options.expandEnv ?? true;
     const envSource = options.envSource ?? process.env;
+    const strictEnv = options.strictEnvExpansion ?? false;
 
     // 1. 環境変数展開
     const expanded = expandEnv
-        ? expandEnvVars(yamlContent, envSource)
+        ? expandEnvVars(yamlContent, envSource, strictEnv)
         : yamlContent;
 
     // 2. YAMLパース
@@ -173,16 +180,31 @@ export function parseConfigYaml(
 function expandEnvVars(
     content: string,
     env: Record<string, string | undefined>,
+    strict = false,
 ): string {
-    return content.replace(
+    const missingVars: string[] = [];
+    const result = content.replace(
         /\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-(.*?))?\}/g,
         (_match, varName: string, defaultValue: string | undefined) => {
             const value = env[varName];
             if (value !== undefined) return value;
             if (defaultValue !== undefined) return defaultValue;
+            missingVars.push(varName);
             return "";
         },
     );
+    if (missingVars.length > 0) {
+        if (strict) {
+            throw new ConfigLoadError(
+                "environment",
+                `Undefined environment variables without defaults: ${missingVars.join(", ")}`,
+            );
+        }
+        console.warn(
+            `[Sentinel] Undefined environment variables (resolved to ""): ${missingVars.join(", ")}`,
+        );
+    }
+    return result;
 }
 
 // =========================================================================
@@ -301,11 +323,65 @@ function convertToSentinelConfig(raw: RawYamlConfig): SentinelConfig {
     });
 }
 
+const MAX_REGEX_PATTERN_LENGTH = 256;
+
+/**
+ * ReDoSリスクのあるパターンを検出するヒューリスティック。
+ * ネスト量指定子 (a+)+ や過度な繰り返し {1001,} を拒否する。
+ */
+function detectReDoSRisk(pattern: string): string | null {
+    // パターン長制限
+    if (pattern.length > MAX_REGEX_PATTERN_LENGTH) {
+        return `pattern too long (${pattern.length} > ${MAX_REGEX_PATTERN_LENGTH})`;
+    }
+    // ネスト量指定子の検出: グループ内に量指定子があり、グループ自体にも量指定子がある
+    let depth = 0;
+    let quantifierAtDepth = false;
+    for (let i = 0; i < pattern.length; i++) {
+        const ch = pattern[i];
+        if (ch === "\\") { i++; continue; } // エスケープをスキップ
+        if (ch === "(") {
+            depth++;
+            quantifierAtDepth = false;
+        } else if (ch === ")") {
+            // 外部量指定子の検出: +, *, ?, {n,m}
+            const next = i + 1 < pattern.length ? pattern[i + 1] : "";
+            const hasOuterQuantifier = next === "+" || next === "*" || next === "?" || next === "{";
+            if (quantifierAtDepth && hasOuterQuantifier) {
+                return "nested quantifiers detected (ReDoS risk)";
+            }
+            depth--;
+            quantifierAtDepth = false;
+        } else if ((ch === "+" || ch === "*" || ch === "?") && depth > 0) {
+            quantifierAtDepth = true;
+        }
+    }
+    // 過度な繰り返しの検出
+    const repetitionMatch = pattern.match(/\{(\d+)/g);
+    if (repetitionMatch) {
+        for (const m of repetitionMatch) {
+            const n = parseInt(m.slice(1), 10);
+            if (n > 1000) {
+                return `repetition count too high (${n} > 1000)`;
+            }
+        }
+    }
+    return null;
+}
+
+function validateRegexPattern(pattern: string, field: string): void {
+    const risk = detectReDoSRisk(pattern);
+    if (risk) {
+        throw new ConfigLoadError(field, risk);
+    }
+}
+
 function convertMaskingRule(raw: RawMaskingRule, index: number): MaskingRule {
     if (raw.type === "PII_TYPE") {
         return { type: "PII_TYPE", category: raw.category as MaskingRule extends { category: infer C } ? C : never };
     }
     if (raw.type === "REGEX") {
+        validateRegexPattern(raw.pattern!, `masking.rules[${index}].pattern`);
         return {
             type: "REGEX",
             pattern: new RegExp(raw.pattern!, raw.description?.includes("global") ? "g" : ""),
@@ -314,9 +390,10 @@ function convertMaskingRule(raw: RawMaskingRule, index: number): MaskingRule {
         };
     }
     if (raw.type === "KEY_MATCH") {
+        // sensitive_keys は validateRawConfig で必須・非空が検証済み
         return {
             type: "KEY_MATCH",
-            sensitiveKeys: raw.sensitive_keys ?? [],
+            sensitiveKeys: raw.sensitive_keys!,
             replacement: raw.replacement,
         };
     }
@@ -352,7 +429,10 @@ function convertDetectionRule(raw: RawDetectionRule): DetectionRule {
         if (raw.conditions.log_types) conditions.logTypes = raw.conditions.log_types;
         if (raw.conditions.min_level !== undefined) conditions.minLevel = raw.conditions.min_level;
         if (raw.conditions.max_level !== undefined) conditions.maxLevel = raw.conditions.max_level;
-        if (raw.conditions.message_pattern) conditions.messagePattern = new RegExp(raw.conditions.message_pattern);
+        if (raw.conditions.message_pattern) {
+            validateRegexPattern(raw.conditions.message_pattern, `detection_rules[${raw.rule_id}].conditions.message_pattern`);
+            conditions.messagePattern = new RegExp(raw.conditions.message_pattern);
+        }
         if (raw.conditions.tag_match) conditions.tagMatch = raw.conditions.tag_match;
         if (raw.conditions.origin) conditions.origin = raw.conditions.origin;
         if (raw.conditions.is_critical !== undefined) conditions.isCritical = raw.conditions.is_critical;

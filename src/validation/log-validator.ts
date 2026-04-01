@@ -75,7 +75,7 @@ export function validateLogInput(
 ): void {
     const L = { ...DEFAULT_VALIDATION_LIMITS, ...limits };
 
-    // message: 必須、非空、最大長、null byte
+    // message: 必須、非空、最大長、null byte、lone surrogate
     if (input.message === undefined || input.message === null) {
         throw new ValidationError("message", "is required");
     }
@@ -91,6 +91,9 @@ export function validateLogInput(
         }
         if (input.message.includes("\x00")) {
             throw new ValidationError("message", "contains null bytes");
+        }
+        if (containsLoneSurrogate(input.message)) {
+            throw new ValidationError("message", "contains invalid UTF-16 lone surrogate");
         }
     }
 
@@ -196,11 +199,24 @@ export function validateLogInput(
         if (typeof input.agentBackLog !== "object" || Array.isArray(input.agentBackLog)) {
             throw new ValidationError("agentBackLog", "must be an object");
         }
+        // GAP-02: エントリ数制限（DoS防止）
+        const backLogKeys = Object.keys(input.agentBackLog as object);
+        if (backLogKeys.length > 100) {
+            throw new ValidationError("agentBackLog", `too many entries (${backLogKeys.length} > 100)`);
+        }
+        const backLogSize = estimateJsonSize(input.agentBackLog);
+        if (backLogSize > L.maxInputSize) {
+            throw new ValidationError("agentBackLog", `exceeds max size ~${L.maxInputSize} bytes (estimated ${backLogSize})`);
+        }
     }
 
     // aiContext
     if (input.aiContext !== undefined && input.aiContext !== null) {
         const ai = input.aiContext;
+        // プロトタイプ汚染防御
+        if (Object.prototype.hasOwnProperty.call(ai, "__proto__") || Object.prototype.hasOwnProperty.call(ai, "constructor")) {
+            throw new ValidationError("aiContext", "contains prohibited keys (__proto__ or constructor)");
+        }
         if (ai.loopDepth !== undefined && (typeof ai.loopDepth !== "number" || ai.loopDepth < 0)) {
             throw new ValidationError("aiContext.loopDepth", "must be non-negative number");
         }
@@ -224,6 +240,30 @@ function validateStringField(value: string | undefined | null, field: string, ma
     if (value.includes("\x00")) {
         throw new ValidationError(field, "contains null bytes");
     }
+    if (containsLoneSurrogate(value)) {
+        throw new ValidationError(field, "contains invalid UTF-16 lone surrogate");
+    }
+}
+
+/**
+ * 不正なUTF-16 lone surrogate を検出する。
+ * JavaScriptの文字列はUTF-16エンコードされているため、
+ * ペアになっていないサロゲートを検出してgRPC/protobuf互換性を保証する。
+ */
+function containsLoneSurrogate(s: string): boolean {
+    for (let i = 0; i < s.length; i++) {
+        const code = s.charCodeAt(i);
+        if (code >= 0xD800 && code <= 0xDBFF) {
+            // High surrogate — 次の文字がlow surrogateでなければlone
+            const next = s.charCodeAt(i + 1);
+            if (isNaN(next) || next < 0xDC00 || next > 0xDFFF) return true;
+            i++; // skip paired low surrogate
+        } else if (code >= 0xDC00 && code <= 0xDFFF) {
+            // Lone low surrogate
+            return true;
+        }
+    }
+    return false;
 }
 
 const estimateJsonSizeSeen = new WeakSet<object>();
@@ -255,21 +295,21 @@ function estimateJsonSize(value: unknown, depth = 0): number {
 }
 
 function estimateLogSize(input: Partial<Log>): number {
-    let size = 0;
-    if (input.message) size += input.message.length;
-    if (input.details && typeof input.details === "string") size += input.details.length;
+    // validateLogInput で message は必須・非空が検証済み
+    let size = input.message!.length;
+    if (input.details) size += input.details.length;
     if (input.traceInfo) size += input.traceInfo.length;
     if (input.actorId) size += input.actorId.length;
     if (input.boundary) size += input.boundary.length;
     if (input.traceId) size += input.traceId.length;
     if (input.tags) {
         for (const tag of input.tags) {
-            size += (tag.key?.length ?? 0) + (tag.category?.length ?? 0);
+            size += tag.key.length + tag.category.length;
         }
     }
     if (input.resourceIds) {
         for (const id of input.resourceIds) {
-            if (typeof id === "string") size += id.length;
+            size += id.length;
         }
     }
     if (input.input !== undefined && input.input !== null) {

@@ -227,11 +227,12 @@ export class EventDetector {
                         context: (log.aiContext as Record<string, string | number | boolean | null> | undefined) ?? null,
                     },
                 };
+            /* v8 ignore start -- exhaustive check: unreachable at runtime, compile-time guard */
             default: {
-                /* v8 ignore next 2 -- exhaustive check: unreachable at runtime, compile-time guard */
                 const _exhaustive: never = rule.eventName;
                 throw new Error(`Unknown eventName: ${_exhaustive}`);
             }
+            /* v8 ignore stop */
         }
     }
 

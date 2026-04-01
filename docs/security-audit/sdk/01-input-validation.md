@@ -107,53 +107,26 @@ SDK公開API境界 `Sentinel.ingest()` におけるランタイムバリデー�
 
 ---
 
-## 防御境界の不足箇所
+## 防御境界の不足箇所と対策ステータス
 
-### 12-a. agentBackLog フィールド
+### 12-a. agentBackLog フィールド — ✅ 修正済み (GAP-02)
 
 | チェック項目 | 判定 | 根拠 |
 |-------------|------|------|
-| オブジェクト型チェック | **OK** | `log-validator.ts:196-198` |
-| **サイズ制限** | **要改善** | `estimateLogSize()` に含まれるが、個別の `maxAgentBackLogSize` 制限はない |
+| オブジェクト型チェック | **OK** | `log-validator.ts:198-200` |
+| **エントリ数制限** | **OK（修正済み）** | `log-validator.ts:203-205` — 最大100エントリ |
+| **サイズ制限** | **OK（修正済み）** | `log-validator.ts:206-208` — `maxInputSize`(1MB) と同じ制限を適用 |
 | **深度制限** | **OK** | 総合サイズチェックで間接的にカバー |
 
-**リスク**: `agentBackLog` に巨大なネストされたオブジェクトを投入するとメモリ消費が増大する可能性がある。ただし `maxTotalLogSize` (2MB) で間接的に制限されるため、実害は限定的。
+**修正内容**: エントリ数上限(100)と個別サイズ制限(`maxInputSize`)を追加。テスト: `tests/security/sdk-audit-fixes.test.ts`
 
-**推奨パッチ**:
-```typescript
-// log-validator.ts の agentBackLog 検証セクション
-if (input.agentBackLog !== undefined && input.agentBackLog !== null) {
-    if (typeof input.agentBackLog !== "object" || Array.isArray(input.agentBackLog)) {
-        throw new ValidationError("agentBackLog", "must be an object");
-    }
-    const backLogSize = estimateJsonSize(input.agentBackLog);
-    if (backLogSize > L.maxInputSize) {  // inputと同じ1MB制限を適用
-        throw new ValidationError("agentBackLog", `exceeds max size ~${L.maxInputSize} bytes`);
-    }
-}
-```
-
-### 12-b. aiContext の任意フィールド
+### 12-b. aiContext の任意フィールド — ✅ 修正済み (SDK-B)
 
 | チェック項目 | 判定 | 根拠 |
 |-------------|------|------|
-| loopDepth以外のフィールド | **要確認** | `aiContext` はオープンな型。任意のキー/値を受け入れる |
+| loopDepth以外のフィールド | **OK（修正済み）** | `__proto__` / `constructor` キーを拒否 |
 
-**リスク**: `aiContext` に `__proto__` や `constructor` キーを持つオブジェクトが渡された場合、下流のマスキング処理でプロトタイプ汚染が発生する可能性がある。ただし、マスキングサービスは `Object.prototype.hasOwnProperty.call()` を使用しており、`for...in` ループでプロトタイプチェーンのプロパティを拾わない設計。
-
-**判定**: 実害の可能性は **低い** が、防御的に `__proto__` / `constructor` キーの拒否を追加することを推奨。
-
-**推奨パッチ**:
-```typescript
-if (input.aiContext !== undefined && input.aiContext !== null) {
-    const ai = input.aiContext;
-    // プロトタイプ汚染防御
-    if ('__proto__' in ai || 'constructor' in ai) {
-        throw new ValidationError("aiContext", "contains prohibited keys");
-    }
-    // ...既存の loopDepth 検証
-}
-```
+**修正内容**: `aiContext` に対する `__proto__` / `constructor` キーの明示的拒否を追加。テスト: `tests/security/sdk-audit-fixes.test.ts`
 
 ---
 
@@ -167,35 +140,22 @@ if (input.aiContext !== undefined && input.aiContext !== null) {
 | MaxTagValueLength | 1024 | 1024 | **一致** |
 | MaxResourceIDs | 100 | 100 | **一致** |
 | null byte チェック | あり | あり | **一致** |
-| UTF-8 検証 | なし（SDK側） | あり | **不一致** |
+| UTF-8 検証 | **あり（修正済み）** | あり | **一致** |
 
-**UTF-8 検証の不一致について**:
+**UTF-8 検証 — ✅ 修正済み (VULN-013)**:
 - Go サーバの `sanitizer.go:63-64` は `utf8.ValidString()` で検証
-- SDK 側は明示的なUTF-8検証がない
-- **リスク**: JavaScript の `String` は内部的にUTF-16。不正なサロゲートペアがそのまま通過する可能性
-- **影響**: ローカルモードでは問題なし。remoteモードではgRPCのprotobufが不正UTF-8を拒否するため、トランスポートエラーになる
-
-**推奨パッチ**: SDK側にも明示的なUTF-8検証を追加する場合は以下：
-```typescript
-function containsLoneSurrogate(s: string): boolean {
-    for (let i = 0; i < s.length; i++) {
-        const code = s.charCodeAt(i);
-        if (code >= 0xD800 && code <= 0xDBFF) {
-            const next = s.charCodeAt(i + 1);
-            if (isNaN(next) || next < 0xDC00 || next > 0xDFFF) return true;
-            i++; // skip low surrogate
-        } else if (code >= 0xDC00 && code <= 0xDFFF) {
-            return true; // lone low surrogate
-        }
-    }
-    return false;
-}
-```
+- SDK 側に `containsLoneSurrogate()` を追加。孤立サロゲート（\uD800-\uDBFF の後に \uDC00-\uDFFF が続かない、または孤立 \uDC00-\uDFFF）を検出・拒否
+- テスト: `tests/security/sdk-audit-fixes.test.ts` — message, details, actorId, tags 等の全文字列フィールドで検証
 
 ---
 
 ## 総合判定
 
-**評価: A（優秀）**
+**評価: A+（優秀 — 全指摘事項修正済み）**
 
-入力バリデーションは包括的に実装されており、重大な防御漏れはない。SDK/Go Server間の制限値も正確に整合している。改善点は `agentBackLog` の個別サイズ制限と `aiContext` のプロトタイプ汚染防御の2点のみ。いずれも既存の間接的防御（総合サイズ制限、`hasOwnProperty` ガード）でリスクは低い。
+入力バリデーションは包括的に実装されており、重大な防御漏れはない。SDK/Go Server間の制限値も正確に整合している。
+
+**修正済み項目（2026-04-02）**:
+- GAP-02: `agentBackLog` のエントリ数制限(100)と個別サイズ制限(`maxInputSize`)を追加
+- SDK-B: `aiContext` の `__proto__` / `constructor` キー拒否を追加
+- VULN-013: UTF-8 孤立サロゲート検証を全文字列フィールドに追加（Go Server と整合）

@@ -146,7 +146,10 @@ export class Sentinel {
                 return await this.sendWithTimeout(normalized);
             } catch (err) {
                 if (this.transportConfig.fallbackToLocal) {
-                    return this.engine.handle(log);
+                    const result = await this.engine.handle(log);
+                    result.transportError = err instanceof Error ? err.message : String(err);
+                    try { this.engine.getOnError()?.(err instanceof Error ? err : new Error(String(err)), "transport.fallback"); } catch { /* */ }
+                    return result;
                 }
                 throw err;
             }
@@ -175,9 +178,23 @@ export class Sentinel {
     public onTaskAction(actionType: string, handler: TaskDispatchHandler): () => void {
         if (this.isShutdown) throw new Error("Sentinel is shutdown. Cannot register handler after shutdown.");
         this.whitelistRegistry?.validate("actionType", actionType);
+        this.enforceHandlerLimit(actionType);
         this.taskExecutor.registerHandler(actionType, handler);
         this.warnIfTooManyHandlers(actionType);
         return () => this.taskExecutor.unregisterHandler(actionType, handler);
+    }
+
+    private static readonly HARD_HANDLER_LIMIT = 100;
+
+    private enforceHandlerLimit(actionType: string): void {
+        const count = this.taskExecutor.getHandlerCount(actionType);
+        if (count >= Sentinel.HARD_HANDLER_LIMIT) {
+            throw new Error(
+                `Too many handlers for "${actionType}" (${count}). ` +
+                `Maximum ${Sentinel.HARD_HANDLER_LIMIT} handlers per action type. ` +
+                `Call the unsubscribe function returned by onTaskAction() to remove unused handlers.`,
+            );
+        }
     }
 
     private warnIfTooManyHandlers(actionType: string): void {

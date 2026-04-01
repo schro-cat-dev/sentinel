@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
+	"sync/atomic"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -141,12 +142,13 @@ func main() {
 			slog.Error("failed to load TLS credentials", "error", err)
 			os.Exit(1)
 		}
-		// 証明書ホットリロード対応: GetCertificate で接続ごとに最新証明書を返す
-		currentCert := &cert
+		// 証明書ホットリロード対応: atomic.Pointer で競合安全に最新証明書を返す
+		var certHolder atomic.Pointer[tls.Certificate]
+		certHolder.Store(&cert)
 		certFile, keyFile := cfg.Server.TLSCertFile, cfg.Server.TLSKeyFile
 		tlsCfg := &tls.Config{
 			GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-				return currentCert, nil
+				return certHolder.Load(), nil
 			},
 			MinVersion: tls.VersionTLS12,
 		}
@@ -160,7 +162,7 @@ func main() {
 					slog.Error("failed to reload TLS certificate", "error", err)
 					continue
 				}
-				currentCert = &newCert
+				certHolder.Store(&newCert)
 				slog.Info("TLS certificate reloaded via SIGHUP", "cert", certFile)
 			}
 		}()

@@ -22,12 +22,18 @@ import (
 
 const version = "0.3.0"
 
+// AuthorizerForApproval はApproveBlock/RejectBlockの認可チェック用インターフェース
+type AuthorizerForApproval interface {
+	CanApprove(clientID string) bool
+}
+
 type SentinelServer struct {
 	pb.UnimplementedSentinelServiceServer
-	pipeline       *engine.Pipeline
-	store          store.Store
-	executor       *task.TaskExecutor
+	pipeline        *engine.Pipeline
+	store           store.Store
+	executor        *task.TaskExecutor
 	blockDispatcher *response.EnhancedBlockDispatcher
+	authorizer      AuthorizerForApproval
 }
 
 func NewSentinelServer(cfg engine.PipelineConfig, executor *task.TaskExecutor, st store.Store, notifier *webhook.Notifier) (*SentinelServer, error) {
@@ -78,6 +84,13 @@ func (s *SentinelServer) ApproveBlock(ctx context.Context, req *pb.ApproveBlockR
 	}
 	if s.blockDispatcher == nil {
 		return nil, status.Error(codes.FailedPrecondition, "block dispatcher not configured")
+	}
+	// 認可チェック: CanApprove権限がなければ拒否
+	if s.authorizer != nil {
+		clientID := ClientIDFromContext(ctx)
+		if !s.authorizer.CanApprove(clientID) {
+			return nil, status.Error(codes.PermissionDenied, "insufficient permission: CanApprove required")
+		}
 	}
 
 	result, err := s.blockDispatcher.ApproveBlock(ctx, req.BlockId, req.ApproverId)

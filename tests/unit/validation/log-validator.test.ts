@@ -406,4 +406,43 @@ describe("validateLogInput", () => {
         expect(() => validateLogInput({ message: null as unknown as string })).toThrow(ValidationError);
         expect(() => validateLogInput({ message: null as unknown as string })).toThrow("message");
     });
+
+    // --- estimateJsonSize: depth > 20 branch (line 232) ---
+    it("handles deeply nested input without crashing (exercises depth guard)", () => {
+        // Build an object nested more than 20 levels
+        let obj: Record<string, unknown> = { leaf: "value" };
+        for (let i = 0; i < 25; i++) {
+            obj = { nested: obj };
+        }
+        expect(() => validateLogInput({
+            message: "test",
+            input: obj as unknown as Record<string, unknown>,
+        })).not.toThrow();
+    });
+
+    // --- estimateJsonSize: circular reference in input (line 237) ---
+    it("handles circular reference in input field (exercises WeakSet guard)", () => {
+        const circular: Record<string, unknown> = { a: 1 };
+        circular.self = circular;
+        expect(() => validateLogInput({
+            message: "test",
+            input: circular as unknown as Record<string, unknown>,
+        })).not.toThrow();
+    });
+
+    // --- estimateJsonSize: null value inside input (line 233 true branch) ---
+    it("handles input with null values (exercises null branch in estimateJsonSize)", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            input: { data: null, nested: { inner: null } },
+        })).not.toThrow();
+    });
+
+    // --- estimateJsonSize: undefined value inside input (line 233 undefined branch) ---
+    it("handles input with undefined values in estimateJsonSize", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            input: { data: undefined } as unknown as Record<string, unknown>,
+        })).not.toThrow();
+    });
 });

@@ -140,7 +140,8 @@ export class TaskExecutor {
                 });
                 await Promise.race([handlerPromise, timeoutPromise]);
             } finally {
-                if (timer !== undefined) clearTimeout(timer);
+                // setTimeout は同期代入なので timer は必ず defined
+                clearTimeout(timer!);
             }
         } else {
             await this.invokeHandlers(task);

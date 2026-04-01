@@ -78,13 +78,10 @@ export class IntegritySigner {
         const obj = val as JsonObject;
         const sortedKeys = Object.keys(obj).sort();
 
+        // isJsonValue ガード通過後: 全 value は JsonValue（undefined は含まれない）
         const kvPairs = sortedKeys.map((key) => {
             const value = obj[key];
-            const safeValue =
-                value === undefined
-                    ? "null"
-                    : IntegritySigner.deterministicStringify(value);
-            return `${JSON.stringify(key)}:${safeValue}`;
+            return `${JSON.stringify(key)}:${IntegritySigner.deterministicStringify(value)}`;
         });
 
         return `{${kvPairs.join(",")}}`;

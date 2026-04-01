@@ -252,7 +252,7 @@ describe("ErrorRouter", () => {
         });
 
         await router.route(new Error("connection refused"), "transport.dual");
-        expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("string-thrown"));
+        expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("[non-Error thrown]"));
         stderrSpy.mockRestore();
     });
 
@@ -400,7 +400,7 @@ describe("ErrorRouter", () => {
         await router.route(new Error("connection refused"), "transport.dual");
 
         expect(stderrSpy).toHaveBeenCalledWith(
-            expect.stringContaining("string-rejection"),
+            expect.stringContaining("[non-Error thrown]"),
         );
         stderrSpy.mockRestore();
     });

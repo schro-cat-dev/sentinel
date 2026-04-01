@@ -259,10 +259,16 @@ func (g *GmailNotifier) Send(ctx context.Context, n Notification) error {
 		bodyBuilder.WriteString(fmt.Sprintf("\nTrace ID: %s\n", n.TraceID))
 	}
 
+	// Header injection防止: Subject/From/Toから\r\nを除去
+	sanitizeHeader := func(s string) string {
+		s = strings.ReplaceAll(s, "\r", "")
+		s = strings.ReplaceAll(s, "\n", "")
+		return s
+	}
 	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\n\r\n%s",
-		g.from,
-		strings.Join(to, ", "),
-		subject,
+		sanitizeHeader(g.from),
+		sanitizeHeader(strings.Join(to, ", ")),
+		sanitizeHeader(subject),
 		bodyBuilder.String(),
 	)
 

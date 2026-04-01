@@ -26,17 +26,9 @@ export const isPiiSafe = (value: string): boolean => {
     return !PII_PATTERNS.some((pattern) => pattern.test(value));
 };
 
-/** 循環参照安全Object.keys（再帰深度修正） */
-const safeObjectKeys = (obj: object, maxDepth: number = 5): number => {
-    const seen = new WeakSet<object>();
-
-    const countKeys = (target: object, depth: number): number => {
-        if (depth > maxDepth || seen.has(target)) return 0;
-        seen.add(target);
-        return Object.keys(target).length;
-    };
-
-    return countKeys(obj, 0);
+/** オブジェクトのキー数を返す（safeContext内部用） */
+const safeObjectKeys = (obj: object): number => {
+    return Object.keys(obj).length;
 };
 
 /** PII自動マスキング（完全型安全・インデックスバグ修正） */
@@ -79,7 +71,7 @@ export const safeContext = (
         } else if (Array.isArray(value)) {
             result[key] = Math.min(value.length, 1000);
         } else if (value && typeof value === "object") {
-            result[key] = safeObjectKeys(value, 5);
+            result[key] = safeObjectKeys(value);
         } else if (typeof value === "string") {
             result[key] =
                 value.length > 50 ? `${value.slice(0, 47)}...` : value;
