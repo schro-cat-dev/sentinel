@@ -54,9 +54,14 @@
 │       ├── errors/
 │       │   └── error-payload-protocol.ts        # ErrorPayloadProtocol 型（error-utils.ts 用）
 │       └── utils/
-│           └── error-utils.ts                   # isPiiSafe, maskPiiContext, classifyError（パイプライン未使用、ユーティリティ）
+│           └── error-utils.ts                   # isPiiSafe, maskPiiContext, serializeForAudit, classifyError（Datadog/Sentry連携用）
+│   ├── error-routing/                           # エラールーティング層（分類→ルーティング→実行）
+│   │   ├── types.ts                             # ClassifiedError, RoutingRule, AuditSink, DeadLetterQueue
+│   │   ├── error-classifier.ts                  # Error+context→ClassifiedError (kind+severity分類)
+│   │   ├── routing-engine.ts                    # ルール評価→RoutingDecision[] (first-match-wins)
+│   │   └── error-router.ts                      # オーケストレーター（3重無限ループ防壁）
 │
-├── tests/                                       # ── テストスイート（2,102テスト）──
+├── tests/                                       # ── テストスイート（2,159テスト）──
 │   ├── helpers/
 │   │   └── fixtures.ts                          # テストファクトリ（createTestLog, createTestConfig, createTestTaskRule）
 │   ├── unit/                                    # ユニットテスト（220テスト）
@@ -86,6 +91,10 @@
 │   │   │   ├── instance-lifecycle.test.ts      # インスタンスライフサイクル: freeze, idempotent shutdown, handler limit (9)
 │   │   │   ├── quality-improvements.test.ts   # 品質改善: transportError通知, dispose関数 (6)
 │   │   │   └── metrics-hooks.test.ts          # メトリクスフック: onIngest, onDetection, onTaskDispatch (6)
+│   │   ├── error-routing/                     # エラールーティングテスト (26)
+│   │   │   ├── error-classifier.test.ts       # 分類: 10パターン, poisoned input, custom severity (10)
+│   │   │   ├── routing-engine.test.ts         # ルール評価: severity×kind, first-match-wins (9)
+│   │   │   └── error-router.test.ts           # 統合: enabled/disabled, loop defense, shutdown (7)
 │   │   ├── transport/
 │   │   │   └── transport.test.ts                # Transport: local/remote/dual 基本動作 (7)
 │   │   ├── shared/
@@ -131,7 +140,17 @@
 │   ├── design/
 │   │   ├── intrusion-detection.md               # 不正アクセス検知設計（方針A実装済, 方針BはGoサーバ責務）
 │   │   ├── whitelist-management.md              # モジュラーホワイトリスト管理方針・2階層構造
-│   │   └── whitelist-security-levels.md         # セキュリティレベル運用ガイド（strict/standard/permissive/off）
+│   │   ├── whitelist-security-levels.md         # セキュリティレベル運用ガイド（strict/standard/permissive/off）
+│   │   ├── threat-model.md                      # 脅威モデル概要（7カテゴリ32脅威、STRIDE+ATT&CK+OWASP）
+│   │   └── error-routing/                       # エラールーティング層設計（7ドキュメント）
+│   │       ├── 00-overview.md                   # 全体像: ErrorRouter制御層
+│   │       ├── 01-classifier.md                 # ErrorClassifier設計
+│   │       ├── 02-router.md                     # ルーティングルール設計
+│   │       ├── 03-executor.md                   # アダプタ実行層(Datadog/Sentry/SQS)
+│   │       ├── 04-lifecycle.md                  # ライフサイクル管理
+│   │       ├── 05-risk-mitigation.md            # デメリット4件の全回避策
+│   │       ├── 06-module-map.md                 # モジュール構成・依存・データフロー
+│   │       └── 07-tdd-plan.md                   # TDD計画(45テスト)
 │   ├── quality-benchmark/                       # 品質ベンチマーク（Google PRR水準）
 │   │   ├── standards.md                         # 10カテゴリ49項目のMUST/SHOULD/NICE基準
 │   │   ├── checklist-results.md                 # 全項目のPASS/FAIL結果と修正記録

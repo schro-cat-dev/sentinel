@@ -16,11 +16,11 @@ The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
-| Client SDK | TypeScript (zero dependencies) | Implemented | 2,102 tests (Vitest) — unit 220 + security 1,203 + config 390 + integration 18 + E2E 15 + advanced 96 + detection 22 + whitelist 99 + quality 39 |
+| Client SDK | TypeScript (zero dependencies) | Implemented | 2,159 tests (Vitest) — unit 220 + security 1,227 + config 390 + integration 18 + E2E 22 + detection 22 + whitelist 99 + quality 39 + error-routing 26 + advanced 96 |
 | Backend Server | Go 1.22+ / gRPC | Implemented | 689 tests (`-race` verified, fuzz tested) |
 | gRPC Communication | Protocol Buffers v3 | Implemented | E2E verified (SDK→Server 15 tests via real gRPC connection) |
 
-**Total: 2,791 tests (SDK 2,102 + Server 689), 0 FAIL**
+**Total: 2,848 tests (SDK 2,159 + Server 689), 0 FAIL**
 
 ---
 
@@ -311,7 +311,7 @@ authorization:
 ## Testing
 
 ```bash
-# TypeScript SDK (2,102 tests)
+# TypeScript SDK (2,159 tests)
 npm test
 
 # Go Server (689 tests)
@@ -319,7 +319,7 @@ cd packages/server
 go test ./... -race -count=1
 ```
 
-**Total: 2,791 tests (SDK 2,102 + Server 689), 0 FAIL**
+**Total: 2,848 tests (SDK 2,159 + Server 689), 0 FAIL**
 
 | カテゴリ | テスト数 | 詳細ドキュメント |
 |---------|---------|----------------|
