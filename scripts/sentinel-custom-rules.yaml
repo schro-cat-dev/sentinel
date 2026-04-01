@@ -1,0 +1,85 @@
+rules:
+  # ===================================================================
+  # Sentinel Custom Semgrep Rules
+  # ===================================================================
+
+  - id: sentinel-redos-nested-quantifier
+    patterns:
+      - pattern-regex: '\(\?:[^)]*[+*][?]?\)\{|\([^)]*[+*]\)\{|\([^)]*[+*]\)[+*]'
+    message: >
+      ReDoS risk: Nested quantifiers in regex can cause catastrophic backtracking.
+      Refactor to use non-overlapping character classes or atomic groups.
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: ["CWE-1333"]
+      owasp: ["A06:2021"]
+      category: security
+
+  - id: sentinel-dynamic-regexp-unvalidated
+    patterns:
+      - pattern: new RegExp($X)
+      - pattern-not: new RegExp("...")
+    message: >
+      Dynamic RegExp construction with non-literal input. Validate the pattern
+      source against ReDoS using a library like safe-regex before compilation.
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: ["CWE-1333", "CWE-20"]
+      category: security
+
+  - id: sentinel-error-object-leak
+    patterns:
+      - pattern: console.warn(..., $ERR)
+      - pattern: console.error(..., $ERR)
+      - pattern: console.log(..., $ERR)
+    message: >
+      Logging raw error objects may leak stack traces, file paths, or internal
+      state. Log only sanitized error messages.
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: ["CWE-209"]
+      category: security
+
+  - id: sentinel-insecure-grpc
+    patterns:
+      - pattern: grpc.credentials.createInsecure()
+      - pattern: insecure.NewCredentials()
+    message: >
+      Insecure gRPC credentials. Use TLS credentials in production.
+    severity: ERROR
+    languages: [typescript, javascript, go]
+    metadata:
+      cwe: ["CWE-319"]
+      category: security
+
+  - id: sentinel-prototype-pollution-spread
+    patterns:
+      - pattern: "{ ...$OBJ }"
+      - metavariable-pattern:
+          metavariable: $OBJ
+          pattern-not: "{...}"
+    message: >
+      Object spread from untrusted source may propagate __proto__ or constructor
+      properties. Use Object.fromEntries(Object.entries(...)) for safe copying.
+    severity: INFO
+    languages: [typescript, javascript]
+    metadata:
+      cwe: ["CWE-1321"]
+      category: security
+
+  - id: sentinel-weak-crypto
+    patterns:
+      - pattern: createHash("md5")
+      - pattern: createHash("sha1")
+      - pattern: createHash('md5')
+      - pattern: createHash('sha1')
+    message: >
+      Weak hash algorithm. Use SHA-256 or stronger.
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: ["CWE-328"]
+      category: security

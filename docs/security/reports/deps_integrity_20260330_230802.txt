@@ -1,0 +1,16 @@
+=== Dependency Integrity Check ===
+Timestamp: 2026-03-30T14:08:02Z
+
+Resolved packages: 218
+Integrity hashes:  218
+OK: All packages have integrity hashes.
+
+SHA-512 hashes: 218
+SHA-1 hashes:   0
+0 (weak, should be 0)
+
+--- Runtime dependencies ---
+OK: Zero runtime dependencies.
+
+--- Install script check ---
+  WARN: /Users/yutoseki/develop/private-dev/open-pjs/ts/sentinel/node_modules/esbuild/package.json:    "postinstall": "node install.js"

@@ -1,0 +1,28 @@
+=== Sentinel Custom Security Rules ===
+Timestamp: 2026-03-30T14:17:34Z
+Project: /Users/yutoseki/develop/private-dev/open-pjs/ts/sentinel
+
+--- [RULE-001] ReDoS: Nested quantifiers in regex ---
+
+--- [RULE-002] Dynamic RegExp construction ---
+  WARN: /Users/yutoseki/develop/private-dev/open-pjs/ts/sentinel/src/security/masking-service.ts:148:                        const globalPattern = new RegExp(
+  WARN: /Users/yutoseki/develop/private-dev/open-pjs/ts/sentinel/src/security/masking-service.ts:163:                            const safePattern = new RegExp(
+
+--- [RULE-003] Error object leakage via console ---
+
+--- [RULE-004] Dynamic code execution ---
+
+--- [RULE-005] Prototype pollution vectors ---
+
+--- [RULE-006] Hardcoded secrets / credentials ---
+
+--- [RULE-007] Weak cryptographic algorithms ---
+
+--- [RULE-008] Command injection vectors ---
+
+--- [RULE-009] Path traversal / SSRF vectors ---
+
+--- [RULE-010] Insecure transport ---
+  HIGH: /Users/yutoseki/develop/private-dev/open-pjs/ts/sentinel/examples/grpc-transport.ts:63:    const client = new ServiceClient(serverAddr, grpc.credentials.createInsecure());
+
+=== Total issues: 3 ===

@@ -1,0 +1,134 @@
+# npm audit report
+
+ajv  
+Severity: moderate
+ajv has ReDoS when using `$data` option - https://github.com/advisories/GHSA-2g4f-4pwh-qvx6
+fix available via `npm audit fix`
+node_modules/ajv
+
+brace-expansion  
+Severity: moderate
+brace-expansion: Zero-step sequence causes process hang and memory exhaustion - https://github.com/advisories/GHSA-f886-m6hf-6m8v
+brace-expansion: Zero-step sequence causes process hang and memory exhaustion - https://github.com/advisories/GHSA-f886-m6hf-6m8v
+No fix available
+node_modules/@typescript-eslint/typescript-estree/node_modules/brace-expansion
+node_modules/brace-expansion
+  minimatch  
+  Depends on vulnerable versions of brace-expansion
+  Depends on vulnerable versions of brace-expansion
+  node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch
+  node_modules/minimatch
+    @eslint/config-array  
+    Depends on vulnerable versions of minimatch
+    node_modules/@eslint/config-array
+    @eslint/eslintrc  
+    Depends on vulnerable versions of ajv
+    Depends on vulnerable versions of minimatch
+    node_modules/@eslint/eslintrc
+    @typescript-eslint/typescript-estree  
+    Depends on vulnerable versions of minimatch
+    Depends on vulnerable versions of tinyglobby
+    node_modules/@typescript-eslint/typescript-estree
+    eslint  
+    Depends on vulnerable versions of @eslint-community/eslint-utils
+    Depends on vulnerable versions of @eslint/config-array
+    Depends on vulnerable versions of @eslint/eslintrc
+    Depends on vulnerable versions of ajv
+    Depends on vulnerable versions of file-entry-cache
+    Depends on vulnerable versions of minimatch
+    node_modules/eslint
+      @eslint-community/eslint-utils  
+      Depends on vulnerable versions of eslint
+      node_modules/@eslint-community/eslint-utils
+      @typescript-eslint/eslint-plugin  
+      Depends on vulnerable versions of @typescript-eslint/parser
+      Depends on vulnerable versions of @typescript-eslint/type-utils
+      Depends on vulnerable versions of @typescript-eslint/utils
+      Depends on vulnerable versions of eslint
+      node_modules/@typescript-eslint/eslint-plugin
+      @typescript-eslint/parser  
+      Depends on vulnerable versions of @typescript-eslint/typescript-estree
+      Depends on vulnerable versions of eslint
+      node_modules/@typescript-eslint/parser
+      @typescript-eslint/type-utils  
+      Depends on vulnerable versions of @typescript-eslint/typescript-estree
+      Depends on vulnerable versions of @typescript-eslint/utils
+      Depends on vulnerable versions of eslint
+      node_modules/@typescript-eslint/type-utils
+      @typescript-eslint/utils  
+      Depends on vulnerable versions of @eslint-community/eslint-utils
+      Depends on vulnerable versions of @typescript-eslint/typescript-estree
+      Depends on vulnerable versions of eslint
+      node_modules/@typescript-eslint/utils
+      typescript-eslint  
+      Depends on vulnerable versions of @typescript-eslint/eslint-plugin
+      Depends on vulnerable versions of @typescript-eslint/parser
+      Depends on vulnerable versions of @typescript-eslint/typescript-estree
+      Depends on vulnerable versions of @typescript-eslint/utils
+      Depends on vulnerable versions of eslint
+      node_modules/typescript-eslint
+
+flatted  
+Severity: high
+flatted vulnerable to unbounded recursion DoS in parse() revive phase - https://github.com/advisories/GHSA-25h7-pfq9-p65f
+Prototype Pollution via parse() in NodeJS flatted - https://github.com/advisories/GHSA-rf6f-7fwh-wjgh
+fix available via `npm audit fix`
+node_modules/flatted
+  flat-cache  
+  Depends on vulnerable versions of flatted
+  node_modules/flat-cache
+    file-entry-cache  
+    Depends on vulnerable versions of flat-cache
+    node_modules/file-entry-cache
+
+
+picomatch  
+Severity: high
+Picomatch: Method Injection in POSIX Character Classes causes incorrect Glob Matching - https://github.com/advisories/GHSA-3v7f-55p6-f55p
+Picomatch has a ReDoS vulnerability via extglob quantifiers - https://github.com/advisories/GHSA-c2c7-rcm5-vvqj
+No fix available
+node_modules/picomatch
+  @rollup/pluginutils  
+  Depends on vulnerable versions of picomatch
+  Depends on vulnerable versions of rollup
+  node_modules/@rollup/pluginutils
+  fdir  
+  Depends on vulnerable versions of picomatch
+  node_modules/fdir
+  tinyglobby  
+  Depends on vulnerable versions of fdir
+  Depends on vulnerable versions of picomatch
+  node_modules/tinyglobby
+  vite  
+  Depends on vulnerable versions of fdir
+  Depends on vulnerable versions of picomatch
+  Depends on vulnerable versions of rollup
+  Depends on vulnerable versions of tinyglobby
+  node_modules/vite
+    @vitest/mocker  
+    Depends on vulnerable versions of vite
+    node_modules/@vitest/mocker
+  vitest  
+  Depends on vulnerable versions of @vitest/mocker
+  Depends on vulnerable versions of picomatch
+  Depends on vulnerable versions of tinyglobby
+  Depends on vulnerable versions of vite
+  node_modules/vitest
+
+rollup  
+Severity: high
+Rollup 4 has Arbitrary File Write via Path Traversal - https://github.com/advisories/GHSA-mw96-cpmx-2vgc
+No fix available
+node_modules/rollup
+  @rollup/plugin-typescript  
+  Depends on vulnerable versions of @rollup/pluginutils
+  Depends on vulnerable versions of rollup
+  node_modules/@rollup/plugin-typescript
+
+25 vulnerabilities (6 moderate, 19 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+Some issues need review, and may require choosing
+a different dependency.
