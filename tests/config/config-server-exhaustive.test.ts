@@ -517,13 +517,13 @@ describe("Attack vectors: input-level", () => {
         expect(result.traceId).toBeDefined();
     });
 
-    it("null bytes in message are rejected", () => {
+    it("null bytes in message are rejected", async () => {
         const sentinel = Sentinel.initialize(createDefaultConfig({
             projectName: "p", serviceId: "s",
             security: { enableHashChain: false },
         }));
 
-        expect(sentinel.ingest({ message: "test\x00inject", level: 3 })).rejects.toThrow();
+        await expect(sentinel.ingest({ message: "test\x00inject", level: 3 })).rejects.toThrow();
     });
 
     it("oversized message is rejected", () => {

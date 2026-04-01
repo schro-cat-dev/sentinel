@@ -1,7 +1,7 @@
 # モジュール構成・責務・データフロー
 
 ```yaml
-status: design
+status: implemented
 ```
 
 ## ファイル構成

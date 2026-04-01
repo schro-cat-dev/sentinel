@@ -47,7 +47,7 @@ branch: main
 | C-01 | MUST | PASS | emitSafe()で全コールバック例外を捕捉。パイプライン継続 |
 | C-02 | MUST | PASS | ValidationErrorにfield名、理由、制限値含む |
 | C-03 | SHOULD | PASS | onError例外をconsole.errorにfallback出力（完全無視を防止） |
-| C-04 | SHOULD | PARTIAL | dual-mode transport errorはonErrorコールバックに通知されるが、callerのIngestionResultには反映されない |
+| C-04 | SHOULD | PASS | dual-mode transport error は IngestionResult.transportError に反映済み + onErrorコールバック通知 |
 | C-05 | SHOULD | PASS | 各ステージ独立。1コールバック失敗が他に影響しない |
 
 ## D. メモリ管理
@@ -111,7 +111,7 @@ branch: main
 
 | ID | 水準 | 結果 | 詳細 |
 |----|------|------|------|
-| J-01 | MUST | PASS | README テスト数2,038に更新済み（d08cfd8） |
+| J-01 | MUST | PASS | README テスト数は Project Status 表に集約（`npm test` で確認可能） |
 | J-02 | MUST | PASS | 全ドキュメントリンクが実在ファイルを指している |
 | J-03 | SHOULD | PASS | アーキテクチャ図・ルール順序がコードと一致（d08cfd8で修正済み） |
 | J-04 | SHOULD | PASS | 設計判断が intrusion-detection.md, whitelist-management.md に文書化 |
@@ -124,7 +124,7 @@ branch: main
 |---------|------|--------|------|--------|
 | A. インスタンス管理 | 3/3 PASS | 4/4 PASS | 1/1 PASS | 8/8 (100%) |
 | B. 並行性 | 3/3 PASS | 2/2 PASS | — | 5/5 (100%) |
-| C. エラーハンドリング | 2/2 PASS | 2/3 PASS | — | 4/5 (80%) |
+| C. エラーハンドリング | 2/2 PASS | 3/3 PASS | — | 5/5 (100%) |
 | D. メモリ管理 | 2/2 PASS | 1/1 PASS | — | 4/4 (100%) |
 | E. セキュリティ | 4/4 PASS | 2/2 PASS | — | 6/6 (100%) |
 | F. 可観測性 | — | 1/1 PASS | 2/2 PASS | 3/3 (100%) |
@@ -149,12 +149,6 @@ branch: main
 | G-01 | rollup build失敗 | tslib devDep追加 |
 | G-03 | devDeps脆弱性 | npm audit fix（0脆弱性） |
 
-## 残存SHOULD FAIL項目
+## 全項目対処済み
 
-| ID | 問題 | 判断 |
-|----|------|------|
-| A-08 | unregisterHandler API | NICE相当。removeHandlers(actionType)で代替可能 |
-| C-04 | dual-mode transport error通知 | onErrorコールバックで通知済み。IngestionResultへの反映は設計判断 |
-| D-01 | config内コールバック参照 | instance=nullでGC。明示的null化は過剰 |
-| F-02 | メトリクス収集 | v2スコープ外。将来対応 |
-| F-03 | 分散トレーシング | v2スコープ外。将来対応 |
+全MUST/SHOULD/NICE項目がPASS。残存FAIL項目なし。

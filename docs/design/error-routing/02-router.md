@@ -1,7 +1,7 @@
 # ErrorRouter（ルーティング決定）設計
 
 ```yaml
-status: design
+status: implemented
 layer: TS SDK → Go Server (共通インターフェース)
 ```
 

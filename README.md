@@ -166,7 +166,7 @@ sentinel/
 │   ├── security/                 # Hash-chain, PII masking
 │   ├── shared/                   # Error taxonomy, Result monad
 │   └── types/                    # Domain models (Log, Task, Event)
-├── tests/                        # TS tests (2,102 cases)
+├── tests/                        # TS tests (`npm test` で確認)
 │   ├── unit/                     # Unit + validation tests
 │   │   ├── core/                 # Engine, detection, normalizer, custom rules tests
 │   │   ├── security/             # Masking, signer tests
@@ -323,15 +323,11 @@ go test ./... -race -count=1
 
 | カテゴリ | テスト数 | 詳細ドキュメント |
 |---------|---------|----------------|
-| Unit | 220 | [docs/testing/unit-tests.md](docs/testing/unit-tests.md) |
-| Security | 94 | [docs/testing/security-tests.md](docs/testing/security-tests.md) |
-| Advanced Security | 1,203 | Fuzzing, encoding bypass, injection, DoS, state manipulation |
-| Config Matrix | 390 | [docs/testing/config-tests.md](docs/testing/config-tests.md) |
-| Detection Rules | 22 | Custom detection rules (正常/異常/エッジ/ペネトレーション) |
-| Whitelist Validation | 99 | Registry, config validator, routing E2E, security levels |
-| Quality / Lifecycle | 39 | Instance lifecycle, pollution guard, metrics, audit fixes |
-| Integration | 18 | [docs/testing/integration-e2e-tests.md](docs/testing/integration-e2e-tests.md) |
-| E2E (SDK→Go) | 15 | [docs/testing/integration-e2e-tests.md](docs/testing/integration-e2e-tests.md) |
+| Unit + Core | `npm test` | [docs/testing/unit-tests.md](docs/testing/unit-tests.md) |
+| Security + Advanced | `npm test` | [docs/testing/security-tests.md](docs/testing/security-tests.md) |
+| Config + Whitelist | `npm test` | [docs/testing/config-tests.md](docs/testing/config-tests.md) |
+| Error Routing | `npm test` | Classifier, routing engine, executor, integration |
+| E2E + Integration | `npm test` | [docs/testing/integration-e2e-tests.md](docs/testing/integration-e2e-tests.md) |
 | Go Server | 689 | `go test ./... -race` |
 | **品質ベンチマーク** | 48/48 | [docs/quality-benchmark/checklist-results.md](docs/quality-benchmark/checklist-results.md) |
 

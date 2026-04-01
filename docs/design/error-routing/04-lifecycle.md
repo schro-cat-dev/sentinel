@@ -1,7 +1,7 @@
 # ErrorRouter ライフサイクル・インスタンス管理
 
 ```yaml
-status: design
+status: implemented
 ```
 
 ## インスタンスライフサイクル

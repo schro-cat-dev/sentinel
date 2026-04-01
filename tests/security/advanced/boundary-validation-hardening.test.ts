@@ -148,13 +148,13 @@ describe("#4: null byte injection in all string fields", () => {
         { field: "details", input: { message: "ok", details: "test\x00inject" } },
     ];
 
-    it.each(fields)("rejects null byte in $field", ({ input }) => {
+    it.each(fields)("rejects null byte in $field", async ({ input }) => {
         const sentinel = Sentinel.initialize(createDefaultConfig({
             projectName: "p", serviceId: "s",
             security: { enableHashChain: false },
         }));
 
-        expect(sentinel.ingest(input as never)).rejects.toThrow(/null byte/i);
+        await expect(sentinel.ingest(input as never)).rejects.toThrow(/null byte/i);
     });
 
     it("rejects null byte in tag key", () => {

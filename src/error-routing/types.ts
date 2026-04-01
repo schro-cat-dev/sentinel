@@ -54,6 +54,11 @@ export interface TaskRequest {
     source: ClassifiedError;
 }
 
+/** 構造化ロガーインターフェース（log destination用） */
+export interface ErrorRoutingLogger {
+    info(message: string, meta?: Record<string, unknown>): void;
+}
+
 export interface ErrorRoutingConfig {
     enabled: boolean;
     severityConfig?: {
@@ -65,6 +70,8 @@ export interface ErrorRoutingConfig {
         audit?: AuditSink;
         deadLetter?: DeadLetterQueue;
     };
+    /** 構造化ロガー（log destination用。未設定時はno-op） */
+    logger?: ErrorRoutingLogger;
     /** タスク生成要求コールバック（task/ai_agent destination用） */
     onTaskRequest?: (request: TaskRequest) => void | Promise<void>;
     /** 通知要求コールバック（notification destination用） */

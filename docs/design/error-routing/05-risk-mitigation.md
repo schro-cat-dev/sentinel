@@ -1,7 +1,7 @@
 # リスク分析と対策
 
 ```yaml
-status: design
+status: implemented
 ```
 
 ## デメリット分析と全回避策

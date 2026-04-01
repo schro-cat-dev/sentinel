@@ -1,7 +1,7 @@
 # TDD実施計画
 
 ```yaml
-status: design
+status: implemented
 estimated_tests: 45
 ```
 

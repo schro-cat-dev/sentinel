@@ -41,7 +41,7 @@
 │   │   ├── whitelist-registry.ts                # モジュラーホワイトリスト統合レジストリ（合成・拡張・O(1)検証）
 │   │   ├── config-validator.ts                  # SentinelConfig全体のホワイトリスト検証（level対応）
 │   │   └── whitelists/                          # ドメイン別ホワイトリスト定義（一元管理）
-│   │       ├── security-whitelist.ts            # eventName(4値), detectionPriority(3値)
+│   │       ├── security-whitelist.ts            # eventName, detectionPriority, logType, origin, errorRouting enums
 │   │       ├── task-whitelist.ts                # actionType(6値), severity(5値), executionLevel(4値)
 │   │       └── privacy-whitelist.ts             # piiCategory(8値)
 │   ├── types/
@@ -66,13 +66,14 @@
 ├── tests/                                       # ── テストスイート（`npm test` で最新数を確認）──
 │   ├── helpers/
 │   │   └── fixtures.ts                          # テストファクトリ（createTestLog, createTestConfig, createTestTaskRule）
-│   ├── unit/                                    # ユニットテスト（220テスト）
+│   ├── unit/                                    # ユニットテスト
 │   │   ├── core/
-│   │   │   ├── ingestion-engine.test.ts         # エンジン: フィールドパススルー, コールバック接続, mutex, エラー耐性 (12)
-│   │   │   ├── event-detector.test.ts           # 検知: 5イベントタイプ全分岐, AIループ防止 (19)
-│   │   │   ├── custom-detection-rules.test.ts   # カスタム検知ルール: 正常/異常/エッジ/ペネトレーション (22)
-│   │   │   ├── log-normalizer.test.ts           # 正規化: 全デフォルト値, 防御的フォールバック (26)
-│   │   │   └── task-executor-extended.test.ts   # 実行: removeHandler, timeoutMs, clearHandlers (6)
+│   │   │   ├── ingestion-engine.test.ts         # エンジン: パススルー, コールバック, mutex
+│   │   │   ├── event-detector.test.ts           # 検知: 5イベントタイプ全分岐
+│   │   │   ├── custom-detection-rules.test.ts   # カスタム検知ルール
+│   │   │   ├── log-normalizer.test.ts           # 正規化: 全デフォルト値
+│   │   │   ├── remaining-gaps.test.ts           # projectName伝播, REGEXフラグ保持
+│   │   │   └── task-executor-extended.test.ts   # removeHandler, timeoutMs
 │   │   ├── intelligence/
 │   │   │   ├── task-generator.test.ts           # タスク生成: ルールインデックス, 重大度フィルタ (15)
 │   │   │   ├── task-executor.test.ts            # ディスパッチ: 実行レベル4種, ガードレール (15)
@@ -105,38 +106,41 @@
 │   │   ├── shared/
 │   │   │   └── result.test.ts                   # Result monad: 全関数のテスト (33)
 │   │   └── remaining-backlog.test.ts            # バックログ修正: Logger, SEMI_AUTO, AI_ACTION, onError (14)
-│   ├── security/                                # セキュリティテスト（94テスト）
-│   │   ├── redos.test.ts                        # ReDoS耐性: 全PIIパターン + カスタムRegex (5)
-│   │   ├── prototype-pollution.test.ts          # Prototype Pollution: __proto__/constructor注入防御 (5)
-│   │   ├── input-validation-bypass.test.ts      # 入力検証バイパス: null byte, 型強制, 境界値 (19)
-│   │   ├── masking-bypass.test.ts               # PIIマスキング回避: エンコード, 構造, KEY_MATCH (18)
-│   │   ├── integrity-chain.test.ts              # hash chain改竄: フィールド変更, 順序, 検証 (16)
-│   │   ├── information-leakage.test.ts          # 情報漏洩: エラーメッセージ, PII除去 (5)
-│   │   ├── new-findings-v2.test.ts              # v2修正: timing, race, transport, config, NaN (21)
-│   │   └── advanced/                            # 高度なセキュリティテスト（1,203テスト）
-│   │       ├── config-injection.test.ts         # prototype pollution, deep-merge攻撃 (53)
-│   │       ├── state-manipulation.test.ts       # singleton abuse, config freeze検証 (55)
-│   │       ├── injection-attacks.test.ts        # XSS, SQL injection (42)
-│   │       ├── encoding-bypass.test.ts          # Unicode, HTML entities, zero-width (68)
-│   │       ├── crypto-attacks.test.ts           # hash chain tampering, replay (38)
-│   │       ├── transport-security.test.ts       # transport layer攻撃 (32)
-│   │       ├── dos-resource-exhaustion.test.ts  # oversized fields, memory bombs (45)
-│   │       ├── type-confusion.test.ts           # 型強制攻撃 (28)
-│   │       ├── pii-masking-advanced.test.ts     # homoglyph, invisible chars (44)
-│   │       └── fuzzing-inputs.test.ts           # ランダム/fuzzテスト (102)
-│   ├── config/                                  # 設定マトリクステスト（390テスト）
-│   │   ├── config-matrix.test.ts                # createDefaultConfig: defaults, deep-merge, environment (14)
-│   │   ├── config-pipeline-reflection.test.ts   # 設定→パイプライン反映: 全フィールドE2E (38)
-│   │   ├── config-server-exhaustive.test.ts     # 全設定組合せ + 侵入経路 + トレーシング (43)
-│   │   ├── size-limits.test.ts                  # サイズ制限: デフォルト, カスタム, フィールド別 (25)
-│   │   ├── transport-modes.test.ts              # Transport全モード: timeout, fallback, dual, shutdown (34)
-│   │   ├── masking-rules-exhaustive.test.ts     # マスキング全パターン: PII/REGEX/KEY_MATCH/edge (73)
-│   │   └── validation-normalizer-exhaustive.test.ts # 全フィールド検証+正規化: 正常/異常/edge (159)
+│   ├── security/                                # セキュリティテスト
+│   │   ├── redos.test.ts                        # ReDoS耐性
+│   │   ├── prototype-pollution.test.ts          # Prototype Pollution防御
+│   │   ├── input-validation-bypass.test.ts      # 入力検証バイパス
+│   │   ├── masking-bypass.test.ts               # PIIマスキング回避
+│   │   ├── integrity-chain.test.ts              # hash chain改竄検知
+│   │   ├── information-leakage.test.ts          # 情報漏洩防止
+│   │   ├── new-findings-v2.test.ts              # v2修正: timing, race, transport
+│   │   └── advanced/                            # 高度なセキュリティテスト
+│   │       ├── config-injection.test.ts         # prototype pollution, deep-merge攻撃
+│   │       ├── state-manipulation.test.ts       # singleton abuse, config freeze検証
+│   │       ├── injection-attacks.test.ts        # XSS, SQL injection
+│   │       ├── encoding-bypass.test.ts          # Unicode, HTML entities, zero-width
+│   │       ├── crypto-attacks.test.ts           # hash chain tampering, replay
+│   │       ├── transport-security.test.ts       # transport layer攻撃
+│   │       ├── dos-resource-exhaustion.test.ts  # oversized fields, memory bombs
+│   │       ├── type-confusion.test.ts           # 型強制攻撃
+│   │       ├── pii-masking-advanced.test.ts     # homoglyph, invisible chars
+│   │       ├── boundary-validation-hardening.test.ts # 境界バリデーション強化
+│   │       └── fuzzing-inputs.test.ts           # ランダム/fuzzテスト
+│   ├── config/                                  # 設定マトリクステスト
+│   │   ├── config-matrix.test.ts                # createDefaultConfig: defaults, deep-merge, environment
+│   │   ├── config-pipeline-reflection.test.ts   # 設定→パイプライン反映: 全フィールドE2E
+│   │   ├── config-server-exhaustive.test.ts     # 全設定組合せ + 侵入経路 + トレーシング
+│   │   ├── config-security-audit.test.ts        # RegExpフラグ, errorRouting/conditions検証
+│   │   ├── size-limits.test.ts                  # サイズ制限: デフォルト, カスタム, フィールド別
+│   │   ├── transport-modes.test.ts              # Transport全モード: timeout, fallback, dual, shutdown
+│   │   ├── masking-rules-exhaustive.test.ts     # マスキング全パターン: PII/REGEX/KEY_MATCH/edge
+│   │   └── validation-normalizer-exhaustive.test.ts # 全フィールド検証+正規化
 │   ├── integration/
-│   │   └── pipeline.test.ts                     # SDKパイプラインE2E: ingest→detect→task→hash (18)
+│   │   └── pipeline.test.ts                     # SDKパイプラインE2E
 │   └── e2e/
-│       ├── sdk-server.test.ts                   # クロスコンポーネントE2E: SDK→Go gRPC実通信 (15)
-│       └── test-server-config.yaml              # E2Eテスト用Goサーバ設定（インメモリDB）
+│       ├── sdk-server.test.ts                   # SDK→Go gRPC実通信
+│       ├── sdk-runtime-verification.test.ts     # 全機能シナリオ動作検証
+│       └── test-server-config.yaml              # E2Eテスト用Goサーバ設定
 │
 ├── docs/                                        # ── ドキュメント ──
 │   ├── architecture.md                          # SDK + Server パイプラインフロー, モジュール責務

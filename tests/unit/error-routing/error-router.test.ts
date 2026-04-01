@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { ErrorRouter } from "../../../src/error-routing/error-router";
-import type { AuditSink } from "../../../src/error-routing/types";
+import type { AuditSink, ErrorRoutingLogger } from "../../../src/error-routing/types";
 
 describe("ErrorRouter", () => {
     it("enabled=true routes error through classify → evaluate → execute", async () => {

@@ -1,7 +1,7 @@
 # ErrorClassifier 設計
 
 ```yaml
-status: design
+status: implemented
 layer: TS SDK (shared) → Go Server (移植)
 ```
 

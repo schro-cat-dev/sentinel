@@ -1,7 +1,7 @@
 # ErrorExecutor（実行層）設計
 
 ```yaml
-status: design
+status: implemented
 layer: TS SDK (インターフェース) + Go Server (実装)
 ```
 

@@ -61,7 +61,10 @@ export class ErrorRouter {
                     await this.config.sinks?.deadLetter?.enqueue(error, decision.metadata ?? {});
                     break;
                 case "log":
-                    // 構造化ログ出力のみ（console.errorは最終防壁なのでここではinfo相当）
+                    this.config.logger?.info(
+                        `[ErrorRouter:log] ${error.kind}: ${error.message}`,
+                        { severity: error.severity, context: error.meta.context, traceId: error.meta.traceId },
+                    );
                     break;
                 case "task":
                     await Promise.resolve(this.config.onTaskRequest?.({
