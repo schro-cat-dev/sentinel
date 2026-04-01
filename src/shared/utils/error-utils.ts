@@ -1,63 +1,12 @@
 import type { ErrorPayloadProtocol } from "../errors/error-payload-protocol";
+import { isPiiSafe, maskPiiContext } from "../../security/pii-context-masker";
+
+// 後方互換: security/pii-context-masker.ts に移動した関数を再export
+export { isPiiSafe, maskPiiContext };
 
 type SafeValue = string | number | boolean | null;
 
-/** TODO 対象追加。PII検出正規表現（国際対応） */
-const PII_PATTERNS: readonly RegExp[] = [
-    // Email (全言語対応) — /g 不要: test()はステートフルになるため除去
-    /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/i,
-    // 日本口座番号（支店+口座）
-    /\d{3,5}[-]\d{6,7}[-]\d{6,7}/,
-    // 国際口座番号（IBAN簡易）
-    /[A-Z]{2}\d{2}[A-Z0-9]{4,30}/,
-    // カード番号（16-19桁）
-    /\b(?:\d{4}[ -]?){3}\d{4}\b|\b\d{16,19}\b/,
-    // 電話番号（日本+国際）
-    /(?:0\d{1,4}[-]\d{1,4}[-]\d{4}|0[0-9]{10,12}|\+\d{10,15})/,
-    // 個人名パターン（ローカルパート強化）
-    /\b[a-zA-Z]{2,}[.][a-zA-Z]{2,}\b/i,
-    // 住所・郵便番号
-    /(?:〒?\d{3}[-]\d{4}|[0-9]{5})/,
-];
-
-/** PII安全確認（偽陰性ゼロ） */
-export const isPiiSafe = (value: string): boolean => {
-    if (!value || value.length < 3) return true;
-    return !PII_PATTERNS.some((pattern) => pattern.test(value));
-};
-
-/** オブジェクトのキー数を返す（safeContext内部用） */
-const safeObjectKeys = (obj: object): number => {
-    return Object.keys(obj).length;
-};
-
-/** PII自動マスキング（完全型安全・インデックスバグ修正） */
-export const maskPiiContext = (
-    context: Record<string, SafeValue>,
-): Record<string, SafeValue> => {
-    const safe = { ...context };
-
-    // キー名PIIチェック＆マスク（prototype pollution防御: hasOwnPropertyガード）
-    for (const key in safe) {
-        if (!Object.prototype.hasOwnProperty.call(safe, key)) continue;
-        const typedKey = key as keyof typeof safe;
-        const value = safe[typedKey];
-
-        if (!isPiiSafe(key)) {
-            // キー名もマスク（新規キー作成）
-            const maskedKey =
-                `***_${key.length}_MASKED***` as keyof typeof safe;
-            safe[maskedKey] = value;
-            delete safe[typedKey];
-        } else if (typeof value === "string" && !isPiiSafe(value)) {
-            safe[typedKey] = `***_${key}_MASKED***` as SafeValue;
-        }
-    }
-
-    return safe;
-};
-
-/** 安全なcontext変換（循環参照対策・完全型安全） */
+/** 安全なcontext変換（完全型安全） */
 export const safeContext = (
     data: Record<string, SafeValue | object | undefined>,
 ): Record<string, SafeValue> => {
@@ -71,7 +20,7 @@ export const safeContext = (
         } else if (Array.isArray(value)) {
             result[key] = Math.min(value.length, 1000);
         } else if (value && typeof value === "object") {
-            result[key] = safeObjectKeys(value);
+            result[key] = Object.keys(value).length;
         } else if (typeof value === "string") {
             result[key] =
                 value.length > 50 ? `${value.slice(0, 47)}...` : value;

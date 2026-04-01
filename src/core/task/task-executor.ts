@@ -35,11 +35,22 @@ export class TaskExecutor {
         this.confirmHandler = handler;
     }
 
+    /** ハンドラ登録のハードリミット (VULN-014) */
+    private static readonly HARD_HANDLER_LIMIT = 100;
+
     /**
-     * アクションタイプごとにハンドラを登録
+     * アクションタイプごとにハンドラを登録。
+     * HARD_HANDLER_LIMIT を超えるとエラーをスローする。
      */
     public registerHandler(actionType: string, handler: TaskDispatchHandler): void {
         const existing = this.handlers.get(actionType) ?? [];
+        if (existing.length >= TaskExecutor.HARD_HANDLER_LIMIT) {
+            throw new Error(
+                `Too many handlers for "${actionType}" (${existing.length}). ` +
+                `Maximum ${TaskExecutor.HARD_HANDLER_LIMIT} handlers per action type. ` +
+                `Call the unsubscribe function returned by onTaskAction() to remove unused handlers.`,
+            );
+        }
         existing.push(handler);
         this.handlers.set(actionType, existing);
     }

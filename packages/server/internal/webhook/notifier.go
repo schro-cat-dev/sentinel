@@ -33,6 +33,7 @@ type Notifier struct {
 	url        string
 	httpClient *http.Client
 	secret     []byte
+	sem        chan struct{} // goroutine制限セマフォ
 }
 
 // NewNotifier はNotifierを生成する
@@ -43,24 +44,35 @@ func NewNotifier(url string, timeoutSec int, secret string) *Notifier {
 			Timeout: time.Duration(timeoutSec) * time.Second,
 		},
 		secret: []byte(secret),
+		sem:    make(chan struct{}, 100), // 最大100並行goroutine
 	}
 }
 
-// NotifyApprovalRequired は承認リクエストをWebhookで通知する（非ブロッキング）
+// NotifyApprovalRequired は承認リクエストをWebhookで通知する（非ブロッキング、goroutine制限付き）
 func (n *Notifier) NotifyApprovalRequired(ctx context.Context, payload ApprovalPayload) {
-	go func() {
-		if err := n.send(payload); err != nil {
-			slog.Error("webhook notification failed",
-				"taskId", payload.TaskID,
-				"error", err.Error(),
-			)
-		} else {
-			slog.Info("webhook notification sent",
-				"taskId", payload.TaskID,
-				"url", n.url,
-			)
-		}
-	}()
+	select {
+	case n.sem <- struct{}{}: // セマフォ取得
+		go func() {
+			defer func() { <-n.sem }() // セマフォ解放
+			if err := n.send(payload); err != nil {
+				slog.Error("webhook notification failed",
+					"taskId", payload.TaskID,
+					"error", err.Error(),
+				)
+			} else {
+				slog.Info("webhook notification sent",
+					"taskId", payload.TaskID,
+					"url", n.url,
+				)
+			}
+		}()
+	default:
+		// セマフォ満杯: goroutine枯渇防止のためドロップ
+		slog.Warn("webhook notification dropped: goroutine limit reached",
+			"taskId", payload.TaskID,
+			"limit", cap(n.sem),
+		)
+	}
 }
 
 func (n *Notifier) send(payload ApprovalPayload) error {

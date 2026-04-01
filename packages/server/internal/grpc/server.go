@@ -25,6 +25,7 @@ const version = "0.3.0"
 // AuthorizerForApproval はApproveBlock/RejectBlockの認可チェック用インターフェース
 type AuthorizerForApproval interface {
 	CanApprove(clientID string) bool
+	CanRead(clientID string) bool
 }
 
 type SentinelServer struct {
@@ -112,6 +113,14 @@ func (s *SentinelServer) RejectBlock(ctx context.Context, req *pb.RejectBlockReq
 	if req.BlockId == "" || req.RejectorId == "" {
 		return nil, status.Error(codes.InvalidArgument, "block_id and rejector_id are required")
 	}
+	// V-7: 認可チェック — CanApprove権限がなければ拒否（ApproveBlockと同等）
+	// 認可はビジネスロジック（blockDispatcher有無）より先に行う
+	if s.authorizer != nil {
+		clientID := ClientIDFromContext(ctx)
+		if !s.authorizer.CanApprove(clientID) {
+			return nil, status.Error(codes.PermissionDenied, "insufficient permission: CanApprove required")
+		}
+	}
 	if s.blockDispatcher == nil {
 		return nil, status.Error(codes.FailedPrecondition, "block dispatcher not configured")
 	}
@@ -131,6 +140,13 @@ func (s *SentinelServer) RejectBlock(ctx context.Context, req *pb.RejectBlockReq
 func (s *SentinelServer) GetThreatResponses(ctx context.Context, req *pb.GetThreatResponsesRequest) (*pb.GetThreatResponsesResponse, error) {
 	if req.TraceId == "" {
 		return nil, status.Error(codes.InvalidArgument, "trace_id is required")
+	}
+	// V-10: 認可チェック — CanRead権限が必要
+	if s.authorizer != nil {
+		clientID := ClientIDFromContext(ctx)
+		if !s.authorizer.CanRead(clientID) {
+			return nil, status.Error(codes.PermissionDenied, "insufficient permission: CanRead required")
+		}
 	}
 	if s.store == nil {
 		return &pb.GetThreatResponsesResponse{}, nil
@@ -225,6 +241,13 @@ func (s *SentinelServer) GetTaskStatus(ctx context.Context, req *pb.GetTaskStatu
 	if req.TaskId == "" {
 		return nil, status.Error(codes.InvalidArgument, "task_id is required")
 	}
+	// V-9: 認可チェック — CanRead権限が必要
+	if s.authorizer != nil {
+		clientID := ClientIDFromContext(ctx)
+		if !s.authorizer.CanRead(clientID) {
+			return nil, status.Error(codes.PermissionDenied, "insufficient permission: CanRead required")
+		}
+	}
 
 	t, err := s.store.GetTask(ctx, req.TaskId)
 	if err != nil {
@@ -241,23 +264,37 @@ func (s *SentinelServer) GetTaskStatus(ctx context.Context, req *pb.GetTaskStatu
 // --- ListTasks ---
 
 func (s *SentinelServer) ListTasks(ctx context.Context, req *pb.ListTasksRequest) (*pb.ListTasksResponse, error) {
+	// V-8: 認可チェック — CanRead権限が必要
+	if s.authorizer != nil {
+		clientID := ClientIDFromContext(ctx)
+		if !s.authorizer.CanRead(clientID) {
+			return nil, status.Error(codes.PermissionDenied, "insufficient permission: CanRead required")
+		}
+	}
+	// V-18: フィルタ文字列長制限
+	if len(req.EventName) > 256 || len(req.Status) > 64 {
+		return nil, status.Error(codes.InvalidArgument, "filter field too long")
+	}
 	filter := store.TaskFilter{
 		EventName: req.EventName,
 		Status:    req.Status,
 		Limit:     int(req.Limit),
 		Offset:    int(req.Offset),
 	}
+	// V-21: 時刻パースエラーを明示的に返す
 	if req.FromTime != "" {
 		t, err := time.Parse(time.RFC3339, req.FromTime)
-		if err == nil {
-			filter.FromTime = &t
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid from_time format: %v", err))
 		}
+		filter.FromTime = &t
 	}
 	if req.ToTime != "" {
 		t, err := time.Parse(time.RFC3339, req.ToTime)
-		if err == nil {
-			filter.ToTime = &t
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid to_time format: %v", err))
 		}
+		filter.ToTime = &t
 	}
 
 	tasks, total, err := s.store.ListTasks(ctx, filter)
@@ -392,6 +429,13 @@ func (s *SentinelServer) RejectTask(ctx context.Context, req *pb.RejectTaskReque
 	if req.TaskId == "" || req.RejectorId == "" {
 		return nil, status.Error(codes.InvalidArgument, "task_id and rejector_id are required")
 	}
+	// V-7: 認可チェック — CanApprove権限がなければ拒否（ApproveTaskと同等）
+	if s.authorizer != nil {
+		clientID := ClientIDFromContext(ctx)
+		if !s.authorizer.CanApprove(clientID) {
+			return nil, status.Error(codes.PermissionDenied, "insufficient permission: CanApprove required")
+		}
+	}
 
 	t, err := s.store.GetTask(ctx, req.TaskId)
 	if err != nil || t == nil {
@@ -478,9 +522,15 @@ func protoToLog(req *pb.IngestRequest) domain.Log {
 		logEntry.Tags = append(logEntry.Tags, domain.LogTag{Key: tag.Key, Category: tag.Category})
 	}
 	if req.AiContext != nil {
+		// V-11: LoopDepth はサーバ側で制御。外部クライアントからの偽装を防ぐため、
+		// origin=AI_AGENT 以外のログは LoopDepth を 0 にリセットする。
+		loopDepth := int(req.AiContext.LoopDepth)
+		if logEntry.Origin != domain.OriginAIAgent {
+			loopDepth = 0
+		}
 		logEntry.AIContext = &domain.AIContext{
 			AgentID: req.AiContext.AgentId, TaskID: req.AiContext.TaskId,
-			LoopDepth: int(req.AiContext.LoopDepth), Model: req.AiContext.Model,
+			LoopDepth: loopDepth, Model: req.AiContext.Model,
 			Confidence: req.AiContext.Confidence, ReasoningTrace: req.AiContext.ReasoningTrace,
 		}
 	}

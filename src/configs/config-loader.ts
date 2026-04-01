@@ -10,7 +10,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createDefaultConfig, type SentinelConfig } from "./sentinel-config";
-import type { MaskingRule } from "./masking-rule";
+import { PII_CATEGORIES, type MaskingRule } from "./masking-rule";
 import type { TaskRule } from "../types/task";
 import type { DetectionRule, DetectionRuleConditions } from "../types/event";
 
@@ -242,10 +242,7 @@ function defaultRequireYaml(_moduleName: string): { parse: (s: string) => RawYam
 
 const VALID_ENVIRONMENTS = new Set(["production", "staging", "development", "local", "test"]);
 const VALID_MASKING_TYPES = new Set(["PII_TYPE", "REGEX", "KEY_MATCH"]);
-const VALID_PII_CATEGORIES = new Set([
-    "CREDIT_CARD", "PHONE", "EMAIL", "GOVERNMENT_ID",
-    "JAPAN_ACCOUNT", "POSTAL_CODE", "DRIVER_LICENSE", "HEALTH_INSURANCE",
-]);
+const VALID_PII_CATEGORIES = new Set<string>(PII_CATEGORIES);
 const VALID_WHITELIST_LEVELS = new Set(["strict", "standard", "permissive", "off"]);
 
 function validateRawConfig(raw: RawYamlConfig): void {

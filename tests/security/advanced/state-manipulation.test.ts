@@ -198,17 +198,27 @@ describe("State Manipulation: Handler Manipulation", () => {
         executor = new TaskExecutor();
     });
 
-    it("register same handler 1000 times causes handler to execute 1000 times", async () => {
+    it("register same handler up to hard limit causes handler to execute that many times", async () => {
         let count = 0;
         const handler = () => { count++; };
 
-        for (let i = 0; i < 1000; i++) {
+        // VULN-014: ハードリミット100件
+        for (let i = 0; i < 100; i++) {
             executor.registerHandler("SYSTEM_NOTIFICATION", handler);
         }
 
         const task = createAutoTask();
         await executor.dispatch(task);
-        expect(count).toBe(1000);
+        expect(count).toBe(100);
+    });
+
+    it("register beyond hard limit (100) throws error", () => {
+        const handler = () => {};
+        for (let i = 0; i < 100; i++) {
+            executor.registerHandler("SYSTEM_NOTIFICATION", handler);
+        }
+        expect(() => executor.registerHandler("SYSTEM_NOTIFICATION", handler))
+            .toThrow(/Too many handlers/);
     });
 
     it("register then removeHandlers clears all handlers for that type", async () => {

@@ -27,10 +27,18 @@ func NewStaticTokenValidator(keyMap map[string]string) *StaticTokenValidator {
 }
 
 func (v *StaticTokenValidator) Validate(ctx context.Context, token string) (string, error) {
+	// タイミングオラクル防止: 全キーを常にイテレート（early returnしない）
+	var matchedID string
+	found := false
 	for key, clientID := range v.keys {
 		if subtle.ConstantTimeCompare([]byte(token), []byte(key)) == 1 {
-			return clientID, nil
+			matchedID = clientID
+			found = true
+			// early returnしない: キー数のタイミング漏洩を防ぐ
 		}
+	}
+	if found {
+		return matchedID, nil
 	}
 	return "", fmt.Errorf("invalid token")
 }
@@ -43,10 +51,11 @@ type ExternalTokenStore interface {
 }
 
 type CachedTokenValidator struct {
-	mu       sync.RWMutex
-	cache    map[string]cachedEntry
-	store    ExternalTokenStore
-	ttl      time.Duration
+	mu           sync.RWMutex
+	cache        map[string]cachedEntry
+	store        ExternalTokenStore
+	ttl          time.Duration
+	maxCacheSize int // 0 = unlimited (default for backward compat)
 }
 
 type cachedEntry struct {
@@ -57,10 +66,18 @@ type cachedEntry struct {
 
 func NewCachedTokenValidator(store ExternalTokenStore, ttl time.Duration) *CachedTokenValidator {
 	return &CachedTokenValidator{
-		cache: make(map[string]cachedEntry),
-		store: store,
-		ttl:   ttl,
+		cache:        make(map[string]cachedEntry),
+		store:        store,
+		ttl:          ttl,
+		maxCacheSize: 10000, // デフォルト上限: OOM防止
 	}
+}
+
+// SetMaxCacheSize はキャッシュの最大エントリ数を設定する（0=無制限）
+func (v *CachedTokenValidator) SetMaxCacheSize(n int) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.maxCacheSize = n
 }
 
 func (v *CachedTokenValidator) Validate(ctx context.Context, token string) (string, error) {
@@ -83,8 +100,31 @@ func (v *CachedTokenValidator) Validate(ctx context.Context, token string) (stri
 		return "", fmt.Errorf("token validation failed: %w", err)
 	}
 
-	// Update cache
+	// Update cache (with size limit to prevent OOM from unique-token flooding)
 	v.mu.Lock()
+	if v.maxCacheSize > 0 && len(v.cache) >= v.maxCacheSize {
+		// Evict expired entries first
+		now := time.Now()
+		for k, e := range v.cache {
+			if e.expiresAt.Before(now) {
+				delete(v.cache, k)
+			}
+		}
+		// If still over limit, evict oldest 10%
+		if len(v.cache) >= v.maxCacheSize {
+			evictCount := v.maxCacheSize / 10
+			if evictCount < 1 {
+				evictCount = 1
+			}
+			for k := range v.cache {
+				delete(v.cache, k)
+				evictCount--
+				if evictCount <= 0 {
+					break
+				}
+			}
+		}
+	}
 	v.cache[token] = cachedEntry{
 		clientID:  clientID,
 		valid:     valid,

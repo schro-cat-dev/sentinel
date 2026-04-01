@@ -42,6 +42,7 @@ export class IngestionEngine implements IIngestionCoordinator {
         detector: EventDetector;
         taskGenerator: TaskGenerator;
         taskExecutor: TaskExecutor;
+        errorRouter?: ErrorRouter;
     }) {
         this.config = deps.config;
         this.normalizer = deps.normalizer;
@@ -49,9 +50,7 @@ export class IngestionEngine implements IIngestionCoordinator {
         this.detector = deps.detector;
         this.taskGenerator = deps.taskGenerator;
         this.taskExecutor = deps.taskExecutor;
-        if (this.config.errorRouting?.enabled) {
-            this.errorRouter = new ErrorRouter(this.config.errorRouting);
-        }
+        this.errorRouter = deps.errorRouter;
     }
 
     /**
@@ -177,8 +176,8 @@ export class IngestionEngine implements IIngestionCoordinator {
             hashChainValid = true;
         }
 
-        // 6. Callbacks + metrics + tracing
-        this.emitSafe(() => this.getCallback("onLogProcessed")?.(log));
+        // 6. Callbacks + metrics + tracing（防御コピーで改竄防止）
+        this.emitSafe(() => this.getCallback("onLogProcessed")?.({ ...log, tags: [...log.tags] }));
         this.emitSafe(() => this.config.metrics?.onIngest?.());
         this.emitSafe(() => this.config.tracer?.onPipelineEnd?.({
             traceId: log.traceId,

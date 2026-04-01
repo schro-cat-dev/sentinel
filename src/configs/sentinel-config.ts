@@ -2,6 +2,8 @@ import { MaskingRule } from "./masking-rule";
 import { Log } from "../types/log";
 import { TaskRule, GeneratedTask, TaskResult } from "../types/task";
 import { DetectionRule } from "../types/event";
+import type { ErrorRoutingConfig } from "../error-routing/types";
+import type { ValidationLimits } from "../validation/log-validator";
 
 /**
  * SDKの内部ログ出力先。利用者が注入することでconsole.warn等を制御可能。
@@ -82,10 +84,10 @@ export interface SentinelConfig {
     logger?: SentinelLogger;
 
     /** エラールーティング設定（省略時: 無効、既存emitSafe動作維持） */
-    errorRouting?: import("../error-routing/types").ErrorRoutingConfig;
+    errorRouting?: ErrorRoutingConfig;
 
     /** バリデーション制限値のオーバーライド（省略時はDEFAULT_VALIDATION_LIMITS） */
-    validationLimits?: Partial<import("../validation/log-validator").ValidationLimits>;
+    validationLimits?: Partial<ValidationLimits>;
 
     /**
      * メトリクスフック（省略時: ゼロオーバーヘッド）

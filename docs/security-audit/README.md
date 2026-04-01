@@ -43,6 +43,20 @@
 | [cross-cutting/03-dependency-supply-chain.md](cross-cutting/03-dependency-supply-chain.md) | 依存関係・サプライチェーンセキュリティ |
 | [cross-cutting/04-vulnerability-summary.md](cross-cutting/04-vulnerability-summary.md) | 脆弱性サマリー・優先度付き対策一覧 |
 
+### SDK 追加診断 (v2)
+
+| ファイル | 内容 |
+|---------|------|
+| [sdk/09-responsibility-refactoring.md](sdk/09-responsibility-refactoring.md) | エラールーティング責務分離 |
+| [sdk-v2/additional-findings.md](sdk-v2/additional-findings.md) | 追加脆弱性6件（再帰ループ、PII漏洩、preserveFieldsバイパス等）|
+
+### Server 追加診断 (v2)
+
+| ファイル | 内容 |
+|---------|------|
+| [server/ERRATA.md](server/ERRATA.md) | サーバ監査正誤表 |
+| [server-v2/additional-findings.md](server-v2/additional-findings.md) | 追加脆弱性12件（認可欠如、LoopDepth偽装、SSRF等） |
+
 ---
 
 ## 総合評価
@@ -51,12 +65,12 @@
 |---------|------|------|
 | 入力バリデーション | **A** | SDK/Server双方で多層防御が実装済み |
 | 暗号化・完全性 | **A** | HMAC-SHA256 + constant-time comparison |
-| 認証・認可 | **B+** | RBAC実装済み、ただしAPIキー平文管理 |
-| ReDoS防御 | **B-** | Goサーバは対策済み、SDK側に未対策箇所あり |
+| 認証・認可 | **A-** | RBAC実装済み、v2で全RPC認可チェック追加 |
+| ReDoS防御 | **A-** | SDK/Server双方で対策済み（v1修正） |
 | シークレット管理 | **B-** | 環境変数依存、Vault等未統合 |
-| ライフサイクル管理 | **B** | goroutineリーク可能性あり |
+| ライフサイクル管理 | **B+** | ErrorRouter再入防止追加、goroutine管理改善 |
 | 外部連携セキュリティ | **B** | HMAC署名あり、リトライ・cert pinning未実装 |
-| 最小権限 | **A-** | RBAC + ホワイトリスト制御が効果的 |
-| PII保護 | **A** | 多層マスキング + 再帰深度制限 |
+| 最小権限 | **A** | RBAC + ホワイトリスト + 全RPC認可チェック |
+| PII保護 | **A** | 多層マスキング + preserveFieldsバイパス警告 |
 
-**総合スコア: 8.2 / 10**
+**総合スコア: 8.7 / 10** (初回 8.2 → v1修正 + v2修正後)

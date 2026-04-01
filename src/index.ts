@@ -12,6 +12,7 @@ import { TransportConfig, RemoteTransport } from "./transport/transport";
 import { validateLogInput, ValidationError } from "./validation/log-validator";
 import { validateConfigWhitelists } from "./validation/config-validator";
 import { WhitelistRegistry } from "./validation/whitelist-registry";
+import { ErrorRouter } from "./error-routing/error-router";
 
 /**
  * SentinelOptions はSentinel初期化時のオプション
@@ -50,6 +51,11 @@ export class Sentinel {
         const taskGenerator = new TaskGenerator(config.taskRules);
         this.taskExecutor = new TaskExecutor();
 
+        // ErrorRouter はエンジンに注入（DI原則: IngestionEngine が直接生成しない）
+        const errorRouter = config.errorRouting?.enabled
+            ? new ErrorRouter(config.errorRouting)
+            : undefined;
+
         this.engine = new IngestionEngine({
             config,
             normalizer,
@@ -57,6 +63,7 @@ export class Sentinel {
             detector,
             taskGenerator,
             taskExecutor: this.taskExecutor,
+            errorRouter,
         });
 
         this.initialized = true;
@@ -73,6 +80,7 @@ export class Sentinel {
             return Sentinel.instance;
         }
         const { registry } = validateConfigWhitelists(config);
+        Sentinel.warnSensitivePreserveFields(config);
         Sentinel.instance = new Sentinel(config, registry, options);
         return Sentinel.instance;
     }
@@ -182,21 +190,26 @@ export class Sentinel {
     public onTaskAction(actionType: string, handler: TaskDispatchHandler): () => void {
         if (this.isShutdown) throw new Error("Sentinel is shutdown. Cannot register handler after shutdown.");
         this.whitelistRegistry?.validate("actionType", actionType);
-        this.enforceHandlerLimit(actionType);
         this.taskExecutor.registerHandler(actionType, handler);
         this.warnIfTooManyHandlers(actionType);
         return () => this.taskExecutor.unregisterHandler(actionType, handler);
     }
 
-    private static readonly HARD_HANDLER_LIMIT = 100;
+    private static readonly SENSITIVE_FIELD_PATTERNS = [
+        "password", "secret", "apikey", "api_key", "token",
+        "creditcard", "credit_card", "ssn", "cvv", "pin",
+    ];
 
-    private enforceHandlerLimit(actionType: string): void {
-        const count = this.taskExecutor.getHandlerCount(actionType);
-        if (count >= Sentinel.HARD_HANDLER_LIMIT) {
-            throw new Error(
-                `Too many handlers for "${actionType}" (${count}). ` +
-                `Maximum ${Sentinel.HARD_HANDLER_LIMIT} handlers per action type. ` +
-                `Call the unsubscribe function returned by onTaskAction() to remove unused handlers.`,
+    private static warnSensitivePreserveFields(config: SentinelConfig): void {
+        if (!config.masking.enabled) return;
+        const preserveFields = config.masking.preserveFields ?? [];
+        const sensitive = preserveFields.filter((f) =>
+            Sentinel.SENSITIVE_FIELD_PATTERNS.some((p) => f.toLowerCase().includes(p)),
+        );
+        if (sensitive.length > 0) {
+            console.warn(
+                `[Sentinel] WARNING: preserveFields contains potentially sensitive field names: ${sensitive.join(", ")}. ` +
+                `These fields will NOT be masked. Review your masking configuration.`,
             );
         }
     }

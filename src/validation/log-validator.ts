@@ -266,29 +266,28 @@ function containsLoneSurrogate(s: string): boolean {
     return false;
 }
 
-const estimateJsonSizeSeen = new WeakSet<object>();
-
-function estimateJsonSize(value: unknown, depth = 0): number {
+function estimateJsonSize(value: unknown, depth = 0, seen?: WeakSet<object>): number {
     if (depth > 20) return 0;
     if (value === null || value === undefined) return 4;
     if (typeof value === "string") return value.length + 2;
     if (typeof value === "number" || typeof value === "boolean") return 8;
     if (typeof value === "object") {
-        if (estimateJsonSizeSeen.has(value as object)) return 0; // 循環参照防御
-        estimateJsonSizeSeen.add(value as object);
+        const visited = seen ?? new WeakSet<object>();
+        if (visited.has(value as object)) return 0; // 循環参照防御
+        visited.add(value as object);
         try {
             if (Array.isArray(value)) {
                 let size = 2;
-                for (const item of value) size += estimateJsonSize(item, depth + 1) + 1;
+                for (const item of value) size += estimateJsonSize(item, depth + 1, visited) + 1;
                 return size;
             }
             let size = 2;
             for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-                size += k.length + 3 + estimateJsonSize(v, depth + 1) + 1;
+                size += k.length + 3 + estimateJsonSize(v, depth + 1, visited) + 1;
             }
             return size;
         } finally {
-            estimateJsonSizeSeen.delete(value as object);
+            visited.delete(value as object);
         }
     }
     return 8;

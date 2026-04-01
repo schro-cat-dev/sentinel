@@ -118,6 +118,8 @@
 │   │   ├── integrity-chain.test.ts              # hash chain改竄検知
 │   │   ├── information-leakage.test.ts          # 情報漏洩防止
 │   │   ├── new-findings-v2.test.ts              # v2修正: timing, race, transport
+│   │   ├── sdk-audit-fixes.test.ts             # セキュリティ監査v1修正テスト（ReDoS, surrogate, handler limit等 42テスト）
+│   │   ├── sdk-audit-v2-fixes.test.ts          # セキュリティ監査v2修正テスト（再帰防止, PII切詰, preserveFields警告 12テスト）
 │   │   └── advanced/                            # 高度なセキュリティテスト
 │   │       ├── config-injection.test.ts         # prototype pollution, deep-merge攻撃
 │   │       ├── state-manipulation.test.ts       # singleton abuse, config freeze検証
@@ -165,21 +167,36 @@
 │   │       ├── 05-risk-mitigation.md            # デメリット4件の全回避策
 │   │       ├── 06-module-map.md                 # モジュール構成・依存・データフロー
 │   │       └── 07-tdd-plan.md                   # TDD計画
-│   ├── gap-remediation/                         # 設計↔実装ギャップ修正
-│   │   ├── 00-gap-analysis.md                   # 6件のギャップ分析
-│   │   └── 01-tdd-plan.md                       # TDD計画
-│   ├── config-security-audit/                   # Config/YAMLセキュリティ監査
-│   │   ├── 00-findings.md                       # 11件の発見事項
-│   │   └── 01-remediation-plan.md               # 修正計画+テストケース
-│   ├── runtime-verification/                    # ランタイム動作検証
-│   │   └── 00-gap-analysis.md                   # deepFreeze/async/logicalClock修正
-│   ├── final-remediation/                       # 最終30件修正
-│   │   └── 00-all-findings.md                   # テスト誤魔化し/脆弱性/ロジックバグ全件
+│   ├── design/
+│   │   ├── advanced-threat-remediation/         # 高度な脅威修復設計
+│   │   │   └── 00-plan.md
+│   │   ├── gap-remediation/                     # 設計↔実装ギャップ修正
+│   │   │   ├── 00-gap-analysis.md               # 6件のギャップ分析
+│   │   │   └── 01-tdd-plan.md                   # TDD計画
+│   │   ├── config-security-audit/               # Config/YAMLセキュリティ監査
+│   │   │   ├── 00-findings.md                   # 11件の発見事項
+│   │   │   └── 01-remediation-plan.md           # 修正計画+テストケース
+│   │   ├── runtime-verification/                # ランタイム動作検証
+│   │   │   └── 00-gap-analysis.md               # deepFreeze/async/logicalClock修正
+│   │   ├── final-remediation/                   # 最終30件修正
+│   │   │   └── 00-all-findings.md               # テスト誤魔化し/脆弱性/ロジックバグ全件
+│   │   ├── go-test-expansion/                   # Goテスト拡張計画
+│   │   │   └── 00-gap-analysis.md
+│   │   └── mtls-and-remaining/                  # mTLS + 残タスク計画
+│   │       └── 00-plan.md
 │   ├── quality-benchmark/                       # 品質ベンチマーク（Google PRR水準）
 │   │   ├── standards.md                         # 10カテゴリ49項目のMUST/SHOULD/NICE基準
 │   │   ├── checklist-results.md                 # 全項目のPASS/FAIL結果と修正記録
 │   │   └── instance-management-audit.md         # インスタンス管理の詳細監査報告
+│   ├── security-audit/                          # セキュリティ監査レポート（全体索引 + 22ファイル）
+│   │   ├── README.md                            # 監査概要・構成・総合評価（8.7/10）
+│   │   ├── sdk/                                 # SDK脆弱性分析（9ファイル: 入力検証, ReDoS, 暗号, PII, transport, lifecycle, config, error, 責務）
+│   │   ├── sdk-v2/                              # SDK追加脆弱性（再帰ループ防止, PII漏洩, preserveFieldsバイパス）
+│   │   ├── server/                              # Go Server脆弱性分析（8ファイル: 認証, gRPC, DB, goroutine, webhook, 脅威, secret, ERRATA）
+│   │   ├── server-v2/                           # Go Server追加脆弱性（認可チェック, LoopDepth偽装, SSRF, 入力制限）
+│   │   └── cross-cutting/                       # 横断分析（防御境界, 最小権限, サプライチェーン, 脆弱性サマリー）
 │   ├── usage-guide.md                           # SDK使い方ガイド, 設定詳細
+│   ├── migration-v1-to-v2.md                    # v1→v2マイグレーションガイド
 │   ├── task-gen.md                              # タスク生成設計
 │   ├── coop-siem-like-tools-agent.md            # SIEM連携・AIエージェント連携設計
 │   ├── instance-manage.md                       # インスタンス管理設計
@@ -221,7 +238,7 @@
 │       │   ├── detection/                       # アンサンブル検知 + 動的ルール + 異常検知 + 重複排除
 │       │   ├── security/                        # HMAC signer, マスキング, ポリシーエンジン, 検証器, サニタイザ
 │       │   ├── domain/                          # ドメインモデル（Log, Task, Event, Approval, Result）
-│       │   ├── grpc/                            # gRPC server + interceptors + pb（生成コード）
+│       │   ├── grpc/                            # gRPC server + interceptors + pb + server_authz_v2_test.go（認可チェック18テスト）
 │       │   ├── middleware/                       # Auth + RBAC authorizer + セキュリティヘッダ
 │       │   ├── task/                            # タスク生成 + 実行 + executor/generator包括テスト
 │       │   ├── agent/                           # AIエージェント provider(I/F) + executor + mock
@@ -249,4 +266,4 @@
 └── types/
     └── global.d.ts                              # グローバル型定義
 
-64 directories, 201 files
+92 directories, 324 files

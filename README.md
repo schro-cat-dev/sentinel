@@ -8,7 +8,7 @@ Sentinel detects events from application logs and automatically generates remedi
 
 The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **Go backend server** communicating over gRPC.
 
-[Architecture](docs/architecture.md) | [Security](docs/security.md) | [Testing](docs/testing/) | [Analysis](docs/analysis/) | [Usage Guide](docs/usage-guide.md) | [日本語](readme/ja.md)
+[Architecture](docs/architecture.md) | [Security](docs/security.md) | [Security Audit](docs/security-audit/) | [Testing](docs/testing/) | [Analysis](docs/analysis/) | [Usage Guide](docs/usage-guide.md) | [日本語](readme/ja.md)
 
 ---
 
@@ -16,11 +16,11 @@ The system consists of a **TypeScript client SDK** (`@sentinel/client`) and a **
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
-| Client SDK | TypeScript (zero dependencies) | Implemented | 2,319 tests (Vitest) |
-| Backend Server | Go 1.22+ / gRPC | Implemented | 768 tests (`-race` verified, fuzz tested) |
+| Client SDK | TypeScript (zero dependencies) | Implemented | 2,453 tests (Vitest) |
+| Backend Server | Go 1.22+ / gRPC | Implemented | 786 tests (`-race` verified, fuzz tested) |
 | gRPC Communication | Protocol Buffers v3 | Implemented | E2E verified (SDK→Server 15 tests via real gRPC connection) |
 
-**Total: 3,145 tests (SDK 2,377 + Server 768), 0 FAIL**
+**Total: 3,239 tests (SDK 2,453 + Server 786), 0 FAIL**
 
 ---
 
@@ -399,6 +399,18 @@ go test ./... -race -count=1
 | [モジュール責務マップ](packages/server/docs/design/module-responsibility-map.md) | パッケージ構成 + 10ステージデータフロー |
 | [脅威レスポンス設計](packages/server/docs/design/threat-response-orchestration.md) | 戦略パターン/ブロック/通知の設計仕様 |
 | [v2 作業ログ](packages/server/docs/design/work-log-2026-03-27.md) | 全実装フェーズの詳細記録 |
+
+### セキュリティ監査
+
+| Document | Content |
+|----------|---------|
+| [監査レポート索引](docs/security-audit/) | 全体概要・総合評価 (8.7/10) |
+| [SDK 入力検証〜情報漏洩](docs/security-audit/sdk/) | SDK脆弱性分析 9ファイル（入力検証, ReDoS, 暗号, PII, transport, lifecycle, config, error, 責務分離） |
+| [SDK 追加診断 (v2)](docs/security-audit/sdk-v2/additional-findings.md) | 追加6件: 再帰ループ防止, PII漏洩, preserveFieldsバイパス, metrics例外, concurrent shutdown |
+| [Server 認証〜シークレット](docs/security-audit/server/) | Go Server脆弱性分析 8ファイル（認証, gRPC, DB, goroutine, webhook, 脅威レスポンス, secret, ERRATA） |
+| [Server 追加診断 (v2)](docs/security-audit/server-v2/additional-findings.md) | 追加12件: 認可チェック欠如(HIGH x3), LoopDepth偽装, SSRF, Slackインジェクション |
+| [防御境界マップ](docs/security-audit/cross-cutting/01-defense-boundary-map.md) | 9層の防御境界フロー + ギャップ14件 |
+| [脆弱性サマリー](docs/security-audit/cross-cutting/04-vulnerability-summary.md) | 優先度付き全脆弱性一覧 + 対策ロードマップ |
 
 ---
 

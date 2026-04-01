@@ -12,6 +12,7 @@ import { IntegritySigner } from "../../../src/security/integrity-signer";
 import { EventDetector } from "../../../src/core/detection/event-detector";
 import { TaskGenerator } from "../../../src/core/task/task-generator";
 import { TaskExecutor } from "../../../src/core/task/task-executor";
+import { ErrorRouter } from "../../../src/error-routing/error-router";
 import { createTestConfig, createTestTaskRule } from "../../helpers/fixtures";
 import type { SentinelConfig } from "../../../src/configs/sentinel-config";
 import type { GeneratedTask, TaskResult } from "../../../src/types/task";
@@ -22,6 +23,10 @@ function createEngine(configOverrides: Partial<SentinelConfig> = {}) {
         security: { enableHashChain: false },
         ...configOverrides,
     });
+    // ErrorRouter はDI（IngestionEngine が内部生成しない）
+    const errorRouter = config.errorRouting?.enabled
+        ? new ErrorRouter(config.errorRouting)
+        : undefined;
     return {
         engine: new IngestionEngine({
             config,
@@ -30,6 +35,7 @@ function createEngine(configOverrides: Partial<SentinelConfig> = {}) {
             detector: new EventDetector(),
             taskGenerator: new TaskGenerator(config.taskRules ?? []),
             taskExecutor: new TaskExecutor(),
+            errorRouter,
         }),
         config,
     };

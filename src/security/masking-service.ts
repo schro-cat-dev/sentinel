@@ -1,4 +1,6 @@
 import { MaskingRule } from "../configs/masking-rule";
+import { PII_CATEGORIES } from "../configs/masking-rule";
+import { getPiiPatternForMasking } from "./pii-patterns";
 import type { SentinelLogger } from "../configs/sentinel-config";
 
 interface MaskingContext {
@@ -8,16 +10,10 @@ interface MaskingContext {
 }
 
 export class MaskingService {
-    private static readonly PII_PATTERNS: Record<string, RegExp> = {
-        CREDIT_CARD: /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{1,7}\b/g,
-        PHONE: /(\+81|0)[- ]?\d{1,4}[- ]?\d{1,4}[- ]?\d{4}/g,
-        EMAIL: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
-        GOVERNMENT_ID: /\b\d{12}\b/g,
-        JAPAN_ACCOUNT: /\d{3}[-]\d{7}|\d{4}[-]\d{7}/g,
-        POSTAL_CODE: /(?:〒?\s?)?\d{3}[-]?\d{4}/g,
-        DRIVER_LICENSE: /\b[1-9]\d{5,7}[0-9\\*]\d{2,4}\b/g,
-        HEALTH_INSURANCE: /\b\d{2}\s?\d{2}\s?\d{6}\b/g,
-    } as const;
+    /** PII パターン（pii-patterns.ts の単一ソースから生成） */
+    private static readonly PII_PATTERNS: Record<string, RegExp> = Object.fromEntries(
+        PII_CATEGORIES.map((cat) => [cat, getPiiPatternForMasking(cat)]),
+    );
 
     /**
      * データ構造を再帰的にマスキングする。
@@ -211,8 +207,6 @@ export class MaskingService {
     }
 
     private static getPiiPattern(category: string): RegExp | undefined {
-        return (MaskingService.PII_PATTERNS as Record<string, RegExp>)[
-            category
-        ];
+        return MaskingService.PII_PATTERNS[category];
     }
 }

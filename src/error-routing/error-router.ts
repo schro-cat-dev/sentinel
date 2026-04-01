@@ -16,6 +16,7 @@ export class ErrorRouter {
     private readonly classifier: ErrorClassifier;
     private readonly engine: RoutingEngine;
     private isShutdown = false;
+    private routingDepth = 0; // 再帰防止（並行ルーティングは許可）
 
     constructor(config: ErrorRoutingConfig) {
         this.config = config;
@@ -30,6 +31,13 @@ export class ErrorRouter {
     async route(error: Error, context: string, traceId?: string): Promise<void> {
         if (!this.config.enabled || this.isShutdown) return;
 
+        // 再帰防止（depth > 0 = execute()内からの再帰呼出し）。並行ルーティングは許可。
+        if (this.routingDepth > 0) {
+            console.error(`[Sentinel:ErrorRouter] reentrant route() call blocked: ${ErrorRouter.truncate(error.message)}`);
+            return;
+        }
+
+        this.routingDepth++;
         try {
             const classified = this.classifier.classify({ error, context, traceId });
             const decisions = this.engine.evaluate(classified);
@@ -43,11 +51,18 @@ export class ErrorRouter {
                 ? err.message.substring(0, 200)
                 : "[non-Error thrown]";
             console.error(`[Sentinel:ErrorRouter] routing failed: ${safeMsg}`);
+        } finally {
+            this.routingDepth--;
         }
     }
 
     shutdown(): void {
         this.isShutdown = true;
+    }
+
+    /** PII漏洩防止のためメッセージを200文字に切り詰める */
+    private static truncate(msg: string, maxLen = 200): string {
+        return msg.length > maxLen ? msg.substring(0, maxLen) + "..." : msg;
     }
 
     /**
@@ -73,7 +88,7 @@ export class ErrorRouter {
                     await Promise.resolve(this.config.onTaskRequest?.({
                         eventName: "ERROR_ESCALATION",
                         actionType: "ESCALATE",
-                        description: `[ErrorRouter] ${error.kind}: ${error.message}`,
+                        description: `[ErrorRouter] ${error.kind}: ${ErrorRouter.truncate(error.message)}`,
                         source: error,
                     }));
                     break;
@@ -81,7 +96,7 @@ export class ErrorRouter {
                     await Promise.resolve(this.config.onTaskRequest?.({
                         eventName: "ERROR_ESCALATION",
                         actionType: "AI_ANALYZE",
-                        description: `[ErrorRouter:AI] ${error.kind}: ${error.message}`,
+                        description: `[ErrorRouter:AI] ${error.kind}: ${ErrorRouter.truncate(error.message)}`,
                         source: error,
                     }));
                     break;
