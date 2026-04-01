@@ -25,7 +25,8 @@
 
     /* Resolution: モジュール解決の最適化 */
     "resolveJsonModule": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "types": ["node"]
   },
   "include": ["src/**/*.ts", "types/**/*.d.ts", "rollup.config.js", "eslint.config.js"],
   "exclude": ["node_modules", "dist", "samples", "tests"]
