@@ -20,8 +20,8 @@ docs/testing/
 | カテゴリ | ディレクトリ | テスト数 | 目的 |
 |---------|------------|---------|------|
 | Unit | `tests/unit/` | 220 | 各モジュールの単体責務を孤立検証 |
-| Security | `tests/security/` | 94 | 攻撃ベクトル別のペネトレーションテスト |
-| Config | `tests/config/` | 322 | 全設定パターンの正常系/異常系/エッジケース |
+| Security | `tests/security/` | 1,203 | 攻撃ベクトル別のペネトレーションテスト |
+| Config | `tests/config/` | 347 | 全設定パターンの正常系/異常系/エッジケース |
 | Integration | `tests/integration/` | 18 | SDK内パイプラインE2E |
 | E2E | `tests/e2e/` | 15 | TS SDK → Go Server 実gRPC通信 |
 | **合計** | | **1,899** | |

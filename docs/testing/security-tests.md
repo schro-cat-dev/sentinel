@@ -1,6 +1,6 @@
 # セキュリティテスト一覧・攻撃ベクトル網羅性
 
-**テスト数:** 94
+**テスト数:** 1,203
 **対象:** `tests/security/`
 
 ## 攻撃ベクトル × テストカバレッジ
@@ -24,6 +24,16 @@
 | rawLog PII Leak | CWE-200 | new-findings-v2.test.ts | 1 | 検知ペイロードにactorId/input/detailsが含まれない |
 | Ghost Entry | CWE-460 | new-findings-v2.test.ts | 1 | コールバック例外後のhash chainゴースト防止 |
 | Message Required | CWE-20 | new-findings-v2.test.ts | 2 | undefined/nullメッセージの拒否 |
+| Fuzzing Inputs | CWE-20 | fuzzing-inputs.test.ts | 102 | ランダム/構造化ファズ入力による未知のクラッシュ検出 |
+| Encoding Bypass | CWE-838 | encoding-bypass.test.ts | 111 | Unicode/Base64/URL/HTML/混合エンコードによるバリデーション回避 |
+| PII Masking Advanced | CWE-200 | pii-masking-advanced.test.ts | 158 | 国際形式/部分マスク/コンテキスト依存/多言語PIIパターン |
+| Injection Attacks | CWE-74 | injection-attacks.test.ts | 382 | SQL/NoSQL/LDAP/XPath/コマンド/テンプレート/ヘッダ注入 |
+| Crypto Attacks | CWE-310 | crypto-attacks.test.ts | 100 | HMAC偽造/鍵推測/ハッシュ衝突/ダウングレード攻撃 |
+| State Manipulation | CWE-362 | state-manipulation.test.ts | 80 | 並行状態変更/TOCTOU/チェーン分岐/不整合復旧 |
+| Type Confusion | CWE-843 | type-confusion.test.ts | 94 | 型強制/プロトタイプチェーン/Symbol/Proxy/toString悪用 |
+| DoS Resource Exhaustion | CWE-400 | dos-resource-exhaustion.test.ts | 50 | メモリ枯渇/CPU枯渇/深いネスト/巨大ペイロード |
+| Config Injection | CWE-15 | config-injection.test.ts | 71 | 設定値注入/環境変数汚染/デフォルト上書き/型変換 |
+| Transport Security | CWE-319 | transport-security.test.ts | 55 | TLS検証/証明書ピニング/ダウングレード/中間者攻撃 |
 
 ## テスト設計根拠
 
@@ -42,3 +52,4 @@
 - **高リスク（ReDoS, Prototype, Validation, Masking, Hash）**: 5-19テスト — 境界値・複数パターン
 - **中リスク（Timing, Race, Config）**: 1-3テスト — 原理的に1パターンで検証可能
 - **修正リグレッション**: 各修正に1テスト — 再発防止が目的
+- **高度攻撃（Injection, Fuzzing, Encoding, Crypto, DoS）**: 50-382テスト — 実攻撃パターンの網羅的再現

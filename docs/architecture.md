@@ -193,7 +193,7 @@ IngestResponse (protobuf)
 | `internal/retry` | retry.go | Exponential backoff + full jitter. Generic `DoWithResult[T]`. |
 | `internal/grpc` | server.go, interceptors.go | gRPC service (Ingest/HealthCheck/Tasks/Approval/Block). Auth + rate limit interceptors. Audit log interceptor. |
 | `internal/webhook` | notifier.go | Approval notification via webhook (HMAC-signed). |
-| `config` | config.go | YAML config loading + env var overrides + validation + defaults. |
+| `config` | config.go | YAML config loading + env var overrides + validation + defaults. Notify provider config (Slack/Discord/Gmail) + prefix-based routing. |
 | `cmd/server` | main.go | Entry point. Full module wiring. TLS support. Structured logging (slog/JSON). Graceful shutdown. |
 
 ### Detection Rules (Strategy Pattern)

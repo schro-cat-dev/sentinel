@@ -3,6 +3,10 @@
 ## Table of Contents
 
 1. [TypeScript Client SDK](#typescript-client-sdk)
+   - [Install](#install) / [Initialize](#initialize) / [Ingest Logs](#ingest-logs)
+   - [Register Task Handlers](#register-task-handlers) / [SEMI_AUTO Confirmation](#semi_auto-confirmation-handler)
+   - [Error Handling](#error-handling) / [Size Limits](#size-limits-validationlimits)
+   - [Shutdown](#shutdown) / [Reset](#reset-testing)
 2. [Go Backend Server](#go-backend-server)
 3. [Configuration Reference](#configuration-reference)
 4. [Task Rules Reference](#task-rules-reference)
@@ -69,7 +73,8 @@ const result = await sentinel.ingest({
 //   traceId: "custom-trace-id",
 //   hashChainValid: true,
 //   masked: true,
-//   tasksGenerated: []
+//   tasksGenerated: [],
+//   detection: null          // イベント検知時: { eventName: "...", priority: "HIGH" }
 // }
 ```
 
@@ -94,6 +99,70 @@ sentinel.onTaskAction("ESCALATE", async (task) => {
   // Create ticket in issue tracker
   console.log(`Escalation: ${task.description} (${task.sourceLog.traceId})`);
 });
+```
+
+### SEMI_AUTO Confirmation Handler
+
+```typescript
+// SEMI_AUTO タスクの自動承認/拒否を制御
+sentinel.onTaskConfirm(async (task) => {
+  // CRITICAL のみ自動承認、それ以外はブロック
+  return task.severity === "CRITICAL";
+});
+```
+
+確認ハンドラ未登録の場合、SEMI_AUTO は AUTO と同じ動作（後方互換）。
+
+### Error Handling
+
+```typescript
+const sentinel = Sentinel.initialize(createDefaultConfig({
+  projectName: "my-app",
+  serviceId: "svc",
+  // パイプライン内部のswallowされるエラーを受け取る
+  onError: (error, context) => {
+    console.error(`[Sentinel] ${context}: ${error.message}`);
+    // context: "callback", "transport.dual" 等
+  },
+  // SDK内部のログ出力先を制御（省略時はconsole出力なし）
+  logger: {
+    warn: (msg) => myLogger.warn(`[Sentinel] ${msg}`),
+    error: (msg) => myLogger.error(`[Sentinel] ${msg}`),
+  },
+}));
+```
+
+### Size Limits (ValidationLimits)
+
+```typescript
+// デフォルト制限値を確認
+import { DEFAULT_VALIDATION_LIMITS } from "@schro-cat-dev/sentinel";
+// {
+//   maxMessageLength: 65536,      maxDetailsLength: 65536,
+//   maxStringFieldLength: 512,    maxInputSize: 1_048_576 (1MB),
+//   maxTotalLogSize: 2_097_152 (2MB), ...
+// }
+
+// 大きなペイロードを扱う場合はオーバーライド
+const sentinel = Sentinel.initialize(createDefaultConfig({
+  projectName: "my-app",
+  serviceId: "svc",
+  validationLimits: {
+    maxInputSize: 5_000_000,      // input フィールドを5MBまで許容
+    maxTotalLogSize: 10_000_000,  // ログ全体を10MBまで許容
+    maxStringFieldLength: 2048,   // actorId等の文字列フィールドを2KBまで
+  },
+}));
+```
+
+### Shutdown
+
+```typescript
+// グレースフルシャットダウン: Transport接続を閉じ、ハンドラをクリア
+await sentinel.shutdown();
+
+// shutdown後は再initializeが必要
+const newSentinel = Sentinel.initialize(newConfig);
 ```
 
 ### Reset (Testing)

@@ -4,7 +4,7 @@
 analyzed_at: "2026-04-01"
 based_on: "pending commit"
 status: current
-last_updated: "2026-04-01T14:12:00Z"
+last_updated: "2026-04-01T17:00:00Z"
 ```
 
 ## 全項目ステータス

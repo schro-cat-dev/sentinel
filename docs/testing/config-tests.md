@@ -1,6 +1,6 @@
 # 設定マトリクステスト一覧・全設定パターン検証
 
-**テスト数:** 322
+**テスト数:** 347
 **対象:** `tests/config/`
 
 ## テストファイル一覧
@@ -79,3 +79,11 @@
 | aiContext | 7 | 有効/負loopDepth/文字列loopDepth/ゼロ/大きい値/undefined/null |
 | normalizer defaults | 30+ | 全フィールドのデフォルト値・passthrough・serviceId注入 |
 | edge cases | 18 | 空入力/全フィールド/未知フィールド/Unicode(日本語/絵文字) |
+
+### size-limits.test.ts (25テスト)
+
+**ValidationLimitsの設定可能なサイズ制限の全パターン**。
+
+| テスト群 | テスト数 | 検証内容 | なぜ |
+|---------|---------|---------|------|
+| size limits | 25 | actorId/traceId/spanId/boundary/traceInfo/input JSON/total logの各フィールドサイズ制限。デフォルト値・カスタム値・境界値・超過時エラー | 全フィールドのサイズ制限が正しく適用されるか |

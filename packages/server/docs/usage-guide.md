@@ -179,6 +179,46 @@ agent:
   min_severity: "HIGH"
 ```
 
+### notify（通知プロバイダ）
+
+```yaml
+notify:
+  slack:
+    enabled: true
+    webhook_url: "https://hooks.slack.com/services/..."   # or SENTINEL_SLACK_WEBHOOK_URL
+    channel: "#alerts"                                     # デフォルトチャネル（省略時はWebhook設定に従う）
+  discord:
+    enabled: true
+    webhook_url: "https://discord.com/api/webhooks/..."   # or SENTINEL_DISCORD_WEBHOOK_URL
+    username: "Sentinel Bot"                               # Bot表示名
+  gmail:
+    enabled: true
+    from: "sentinel@example.com"    # or SENTINEL_GMAIL_FROM
+    password: ""                     # or SENTINEL_GMAIL_PASSWORD（App Password推奨）
+    smtp_host: "smtp.gmail.com"     # デフォルト: smtp.gmail.com
+    smtp_port: "587"                # デフォルト: 587
+    to: ["admin@example.com"]
+  routing:                          # notify_targets のプレフィックスでプロバイダを自動選択
+    - prefix: "#"
+      provider: slack               # "#security" → Slack
+    - prefix: "@"
+      provider: gmail               # "@admin@example.com" → Gmail
+    - prefix: "https://"
+      provider: webhook             # "https://..." → Webhook POST
+```
+
+**ルーティングの仕組み:**
+`response.rules[].notify_targets` に指定された文字列のプレフィックスで、通知先プロバイダを自動選択する。例えば `notify_targets: ["#security", "@admin@example.com"]` の場合、`#security` は Slack に、`@admin@example.com` は Gmail にそれぞれルーティングされる。`routing` を省略した場合、デフォルトで `#` → slack、`@` → gmail、`https://` → webhook が適用される。
+
+**環境変数によるオーバーライド:**
+```bash
+# 環境変数を設定すると、対応するプロバイダが自動で enabled=true になる
+export SENTINEL_SLACK_WEBHOOK_URL="https://hooks.slack.com/services/T.../B.../xxx"
+export SENTINEL_DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/123/abc"
+export SENTINEL_GMAIL_FROM="sentinel@company.com"
+export SENTINEL_GMAIL_PASSWORD="xxxx xxxx xxxx xxxx"
+```
+
 ### auth / webhook / server / store
 
 ```yaml

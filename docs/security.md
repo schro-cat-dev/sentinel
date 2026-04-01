@@ -257,7 +257,42 @@ Server-side structured logs (JSON via `log/slog`) include:
 | ReDoS 防止 | 組込みパターンはReDoS-safe。ユーザーREGEXは未検証 | `sanitizer.go`: `ValidateRegexSafety` |
 | RBAC 認可 | なし（SDKはクライアント側） | `authorizer.go`: ロール→権限 |
 
+| actorId/traceId/spanId/boundary/traceInfo | `log-validator.ts`: maxStringFieldLength (default 512) | サーバ側でも同様の制限 |
+| resourceIds 各要素 | `log-validator.ts`: maxResourceIdLength (default 512) | — |
+| input JSONサイズ | `log-validator.ts`: maxInputSize (default 1MB) | `normalizer.go`: サイズ制限 |
+| total logサイズ | `log-validator.ts`: maxTotalLogSize (default 2MB) | `normalizer.go`: サイズ制限 |
+
 **設計原則**: SDK は「明らかに不正な入力を早期に弾く」（validateLogInput）。LogNormalizer は「防御的フォールバック」のみ（検証は行わない）。Server は「全フィールドを厳密に検証・サニタイズする」。
+
+---
+
+## ValidationLimits (設定可能なサイズ制限)
+
+SDK の `ValidationLimits` により、全フィールドのサイズ制限を設定時にカスタマイズ可能。デフォルト値はセキュリティとユーザビリティのバランスを考慮して設定。
+
+```typescript
+const config = createDefaultConfig({
+  projectName: "my-project",
+  serviceId: "svc-1",
+  validationLimits: {
+    maxMessageLength: 65536,
+    maxStringFieldLength: 512,   // actorId, traceId, spanId, boundary, traceInfo
+    maxResourceIdLength: 512,
+    maxInputSize: 1_048_576,     // 1MB
+    maxTotalLogSize: 2_097_152,  // 2MB
+  },
+});
+```
+
+| フィールド | デフォルト上限 | 超過時の動作 |
+|-----------|-------------|------------|
+| message | 65,536 chars | ValidationError |
+| details | 65,536 chars | ValidationError |
+| actorId/traceId/spanId/parentSpanId/boundary/traceInfo | 512 chars | ValidationError |
+| tags | 100件、key 128 chars、category 1024 chars | ValidationError |
+| resourceIds | 100件、各要素 512 chars | ValidationError |
+| input (JSON概算) | 1,048,576 bytes (1MB) | ValidationError |
+| ログ全体 (概算) | 2,097,152 bytes (2MB) | ValidationError |
 
 ---
 
