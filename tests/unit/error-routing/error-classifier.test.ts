@@ -93,6 +93,31 @@ describe("ErrorClassifier", () => {
         expect(result.meta.operation).toBe("mask");
     });
 
+    it("classifySeverity falls back to WARNING for kind not in any list", () => {
+        // Custom config with empty lists → "Unknown" kind hits default WARNING
+        const custom = new ErrorClassifier({ CRITICAL: [], WARNING: [] });
+        const result = custom.classify({
+            error: new Error("random error"),
+            context: "callback",
+        });
+        expect(result.kind).toBe("Unknown");
+        expect(result.severity).toBe("WARNING");
+    });
+
+    it("safeMessage catch branch for exotic error that throws on String()", () => {
+        const exotic = {
+            get message(): string { throw new Error("getter throws"); },
+            // toString also throws
+            toString(): string { throw new Error("toString throws"); },
+        };
+        const result = classifier.classify({
+            error: exotic as unknown as Error,
+            context: "callback",
+        });
+        // safeMessage should catch and return "unknown error"
+        expect(result.message).toBe("unknown error");
+    });
+
     it("classification itself throwing returns ClassificationError", () => {
         // Force classify to fail by passing input that causes context.startsWith to throw
         const poisoned = {

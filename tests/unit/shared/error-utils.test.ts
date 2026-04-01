@@ -1,9 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
     isPiiSafe,
     maskPiiContext,
     safeContext,
     serializeForAudit,
+    logFinancialError,
     classifyError,
     getErrorMessage,
     DEFAULT_ERROR_SEVERITY,
@@ -310,5 +311,76 @@ describe("getErrorMessage", () => {
 
     it("defaults to Japanese locale", () => {
         expect(getErrorMessage(makeError("DB_DUPLICATE_KEY"))).toBe("データベース重複キー違反");
+    });
+});
+
+// =========================================================================
+// logFinancialError
+// =========================================================================
+describe("logFinancialError", () => {
+    const baseError: ErrorPayloadProtocol = {
+        kind: "DbConnection",
+        detailKind: "pool",
+        code: "DB_CONNECTION_FAILED",
+        message: "Connection refused",
+        meta: {
+            traceId: "trace-001",
+            layer: "Database",
+            context: { host: "db-01", port: 5432 },
+        },
+    };
+
+    it("outputs JSON to console.error with safe context", () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        logFinancialError(baseError);
+
+        expect(stderrSpy).toHaveBeenCalledTimes(1);
+        const output = stderrSpy.mock.calls[0][0] as string;
+        const parsed: Record<string, unknown> = JSON.parse(output);
+        expect(parsed.kind).toBe("DbConnection");
+        expect(parsed.traceId).toBe("trace-001");
+        stderrSpy.mockRestore();
+    });
+
+    it("handles null context gracefully", () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const errorWithNullContext: ErrorPayloadProtocol = {
+            ...baseError,
+            meta: { ...baseError.meta, context: null },
+        };
+        logFinancialError(errorWithNullContext);
+        expect(stderrSpy).toHaveBeenCalledTimes(1);
+        stderrSpy.mockRestore();
+    });
+
+    it("masks PII in context values", () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const errorWithPii: ErrorPayloadProtocol = {
+            ...baseError,
+            meta: {
+                ...baseError.meta,
+                context: { email: "user@example.com", safe: "ok" },
+            },
+        };
+        logFinancialError(errorWithPii);
+        const output = stderrSpy.mock.calls[0][0] as string;
+        // email should be masked so context key count changes
+        expect(output).not.toContain("user@example.com");
+        stderrSpy.mockRestore();
+    });
+
+    it("does not mutate the original error object", () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const original: ErrorPayloadProtocol = {
+            ...baseError,
+            meta: {
+                ...baseError.meta,
+                context: { email: "test@test.com", status: "active" },
+            },
+        };
+        const contextBefore = { ...original.meta.context };
+        logFinancialError(original);
+        expect(original.meta.context).toEqual(contextBefore);
+        stderrSpy.mockRestore();
     });
 });

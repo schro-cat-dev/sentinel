@@ -316,3 +316,66 @@ describe("Sentinel.getConfig", () => {
         expect(cfg.serviceId).toBe("my-svc");
     });
 });
+
+// =========================================================================
+// Error escalation depth (onError + callback throws)
+// =========================================================================
+describe("Error escalation safety", () => {
+    it("onLogProcessed + onError both throwing does not crash or loop", async () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const sentinel = Sentinel.initialize(defaultConfig({
+            onLogProcessed: () => { throw new Error("callback boom"); },
+            onError: () => { throw new Error("onError boom"); },
+        }));
+
+        // パイプライン自体はクラッシュしない
+        const result = await sentinel.ingest({ message: "test", level: 3 });
+        expect(result.traceId).toBeDefined();
+
+        // onError例外はconsole.errorに記録される
+        expect(stderrSpy).toHaveBeenCalled();
+        stderrSpy.mockRestore();
+    });
+
+    it("multiple failing callbacks do not cause infinite recursion", async () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        let callCount = 0;
+        const sentinel = Sentinel.initialize(defaultConfig({
+            onLogProcessed: () => { callCount++; throw new Error("processed boom"); },
+            onTaskGenerated: () => { callCount++; throw new Error("generated boom"); },
+            onError: () => { callCount++; throw new Error("error boom"); },
+            taskRules: [createTestTaskRule()],
+        }));
+
+        await sentinel.ingest({
+            message: "critical failure",
+            isCritical: true,
+            level: 6,
+        });
+
+        // コールバックは呼ばれたが、無限ループしていない（callCountが制限内）
+        expect(callCount).toBeLessThan(50);
+        stderrSpy.mockRestore();
+    });
+
+    it("concurrent ingests with throwing callbacks all complete", async () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const sentinel = Sentinel.initialize(defaultConfig({
+            onLogProcessed: () => { throw new Error("concurrent boom"); },
+            onError: () => { /* swallow */ },
+        }));
+
+        const results = await Promise.all(
+            Array.from({ length: 20 }, (_, i) =>
+                sentinel.ingest({ message: `concurrent ${i}`, level: 3 }),
+            ),
+        );
+
+        // 全20件が完了
+        expect(results).toHaveLength(20);
+        for (const r of results) {
+            expect(r.traceId).toBeDefined();
+        }
+        stderrSpy.mockRestore();
+    });
+});

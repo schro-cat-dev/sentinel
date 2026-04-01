@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { ErrorRouter } from "../../../src/error-routing/error-router";
-import type { AuditSink, ErrorRoutingLogger } from "../../../src/error-routing/types";
+import type { AuditSink, DeadLetterQueue, ErrorRoutingLogger } from "../../../src/error-routing/types";
 
 describe("ErrorRouter", () => {
     it("enabled=true routes error through classify → evaluate → execute", async () => {
@@ -101,6 +101,69 @@ describe("ErrorRouter", () => {
         expect(call[1]).toEqual(
             expect.objectContaining({ severity: "INFO", traceId: "trace-abc" }),
         );
+    });
+
+    it("dead_letter destination enqueues classified error", async () => {
+        const dlq: DeadLetterQueue = { enqueue: vi.fn().mockResolvedValue(undefined) };
+        const router = new ErrorRouter({
+            enabled: true,
+            sinks: { deadLetter: dlq },
+            rules: [
+                {
+                    match: { severity: "WARNING" },
+                    decisions: [{
+                        destination: "dead_letter",
+                        action: "retry",
+                        priority: 3,
+                        metadata: { reason: "transient" },
+                    }],
+                },
+            ],
+        });
+
+        await router.route(new Error("some warning"), "callback");
+        expect(dlq.enqueue).toHaveBeenCalledTimes(1);
+        const call = vi.mocked(dlq.enqueue).mock.calls[0];
+        expect(call[1]).toEqual({ reason: "transient" });
+    });
+
+    it("dead_letter without metadata passes empty object", async () => {
+        const dlq: DeadLetterQueue = { enqueue: vi.fn().mockResolvedValue(undefined) };
+        const router = new ErrorRouter({
+            enabled: true,
+            sinks: { deadLetter: dlq },
+            rules: [
+                {
+                    match: { severity: "WARNING" },
+                    decisions: [{ destination: "dead_letter", action: "retry", priority: 3 }],
+                },
+            ],
+        });
+
+        await router.route(new Error("some warning"), "callback");
+        const call = vi.mocked(dlq.enqueue).mock.calls[0];
+        expect(call[1]).toEqual({});
+    });
+
+    it("classify/evaluate throwing falls back to console.error", async () => {
+        const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        // Router with a rule whose kindPattern.test will throw
+        const throwingPattern = {
+            test: () => { throw new Error("regex engine exploded"); },
+        };
+        const router = new ErrorRouter({
+            enabled: true,
+            rules: [
+                {
+                    match: { severity: "CRITICAL", kindPattern: throwingPattern as unknown as RegExp },
+                    decisions: [],
+                },
+            ],
+        });
+
+        await router.route(new Error("connection refused"), "transport.dual");
+        expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("[Sentinel:ErrorRouter] routing failed:"));
+        stderrSpy.mockRestore();
     });
 
     it("log destination without logger does nothing (no-op)", async () => {

@@ -1,0 +1,97 @@
+# ============================================================================
+# Sentinel SDK Configuration Template
+# ============================================================================
+# Copy this file to sentinel.config.yaml and adjust for your environment.
+# Environment variables can be used with ${VAR_NAME} or ${VAR_NAME:-default}
+# ============================================================================
+
+# --- Required ---
+project_name: ${SENTINEL_PROJECT_NAME:-my-project}
+service_id: ${SENTINEL_SERVICE_ID:-my-service}
+
+# --- Environment ---
+# Values: production, staging, development, local, test
+environment: ${SENTINEL_ENV:-development}
+
+# --- PII Masking ---
+masking:
+  enabled: true
+  rules:
+    - type: PII_TYPE
+      category: EMAIL
+    - type: PII_TYPE
+      category: CREDIT_CARD
+    - type: PII_TYPE
+      category: PHONE
+    - type: PII_TYPE
+      category: GOVERNMENT_ID
+    - type: PII_TYPE
+      category: JAPAN_ACCOUNT
+    - type: PII_TYPE
+      category: POSTAL_CODE
+    # Custom regex rule example:
+    # - type: REGEX
+    #   pattern: "secret_[a-zA-Z0-9]+"
+    #   replacement: "[REDACTED_SECRET]"
+    #   description: "Mask internal secrets"
+    # Key-based masking example:
+    # - type: KEY_MATCH
+    #   sensitive_keys:
+    #     - password
+    #     - api_key
+    #     - token
+  preserve_fields:
+    - traceId
+    - spanId
+
+# --- Security ---
+security:
+  enable_hash_chain: true
+  # signing_key_id: ${SENTINEL_SIGNING_KEY_ID}
+
+# --- Task Rules ---
+task_rules:
+  - rule_id: crit-notify
+    event_name: SYSTEM_CRITICAL_FAILURE
+    severity: CRITICAL
+    action_type: SYSTEM_NOTIFICATION
+    execution_level: AUTO
+    priority: 1
+    description: "Notify on critical system failure"
+    guardrails:
+      require_human_approval: false
+      timeout_ms: 30000
+      max_retries: 3
+
+  - rule_id: sec-analyze
+    event_name: SECURITY_INTRUSION_DETECTED
+    severity: HIGH
+    action_type: AI_ANALYZE
+    execution_level: SEMI_AUTO
+    priority: 1
+    description: "AI analysis on security intrusion"
+    guardrails:
+      require_human_approval: true
+      timeout_ms: 60000
+      max_retries: 2
+
+# --- Detection Rules (optional) ---
+# detection_rules:
+#   - rule_id: custom-detect-1
+#     event_name: SYSTEM_CRITICAL_FAILURE
+#     priority: HIGH
+#     conditions:
+#       log_types:
+#         - SYSTEM
+#         - INFRA
+#       min_level: 5
+#       message_pattern: "fatal|panic|oom"
+#       is_critical: true
+
+# --- Whitelist (optional) ---
+# whitelist:
+#   level: standard  # strict | standard | permissive | off
+#   enabled_domains:
+#     - security
+#     - task
+#     - privacy

@@ -264,6 +264,8 @@ export class Sentinel {
 
 // Public API exports
 export { createDefaultConfig } from "./configs/sentinel-config";
+export { loadConfigFromYaml, parseConfigYaml, ConfigLoadError } from "./configs/config-loader";
+export type { RawYamlConfig, ConfigLoaderOptions } from "./configs/config-loader";
 export type { SentinelConfig } from "./configs/sentinel-config";
 export type { MaskingRule } from "./configs/masking-rule";
 export type { Log, LogType, LogLevel, LogTag } from "./types/log";

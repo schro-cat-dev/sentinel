@@ -484,6 +484,36 @@ describe("Security: DoS and Resource Exhaustion", () => {
             }
             assertTiming(start, "70 mixed type ingests");
         });
+        it("handles 1000 sequential ingests with stable timing (sustained throughput)", async () => {
+            Sentinel.reset();
+            const sentinel = createSentinelWithTaskRules();
+            const batchSize = 200;
+            const batches = 5; // 5 × 200 = 1000 ingests
+            const batchTimings: number[] = [];
+
+            for (let batch = 0; batch < batches; batch++) {
+                const batchStart = performance.now();
+                for (let i = 0; i < batchSize; i++) {
+                    await sentinel.ingest({
+                        message: `Sustained log batch=${batch} i=${i}`,
+                        type: "SYSTEM",
+                        level: 3,
+                        boundary: "test:sustained",
+                    });
+                }
+                batchTimings.push(performance.now() - batchStart);
+            }
+
+            // 全バッチが制限時間内
+            for (let b = 0; b < batches; b++) {
+                expect(batchTimings[b], `batch ${b} took ${batchTimings[b].toFixed(0)}ms`).toBeLessThan(TIMING_LIMIT_MS);
+            }
+
+            // 後半バッチが前半の5倍以上遅くなっていないこと（メモリリーク/性能劣化チェック）
+            const firstBatch = batchTimings[0];
+            const lastBatch = batchTimings[batches - 1];
+            expect(lastBatch, `last batch (${lastBatch.toFixed(0)}ms) vs first (${firstBatch.toFixed(0)}ms)`).toBeLessThan(firstBatch * 5);
+        });
     });
 
     // =========================================================================
