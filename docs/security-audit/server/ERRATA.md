@@ -25,10 +25,15 @@ auditor: automated verification against source code
 | V-2 | MEDIUM | ApproveBlock 認可なし | `AuthorizerForApproval` インターフェース + `CanApprove` チェック追加 |
 | V-4 | LOW | 証明書ホットリロード競合 | `atomic.Pointer[tls.Certificate]` に変更 |
 
+## 追加修正
+
+| ID | 重要度 | 問題 | 修正内容 |
+|---|---|---|---|
+| V-3 | MEDIUM | EnhancedBlockDispatcher の store が nil | `DomainStoreAdapter` 作成。main.goでSQLiteStoreを接続。pending blocksがDBに永続化 |
+| V-5 | LOW | pending_blocks テーブルが未使用 | V-3修正により活性化。4テスト追加（Save/Get/Update/List） |
+
 ## 残存事項（設計上の判断）
 
 | ID | 重要度 | 問題 | 判断 |
 |---|---|---|---|
-| V-3 | MEDIUM | EnhancedBlockDispatcher の store が nil | main.go でストア接続が必要。現在は response module 自体がオプショナルなため許容 |
-| V-5 | LOW | pending_blocks テーブルが未使用 | V-3 と同根。ストア接続時に活性化 |
 | V-6 | LOW | SIGHUP goroutine が停止しない | プロセス終了で回収。テスト時はgoroutineリーク |

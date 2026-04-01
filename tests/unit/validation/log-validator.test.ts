@@ -299,6 +299,23 @@ describe("validateLogInput", () => {
         })).toThrow(ValidationError);
     });
 
+    // --- agentBackLog exceeding maxInputSize (line 209) ---
+    it("rejects agentBackLog exceeding maxInputSize (few keys but large values)", () => {
+        // キー数は100以下だがサイズが大きい（L204のキー数制限を通過してL208に到達）
+        const largeBackLog: Record<string, string> = {};
+        for (let i = 0; i < 10; i++) {
+            largeBackLog[`k${i}`] = "x".repeat(1000);
+        }
+        expect(() => validateLogInput(
+            { message: "test", agentBackLog: largeBackLog as never },
+            { maxInputSize: 100 },
+        )).toThrow(ValidationError);
+        expect(() => validateLogInput(
+            { message: "test", agentBackLog: largeBackLog as never },
+            { maxInputSize: 100 },
+        )).toThrow("agentBackLog");
+    });
+
     // --- total size exceeding maxTotalLogSize (line 211) ---
     it("rejects log exceeding total max size", () => {
         // A log with a huge message that fits within message limit but exceeds total log limit

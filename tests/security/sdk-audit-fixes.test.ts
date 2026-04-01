@@ -22,6 +22,8 @@ import {
 import { Sentinel, ValidationError, validateLogInput } from "../../src/index";
 import { createTestConfig, createTestLog, createTestTaskRule } from "../helpers/fixtures";
 import { ErrorRouter } from "../../src/error-routing/error-router";
+import { MaskingService } from "../../src/security/masking-service";
+import { EventDetector } from "../../src/core/detection/event-detector";
 
 // =========================================================================
 // VULN-001: ReDoS防御 — config-loader にパターン長制限 + ネスト量指定子検出
@@ -121,6 +123,16 @@ detection_rules:
         it("accepts non-nested quantifiers", () => {
             expect(() => parseConfigYaml(BASE_YAML("[a-z]+"))).not.toThrow();
             expect(() => parseConfigYaml(BASE_YAML("\\\\d{4}-\\\\d{4}"))).not.toThrow();
+        });
+
+        it("accepts group with inner quantifier but no outer quantifier (a+)b", () => {
+            // (a+) has quantifier inside group, but no outer quantifier → safe
+            expect(() => parseConfigYaml(BASE_YAML("(a+)b"))).not.toThrow();
+        });
+
+        it("accepts group at end of pattern (closing paren is last char)", () => {
+            // Tests the `i + 1 < pattern.length ? pattern[i + 1] : ""` false branch
+            expect(() => parseConfigYaml(BASE_YAML("test(abc)"))).not.toThrow();
         });
     });
 
@@ -480,6 +492,114 @@ describe("SDK-B: aiContext prototype pollution prevention", () => {
             message: "test",
             aiContext: { loopDepth: 1, model: "gpt-4", provider: "openai" },
         })).resolves.toBeDefined();
+    });
+});
+
+// =========================================================================
+// REDOS-003: masking-service regex入力長ガード
+// =========================================================================
+
+describe("REDOS-003: masking-service regex input length guard", () => {
+    it("skips user REGEX rules on strings exceeding MAX_REGEX_INPUT_LENGTH", () => {
+        const hugeString = "a".repeat(100_000);
+        const log = createTestLog({ message: hugeString });
+
+        const start = performance.now();
+        const masked = MaskingService.mask(log, [
+            {
+                type: "REGEX",
+                pattern: /[a-z]+/g,
+                replacement: "[REDACTED]",
+                description: "test",
+            },
+        ]);
+        const elapsed = performance.now() - start;
+
+        // Regex should be skipped for oversized strings — fast completion
+        expect(elapsed).toBeLessThan(500);
+        // Oversized string: REGEX rule skipped, original preserved
+        expect(masked.message).toBe(hugeString);
+    });
+
+    it("still applies REGEX masking on normal-length strings", () => {
+        const log = createTestLog({
+            message: "secret-key: abc123",
+        });
+
+        const masked = MaskingService.mask(log, [
+            {
+                type: "REGEX",
+                pattern: /secret-key:\s*\S+/g,
+                replacement: "[REDACTED]",
+                description: "test",
+            },
+        ]);
+
+        expect(masked.message).toBe("[REDACTED]");
+    });
+
+    it("still applies PII_TYPE masking regardless of length", () => {
+        const log = createTestLog({
+            message: "Card: 4111-1111-1111-1111",
+        });
+
+        const masked = MaskingService.mask(log, [
+            { type: "PII_TYPE", category: "CREDIT_CARD" },
+        ]);
+
+        expect(masked.message).toContain("[MASKED_CREDIT_CARD]");
+    });
+});
+
+// =========================================================================
+// REDOS-004: event-detector messagePattern入力長ガード
+// =========================================================================
+
+describe("REDOS-004: event-detector messagePattern input length guard", () => {
+    it("skips messagePattern test on oversized messages", () => {
+        const detector = new EventDetector([{
+            ruleId: "r1",
+            eventName: "SECURITY_INTRUSION_DETECTED",
+            priority: "HIGH",
+            conditions: {
+                messagePattern: /suspicious/,
+            },
+        }]);
+
+        // 70KB message — exceeds safe regex input length
+        const log = createTestLog({
+            message: "suspicious" + "x".repeat(70_000),
+        });
+
+        const start = performance.now();
+        const result = detector.detect(log);
+        const elapsed = performance.now() - start;
+
+        expect(elapsed).toBeLessThan(100);
+        // messagePattern skipped → no custom rule match
+        expect(result).toBeNull();
+    });
+
+    it("applies messagePattern on normal-length messages", () => {
+        const detector = new EventDetector([{
+            ruleId: "r1",
+            eventName: "SECURITY_INTRUSION_DETECTED",
+            priority: "HIGH",
+            conditions: {
+                messagePattern: /suspicious/,
+                logTypes: ["SECURITY"],
+            },
+        }]);
+
+        const log = createTestLog({
+            type: "SECURITY",
+            message: "suspicious activity detected",
+        });
+
+        const result = detector.detect(log);
+        // SECURITY + level 3 → built-in doesn't match (needs level >= 5)
+        // Custom rule should match
+        expect(result).not.toBeNull();
     });
 });
 

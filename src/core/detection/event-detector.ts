@@ -132,6 +132,9 @@ export class EventDetector {
         return null;
     }
 
+    /** REDOS-004: messagePattern実行時の入力長上限 */
+    private static readonly MAX_REGEX_INPUT_LENGTH = 65536;
+
     /**
      * カスタムルールの条件を全てAND評価する
      */
@@ -150,8 +153,14 @@ export class EventDetector {
             return false;
         }
 
-        if (conditions.messagePattern && !conditions.messagePattern.test(log.message)) {
-            return false;
+        // REDOS-004: 入力長ガード — 巨大メッセージへのregex実行を回避
+        if (conditions.messagePattern) {
+            if (log.message.length > EventDetector.MAX_REGEX_INPUT_LENGTH) {
+                return false;
+            }
+            if (!conditions.messagePattern.test(log.message)) {
+                return false;
+            }
         }
 
         if (conditions.tagMatch) {

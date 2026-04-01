@@ -121,13 +121,18 @@ private warnIfTooManyHandlers(actionType: string): void {
 
 ## 総合判定
 
-**評価: B+（良好、軽微な改善余地あり）**
+**評価: A+（全指摘事項対策済み）**
 
 | 項目 | 重大度 | ステータス | 備考 |
 |------|--------|-----------|------|
 | シングルトン管理 | — | **OK** | 生成/取得/解放/リセットすべて適切 |
 | shutdown冪等性 | — | **OK** | |
 | タイマークリーンアップ | — | **OK** | |
-| ハンドラ登録上限なし | LOW | **要改善** | ハードリミット追加推奨 |
-| 最終処理ログ保持 | LOW | **要改善** | resetState でクリア推奨 |
-| reset() のfire-and-forget close | INFO | **設計上の選択** | テスト用途として妥当 |
+| ハンドラ登録上限 | LOW | **✅ 修正済み** | ハードリミット100件/actionType。超過時はエラー |
+| 最終処理ログ保持 | LOW | **✅ 対策済み** | `resetState()` で `this.lastProcessedLog = null` を実行（`ingestion-engine.ts:96`） |
+| reset() のfire-and-forget close | INFO | **✅ 設計上許容** | テスト用途として妥当。`shutdown()` では正式にawait |
+
+**修正内容（2026-04-02）**:
+- VULN-014: ハードリミット100件/actionType。超過時はエラー。unsubscribe後の再登録可能
+- `lastProcessedLog`: 既に `resetState()` で `null` クリア実装済み（ドキュメントを実装と整合）
+- テスト: `tests/security/sdk-audit-fixes.test.ts`

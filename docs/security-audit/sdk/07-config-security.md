@@ -104,13 +104,19 @@ function expandEnvVars(content: string, env: Record<string, string | undefined>)
 
 ## 総合判定
 
-**評価: A（優秀）**
+**評価: A+（優秀 — VULN-015 修正済み）**
 
 | 項目 | 重大度 | ステータス | 備考 |
 |------|--------|-----------|------|
 | プロトタイプ汚染防御 | — | **OK** | 4箇所で一貫した防御 |
 | 環境変数展開 | — | **OK** | コマンド実行防止、ネスト防止 |
-| 未定義変数のサイレント空文字列化 | LOW | **要改善** | 警告ログ追加推奨 |
+| 未定義変数の厳格モード | LOW | **✅ 修正済み** | `strictEnvExpansion: true` で未定義変数をエラーにする。デフォルト=false（後方互換） |
 | Deep Merge | — | **OK** | |
 | ホワイトリスト | — | **OK** | |
 | YAML パーサー | — | **OK** | |
+
+**修正内容（2026-04-02）**:
+- `ConfigLoaderOptions.strictEnvExpansion` オプションを追加
+- `true` の場合、`${VAR}` が未定義かつデフォルト値(`:-default`)がない場合に `ConfigLoadError` をスロー
+- デフォルト `false` で後方互換性を維持（従来通り警告+空文字列化）
+- テスト: `tests/security/sdk-audit-fixes.test.ts` — VULN-015

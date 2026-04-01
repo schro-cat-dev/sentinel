@@ -221,7 +221,9 @@ func main() {
 		if cfg.Response.BlockMode == "REQUIRE_APPROVAL" {
 			blockMode = response.ExecModeRequireApproval
 		}
-		enhancedBlocker := response.NewEnhancedBlockDispatcher(blockMode, nil)
+		// pending blocks をSQLiteに永続化（再起動時に復元可能）
+		blockStore := response.NewDomainStoreAdapter(st)
+		enhancedBlocker := response.NewEnhancedBlockDispatcher(blockMode, blockStore)
 		enhancedBlocker.Register(response.NewIPBlockAction())
 		enhancedBlocker.Register(response.NewAccountLockAction())
 

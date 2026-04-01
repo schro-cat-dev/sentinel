@@ -153,6 +153,9 @@ export class MaskingService {
         }
     }
 
+    /** REDOS-003: ユーザ定義REGEX実行時の入力長上限。これを超える文字列にはREGEXルールを適用しない */
+    private static readonly MAX_REGEX_INPUT_LENGTH = 65536;
+
     private static maskString(
         text: string,
         rules: readonly MaskingRule[],
@@ -165,6 +168,10 @@ export class MaskingService {
             try {
                 switch (rule.type) {
                     case "REGEX": {
+                        // REDOS-003: 入力長ガード — 巨大文字列へのユーザ定義regex実行を回避
+                        if (result.length > MaskingService.MAX_REGEX_INPUT_LENGTH) {
+                            break;
+                        }
                         // 元のフラグを保持しつつ、gフラグを追加（replaceAllに必要）
                         const originalFlags = rule.pattern.flags.replace(/[gy]/g, "");
                         const globalPattern = new RegExp(

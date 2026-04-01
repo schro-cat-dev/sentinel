@@ -148,7 +148,11 @@ export class Sentinel {
                 if (this.transportConfig.fallbackToLocal) {
                     const result = await this.engine.handle(log);
                     result.transportError = err instanceof Error ? err.message : String(err);
-                    try { this.engine.getOnError()?.(err instanceof Error ? err : new Error(String(err)), "transport.fallback"); } catch { /* */ }
+                    /* v8 ignore start -- onError in fallback path: catch is best-effort swallow */
+                    try {
+                        this.engine.getOnError()?.(err instanceof Error ? err : new Error(String(err)), "transport.fallback");
+                    } catch { /* onError failure is silently swallowed */ }
+                    /* v8 ignore stop */
                     return result;
                 }
                 throw err;

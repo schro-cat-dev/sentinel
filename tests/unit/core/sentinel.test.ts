@@ -225,15 +225,48 @@ describe("Sentinel.ingest", () => {
         expect(result.transportError).toBe("network fail");
     });
 
-    it("remote mode with fallbackToLocal falls back on error", async () => {
+    it("remote mode with fallbackToLocal falls back on error and records transportError", async () => {
+        const onErrorFn = vi.fn();
         const sendFn = vi.fn().mockRejectedValue(new Error("remote fail"));
+        const transport = { send: sendFn, close: vi.fn() };
+        const sentinel = Sentinel.initialize(defaultConfig({ onError: onErrorFn }), {
+            transport: { mode: "remote", transport, fallbackToLocal: true },
+        });
+
+        const result = await sentinel.ingest({ message: "fallback test", level: 3 });
+        expect(result.traceId).toBeDefined();
+        expect(result.transportError).toBe("remote fail");
+        // onError should have been called with the transport error
+        expect(onErrorFn).toHaveBeenCalledWith(
+            expect.objectContaining({ message: "remote fail" }),
+            "transport.fallback",
+        );
+    });
+
+    it("remote fallback onError callback throwing is caught silently", async () => {
+        const sendFn = vi.fn().mockRejectedValue(new Error("remote fail"));
+        const transport = { send: sendFn, close: vi.fn() };
+        const sentinel = Sentinel.initialize(defaultConfig({
+            onError: () => { throw new Error("onError boom in fallback"); },
+        }), {
+            transport: { mode: "remote", transport, fallbackToLocal: true },
+        });
+
+        // Should not throw despite onError throwing
+        const result = await sentinel.ingest({ message: "fallback test", level: 3 });
+        expect(result.traceId).toBeDefined();
+        expect(result.transportError).toBe("remote fail");
+    });
+
+    it("remote fallback with non-Error rejection records stringified error", async () => {
+        const sendFn = vi.fn().mockRejectedValue("string-rejection");
         const transport = { send: sendFn, close: vi.fn() };
         const sentinel = Sentinel.initialize(defaultConfig(), {
             transport: { mode: "remote", transport, fallbackToLocal: true },
         });
 
         const result = await sentinel.ingest({ message: "fallback test", level: 3 });
-        expect(result.traceId).toBeDefined();
+        expect(result.transportError).toBe("string-rejection");
     });
 
     it("dual mode handles non-Error thrown from transport", async () => {
