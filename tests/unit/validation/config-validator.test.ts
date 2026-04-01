@@ -209,6 +209,21 @@ describe("Config Validator: invalid values", () => {
     });
 });
 
+// ===== 異常系: whitelist.level =====
+describe("Config Validator: invalid whitelist level", () => {
+    it("rejects invalid whitelist.level value", () => {
+        const config = createDefaultConfig({
+            projectName: "test",
+            serviceId: "test-svc",
+            whitelist: {
+                level: "ultra_strict" as unknown as "strict",
+            },
+        });
+        expect(() => validateConfigWhitelists(config)).toThrow(ValidationError);
+        expect(() => validateConfigWhitelists(config)).toThrow("whitelist.level");
+    });
+});
+
 // ===== 設定変更動作テスト =====
 describe("Config Validator: config toggle behavior", () => {
     it("disabling security domain allows invalid eventName", () => {

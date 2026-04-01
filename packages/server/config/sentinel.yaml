@@ -5,6 +5,7 @@ server:
   graceful_timeout_sec: 30
   # tls_cert_file: "/path/to/cert.pem"   # TLS有効化（空=plaintext）
   # tls_key_file: "/path/to/key.pem"
+  # tls_client_ca_file: "/path/to/ca.pem" # mTLS: クライアント証明書検証用CA（空=mTLS無効）
 
 security:
   # hmac_key: override via SENTINEL_HMAC_KEY env var (required, min 32 bytes)

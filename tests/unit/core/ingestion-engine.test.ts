@@ -249,6 +249,59 @@ describe("IngestionEngine", () => {
             expect(callCount).toBe(2);
         });
 
+        it("emitSafe handles non-Error thrown value (line 221 branch)", async () => {
+            const onErrorSpy = vi.fn();
+            const { engine } = createEngine({
+                onLogProcessed: () => {
+                    // Throw a non-Error value
+                    throw "string-error" as unknown;
+                },
+                onError: onErrorSpy,
+            });
+
+            await engine.handle({ message: "trigger non-error" });
+
+            // onError should receive an Error instance wrapping the string
+            expect(onErrorSpy).toHaveBeenCalledTimes(1);
+            const [error] = onErrorSpy.mock.calls[0];
+            expect(error).toBeInstanceOf(Error);
+            expect(error.message).toBe("string-error");
+        });
+
+        it("emitSafe handles onError callback that throws (line 234)", async () => {
+            const stderrSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+            const { engine } = createEngine({
+                onLogProcessed: () => { throw new Error("primary-boom"); },
+                onError: () => { throw new Error("onError-boom"); },
+            });
+
+            await engine.handle({ message: "trigger double error" });
+
+            const calls = stderrSpy.mock.calls.map((c) => c.map(String).join(" "));
+            const hasOnErrorCatch = calls.some((msg) =>
+                msg.includes("[Sentinel] onError handler threw:") && msg.includes("onError-boom"),
+            );
+            expect(hasOnErrorCatch).toBe(true);
+
+            stderrSpy.mockRestore();
+        });
+
+        it("emitSafe without errorRouter still calls onError callback", async () => {
+            // Engine without errorRouting enabled — no this.errorRouter
+            const onErrorSpy = vi.fn();
+            const { engine } = createEngine({
+                // No errorRouting config → this.errorRouter is undefined
+                onLogProcessed: () => { throw new Error("callback-error"); },
+                onError: onErrorSpy,
+            });
+
+            await engine.handle({ message: "trigger" });
+
+            expect(onErrorSpy).toHaveBeenCalledTimes(1);
+            expect(onErrorSpy.mock.calls[0][0].message).toBe("callback-error");
+            expect(onErrorSpy.mock.calls[0][1]).toBe("callback");
+        });
+
         it("ErrorRouter.route rejection inside emitSafe logs to console.error", async () => {
             // To cover lines 225-226, we need ErrorRouter.route() to reject.
             // route() has an internal try/catch, so we must make that catch block throw.

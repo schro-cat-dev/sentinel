@@ -194,6 +194,73 @@ describe("MaskingService", () => {
         });
     });
 
+    describe("object with inherited properties (line 108)", () => {
+        it("skips inherited properties on prototype", () => {
+            const proto = { inherited: "evil@test.com" };
+            const obj = Object.create(proto) as Record<string, unknown>;
+            obj.own = "user@test.com";
+            const emailRule: MaskingRule = { type: "PII_TYPE", category: "EMAIL" };
+            const result = MaskingService.mask(obj, [emailRule]) as Record<string, unknown>;
+            // own property should be masked
+            expect(result.own).not.toContain("@");
+            // inherited property should NOT be in the result at all
+            expect(result.inherited).toBeUndefined();
+        });
+    });
+
+    describe("maskString without logger (line 199 ?.warn branch)", () => {
+        it("continues without crashing when logger is undefined and rule throws", () => {
+            const throwingPattern = {
+                get flags(): string { return "i"; },
+                get source(): string { throw new Error("bad regex source"); },
+            } as unknown as RegExp;
+
+            const throwingRule: MaskingRule = {
+                type: "REGEX",
+                pattern: throwingPattern,
+                replacement: "[REDACTED]",
+                description: "Throwing rule",
+            };
+
+            // No logger provided — logger?.warn should be no-op
+            const result = MaskingService.mask(
+                "this is a test",
+                [throwingRule],
+                [],
+                { /* no logger */ },
+            );
+            expect(result).toBe("this is a test");
+        });
+    });
+
+    describe("array with mixed types", () => {
+        it("handles null, undefined, number, and object items in arrays", () => {
+            const data = [null, undefined, 42, { email: "a@b.com" }];
+            const emailRule: MaskingRule = { type: "PII_TYPE", category: "EMAIL" };
+            const result = MaskingService.mask(data, [emailRule]) as unknown[];
+            expect(result[0]).toBeNull();
+            expect(result[1]).toBeUndefined();
+            expect(result[2]).toBe(42);
+            const obj = result[3] as Record<string, unknown>;
+            expect(obj.email).not.toContain("@");
+        });
+    });
+
+    describe("object with undefined and non-string, non-object values", () => {
+        it("handles object properties with undefined values", () => {
+            const data = { key1: "test", key2: undefined };
+            const result = MaskingService.mask(data, []) as Record<string, unknown>;
+            expect(result.key2).toBeUndefined();
+        });
+
+        it("handles object properties with number values", () => {
+            const data = { name: "test", count: 42, flag: true };
+            const result = MaskingService.mask(data, []) as Record<string, unknown>;
+            expect(result.count).toBe(42);
+            expect(result.flag).toBe(true);
+        });
+    });
+
     describe("maskString catch block", () => {
         it("logs warning and continues when a REGEX rule throws during replace", () => {
             const throwingPattern = {

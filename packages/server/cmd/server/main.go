@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"log/slog"
 	"os"
@@ -132,14 +134,53 @@ func main() {
 		opts = append(opts, ggrpc.ChainUnaryInterceptor(interceptors...))
 	}
 
-	// TLS
+	// TLS / mTLS
 	if cfg.Server.TLSCertFile != "" && cfg.Server.TLSKeyFile != "" {
-		creds, err := credentials.NewServerTLSFromFile(cfg.Server.TLSCertFile, cfg.Server.TLSKeyFile)
+		cert, err := tls.LoadX509KeyPair(cfg.Server.TLSCertFile, cfg.Server.TLSKeyFile)
 		if err != nil {
 			slog.Error("failed to load TLS credentials", "error", err)
 			os.Exit(1)
 		}
-		opts = append(opts, ggrpc.Creds(creds))
+		// 証明書ホットリロード対応: GetCertificate で接続ごとに最新証明書を返す
+		currentCert := &cert
+		certFile, keyFile := cfg.Server.TLSCertFile, cfg.Server.TLSKeyFile
+		tlsCfg := &tls.Config{
+			GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+				return currentCert, nil
+			},
+			MinVersion: tls.VersionTLS12,
+		}
+		// SIGHUPで証明書無停止再読み込み
+		go func() {
+			sighup := make(chan os.Signal, 1)
+			signal.Notify(sighup, syscall.SIGHUP)
+			for range sighup {
+				newCert, err := tls.LoadX509KeyPair(certFile, keyFile)
+				if err != nil {
+					slog.Error("failed to reload TLS certificate", "error", err)
+					continue
+				}
+				currentCert = &newCert
+				slog.Info("TLS certificate reloaded via SIGHUP", "cert", certFile)
+			}
+		}()
+		// mTLS: クライアント証明書検証
+		if cfg.Server.TLSClientCAFile != "" {
+			caCert, err := os.ReadFile(cfg.Server.TLSClientCAFile)
+			if err != nil {
+				slog.Error("failed to load client CA", "error", err)
+				os.Exit(1)
+			}
+			caPool := x509.NewCertPool()
+			if !caPool.AppendCertsFromPEM(caCert) {
+				slog.Error("failed to parse client CA certificate")
+				os.Exit(1)
+			}
+			tlsCfg.ClientAuth = tls.RequireAndVerifyClientCert
+			tlsCfg.ClientCAs = caPool
+			slog.Info("mTLS enabled", "clientCA", cfg.Server.TLSClientCAFile)
+		}
+		opts = append(opts, ggrpc.Creds(credentials.NewTLS(tlsCfg)))
 		slog.Info("TLS enabled", "cert", cfg.Server.TLSCertFile)
 	}
 

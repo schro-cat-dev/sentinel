@@ -138,6 +138,16 @@ describe("ErrorClassifier", () => {
         expect(result.severity).toBe("WARNING");
     });
 
+    it("message containing 'validation' (not starting with 'validation(') returns ValidationFailure via line 84", () => {
+        // Message contains "validation" but doesn't match ^validation\( pattern
+        const result = classifier.classify({
+            error: new Error("data validation failed for input"),
+            context: "some.context",
+        });
+        expect(result.kind).toBe("ValidationFailure");
+        expect(result.severity).toBe("INFO");
+    });
+
     it("timeout message with non-matching context skips to next pattern", () => {
         // "timeout" matches the first KIND_PATTERN (transport), but context "callback"
         // doesn't match /transport/i → continues. Second pattern (task) also doesn't

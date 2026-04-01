@@ -89,8 +89,9 @@ type ServerConfig struct {
 	MaxRecvMsgSizeBytes  int    `yaml:"max_recv_msg_size_bytes"`
 	MaxConcurrentStreams uint32 `yaml:"max_concurrent_streams"`
 	GracefulTimeoutSec   int    `yaml:"graceful_timeout_sec"`
-	TLSCertFile          string `yaml:"tls_cert_file"` // TLS証明書パス（空=plaintext）
-	TLSKeyFile           string `yaml:"tls_key_file"`  // TLS秘密鍵パス
+	TLSCertFile          string `yaml:"tls_cert_file"`       // TLS証明書パス（空=plaintext）
+	TLSKeyFile           string `yaml:"tls_key_file"`        // TLS秘密鍵パス
+	TLSClientCAFile      string `yaml:"tls_client_ca_file"`  // mTLS: クライアント証明書検証用CA（空=mTLS無効）
 }
 
 type SecurityConfig struct {

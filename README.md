@@ -350,6 +350,8 @@ go test ./... -race -count=1
 | [Gap Remediation](docs/design/gap-remediation/) | 設計↔実装ギャップ修正（ErrorRouter接続、ConsoleAuditSink、サンプル更新） |
 | [Runtime Verification](docs/design/runtime-verification/) | ランタイム動作検証（deepFreeze、async callback、logicalClock） |
 | [Final Remediation](docs/design/final-remediation/) | 最終30件修正（テスト誤魔化し、バリデーション穴、ロジックバグ） |
+| [mTLS & Remaining](docs/design/mtls-and-remaining/) | mTLS対応、証明書ホットリロード、移行ガイド |
+| [Migration v1→v2](docs/migration-v1-to-v2.md) | v1からの移行手順、破壊的変更なし、段階的導入 |
 | [Security Levels](docs/design/whitelist-security-levels.md) | ホワイトリストセキュリティレベル（strict/standard/permissive/off）運用ガイド |
 
 ### テスト

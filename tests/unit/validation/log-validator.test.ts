@@ -222,4 +222,188 @@ describe("validateLogInput", () => {
             traceId: "trace\x00id",
         })).toThrow(ValidationError);
     });
+
+    // --- resourceIds[i] exceeding max length (line 164) ---
+    it("rejects resourceId exceeding max length", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            resourceIds: ["x".repeat(513)],
+        })).toThrow(ValidationError);
+        expect(() => validateLogInput({
+            message: "test",
+            resourceIds: ["x".repeat(513)],
+        })).toThrow("resourceIds[0]");
+    });
+
+    // --- resourceIds[i] with null bytes (line 167) ---
+    it("rejects resourceId containing null bytes", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            resourceIds: ["res\x00id"],
+        })).toThrow(ValidationError);
+    });
+
+    // --- non-array resourceIds (line 154-155) ---
+    it("rejects non-array resourceIds", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            resourceIds: "bad" as unknown as string[],
+        })).toThrow(ValidationError);
+    });
+
+    // --- tag.category too long (line 143) ---
+    it("rejects tag with category too long", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            tags: [{ key: "k", category: "x".repeat(1025) }],
+        })).toThrow(ValidationError);
+    });
+
+    // --- tag.key with null bytes (line 140-141) ---
+    it("rejects tag key with null bytes", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            tags: [{ key: "k\x00ey", category: "v" }],
+        })).toThrow(ValidationError);
+    });
+
+    // --- tag.category with null bytes (line 146-147) ---
+    it("rejects tag category with null bytes", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            tags: [{ key: "k", category: "v\x00al" }],
+        })).toThrow(ValidationError);
+    });
+
+    // --- details exceeding max length (line 178-179) ---
+    it("rejects details exceeding max length", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            details: "x".repeat(65537),
+        })).toThrow(ValidationError);
+    });
+
+    // --- details with null bytes (line 181-182) ---
+    it("rejects details with null bytes", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            details: "hello\x00world",
+        })).toThrow(ValidationError);
+    });
+
+    // --- agentBackLog non-object (line 196) ---
+    it("rejects non-object agentBackLog (array)", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            agentBackLog: [1, 2, 3] as unknown as Record<string, unknown>,
+        })).toThrow(ValidationError);
+    });
+
+    // --- total size exceeding maxTotalLogSize (line 211) ---
+    it("rejects log exceeding total max size", () => {
+        // A log with a huge message that fits within message limit but exceeds total log limit
+        expect(() => validateLogInput(
+            { message: "x".repeat(65000), details: "y".repeat(65000), input: { data: "z".repeat(900000) } },
+            { maxTotalLogSize: 500 },
+        )).toThrow(ValidationError);
+    });
+
+    // --- estimateLogSize: tags with nullish key/category (line 267 branch) ---
+    it("validates log where estimateLogSize handles tags (size estimation)", () => {
+        // Exercise the estimateLogSize tag loop with valid tags
+        expect(() => validateLogInput({
+            message: "test",
+            tags: [
+                { key: "k1", category: "c1" },
+                { key: "k2", category: "c2" },
+            ],
+            traceInfo: "span-info",
+            actorId: "user-1",
+            boundary: "service-1",
+            traceId: "trace-1",
+        })).not.toThrow();
+    });
+
+    // --- estimateLogSize: resourceIds with strings (line 272 branch) ---
+    it("validates log where estimateLogSize handles resourceIds", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            resourceIds: ["res-1", "res-2", "res-3"],
+        })).not.toThrow();
+    });
+
+    // --- input exceeding maxInputSize (line 189) ---
+    it("rejects input exceeding maxInputSize", () => {
+        expect(() => validateLogInput(
+            { message: "test", input: { data: "x".repeat(2_000_000) } },
+            { maxInputSize: 100 },
+        )).toThrow(ValidationError);
+    });
+
+    // --- aiContext with non-number loopDepth (line 204) ---
+    it("rejects aiContext with non-number loopDepth", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            aiContext: { agentId: "a1", taskId: "t1", loopDepth: "5" as unknown as number },
+        })).toThrow(ValidationError);
+    });
+
+    // --- tag.key non-string (line 137 first condition) ---
+    it("rejects tag with non-string key", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            tags: [{ key: 123 as unknown as string, category: "v" }],
+        })).toThrow(ValidationError);
+        expect(() => validateLogInput({
+            message: "test",
+            tags: [{ key: 123 as unknown as string, category: "v" }],
+        })).toThrow("tags[0].key");
+    });
+
+    // --- tag.category non-string (line 143 first condition) ---
+    it("rejects tag with non-string category", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            tags: [{ key: "k", category: 456 as unknown as string }],
+        })).toThrow(ValidationError);
+        expect(() => validateLogInput({
+            message: "test",
+            tags: [{ key: "k", category: 456 as unknown as string }],
+        })).toThrow("tags[0].category");
+    });
+
+    // --- agentBackLog non-object (plain non-object, non-array) (line 196) ---
+    it("rejects agentBackLog that is a primitive", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            agentBackLog: "bad" as unknown as Record<string, unknown>,
+        })).toThrow(ValidationError);
+        expect(() => validateLogInput({
+            message: "test",
+            agentBackLog: "bad" as unknown as Record<string, unknown>,
+        })).toThrow("agentBackLog");
+    });
+
+    // --- exercising estimateLogSize with all optional fields populated ---
+    it("validates log with all optional fields for size estimation", () => {
+        expect(() => validateLogInput({
+            message: "test message for size",
+            details: "some details",
+            traceInfo: "trace-info",
+            actorId: "actor-1",
+            boundary: "svc:module",
+            traceId: "trace-id-1",
+            tags: [{ key: "k1", category: "c1" }],
+            resourceIds: ["res-1", "res-2"],
+            input: { data: "value" },
+            agentBackLog: { agentId: "a1" } as unknown as Record<string, unknown>,
+            aiContext: { agentId: "a1", taskId: "t1", loopDepth: 0 },
+        })).not.toThrow();
+    });
+
+    // --- null message (line 79 — null vs undefined) ---
+    it("rejects null message", () => {
+        expect(() => validateLogInput({ message: null as unknown as string })).toThrow(ValidationError);
+        expect(() => validateLogInput({ message: null as unknown as string })).toThrow("message");
+    });
 });

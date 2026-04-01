@@ -72,4 +72,17 @@ export interface TransportConfig {
      * リモート送信タイムアウト（ミリ秒）。デフォルト30000ms。
      */
     timeoutMs?: number;
+
+    /**
+     * TLS/mTLS設定（gRPC transport実装に渡す）
+     * SDKはzero-depのため証明書の読み込み・接続はtransport実装側の責務。
+     */
+    tls?: {
+        /** サーバCA証明書パス（自己署名証明書検証用） */
+        caCertPath?: string;
+        /** クライアント証明書パス（mTLS用） */
+        clientCertPath?: string;
+        /** クライアント秘密鍵パス（mTLS用） */
+        clientKeyPath?: string;
+    };
 }

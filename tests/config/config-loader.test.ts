@@ -99,6 +99,16 @@ describe("parseConfigYaml — normal cases", () => {
         expect(config.projectName).toBe("test-project");
     });
 
+    it("uses custom yamlParser when provided", () => {
+        const customParser = (_content: string) => ({
+            project_name: "custom-parsed",
+            service_id: "custom-svc",
+        });
+        const config = parseConfigYaml("anything", { yamlParser: customParser });
+        expect(config.projectName).toBe("custom-parsed");
+        expect(config.serviceId).toBe("custom-svc");
+    });
+
     it("parses minimal config with defaults", () => {
         const config = parseConfigYaml(MINIMAL_YAML);
         expect(config.projectName).toBe("test-project");
@@ -339,6 +349,36 @@ task_rules:
 `;
         expect(() => parseConfigYaml(yaml)).toThrow(ConfigLoadError);
         expect(() => parseConfigYaml(yaml)).toThrow("rule_id");
+    });
+
+    it("throws on task rule without event_name", () => {
+        const yaml = `
+project_name: p
+service_id: s
+task_rules:
+  - rule_id: r1
+    action_type: SYSTEM_NOTIFICATION
+    severity: HIGH
+    execution_level: AUTO
+    priority: 1
+`;
+        expect(() => parseConfigYaml(yaml)).toThrow(ConfigLoadError);
+        expect(() => parseConfigYaml(yaml)).toThrow("event_name");
+    });
+
+    it("throws on task rule without action_type", () => {
+        const yaml = `
+project_name: p
+service_id: s
+task_rules:
+  - rule_id: r1
+    event_name: SYSTEM_CRITICAL_FAILURE
+    severity: HIGH
+    execution_level: AUTO
+    priority: 1
+`;
+        expect(() => parseConfigYaml(yaml)).toThrow(ConfigLoadError);
+        expect(() => parseConfigYaml(yaml)).toThrow("action_type");
     });
 
     it("throws on invalid YAML syntax", () => {
@@ -636,6 +676,183 @@ whitelist:
         const config = parseConfigYaml(yaml);
         expect(config.whitelist?.level).toBe("strict");
         expect(config.whitelist?.enabledDomains).toEqual(["security", "task"]);
+    });
+
+    it("detection_rules with all condition types are converted", () => {
+        const yaml = `
+project_name: p
+service_id: s
+environment: test
+detection_rules:
+  - rule_id: full-cond
+    event_name: SECURITY_INTRUSION_DETECTED
+    priority: HIGH
+    conditions:
+      log_types:
+        - SECURITY
+      min_level: 3
+      max_level: 5
+      message_pattern: "intrusion.*detected"
+      tag_match:
+        key: ip
+        value: "10.0.0.1"
+      origin: SYSTEM
+      is_critical: false
+`;
+        const config = parseConfigYaml(yaml);
+        const rule = config.detectionRules![0];
+        expect(rule.ruleId).toBe("full-cond");
+        expect(rule.conditions.logTypes).toEqual(["SECURITY"]);
+        expect(rule.conditions.minLevel).toBe(3);
+        expect(rule.conditions.maxLevel).toBe(5);
+        expect(rule.conditions.messagePattern).toBeInstanceOf(RegExp);
+        expect(rule.conditions.tagMatch).toEqual({ key: "ip", value: "10.0.0.1" });
+        expect(rule.conditions.origin).toBe("SYSTEM");
+        expect(rule.conditions.isCritical).toBe(false);
+    });
+
+    it("detection_rules with no conditions produce empty conditions", () => {
+        const yaml = `
+project_name: p
+service_id: s
+environment: test
+detection_rules:
+  - rule_id: no-cond
+    event_name: SYSTEM_CRITICAL_FAILURE
+    priority: MEDIUM
+`;
+        const config = parseConfigYaml(yaml);
+        const rule = config.detectionRules![0];
+        expect(rule.conditions).toEqual({});
+    });
+
+    it("detection_rules with partial conditions — only log_types", () => {
+        const yaml = `
+project_name: p
+service_id: s
+environment: test
+detection_rules:
+  - rule_id: partial-cond
+    event_name: SYSTEM_CRITICAL_FAILURE
+    priority: HIGH
+    conditions:
+      log_types:
+        - SYSTEM
+`;
+        const config = parseConfigYaml(yaml);
+        const rule = config.detectionRules![0];
+        expect(rule.conditions.logTypes).toEqual(["SYSTEM"]);
+        // These should all be undefined (false branches)
+        expect(rule.conditions.minLevel).toBeUndefined();
+        expect(rule.conditions.maxLevel).toBeUndefined();
+        expect(rule.conditions.messagePattern).toBeUndefined();
+        expect(rule.conditions.tagMatch).toBeUndefined();
+        expect(rule.conditions.origin).toBeUndefined();
+        expect(rule.conditions.isCritical).toBeUndefined();
+    });
+
+    it("task_rules without optional guardrails get defaults", () => {
+        const yaml = `
+project_name: p
+service_id: s
+task_rules:
+  - rule_id: r1
+    event_name: SYSTEM_CRITICAL_FAILURE
+    severity: CRITICAL
+    action_type: SYSTEM_NOTIFICATION
+    execution_level: AUTO
+    priority: 1
+`;
+        const config = parseConfigYaml(yaml);
+        expect(config.taskRules[0].guardrails.requireHumanApproval).toBe(false);
+        expect(config.taskRules[0].guardrails.timeoutMs).toBe(30000);
+        expect(config.taskRules[0].guardrails.maxRetries).toBe(3);
+    });
+
+    it("task_rules without description defaults to empty string", () => {
+        const yaml = `
+project_name: p
+service_id: s
+task_rules:
+  - rule_id: r1
+    event_name: SYSTEM_CRITICAL_FAILURE
+    severity: CRITICAL
+    action_type: SYSTEM_NOTIFICATION
+    execution_level: AUTO
+    priority: 1
+`;
+        const config = parseConfigYaml(yaml);
+        expect(config.taskRules[0].description).toBe("");
+    });
+
+    it("REGEX rule with global description adds g flag", () => {
+        const yaml = `
+project_name: p
+service_id: s
+masking:
+  rules:
+    - type: REGEX
+      pattern: "test"
+      replacement: "[X]"
+      description: "global replace"
+`;
+        const config = parseConfigYaml(yaml);
+        const rule = config.masking.rules[0];
+        if (rule.type === "REGEX") {
+            expect(rule.pattern.flags).toContain("g");
+        }
+    });
+
+    it("REGEX rule without replacement defaults to [REDACTED]", () => {
+        const yaml = `
+project_name: p
+service_id: s
+masking:
+  rules:
+    - type: REGEX
+      pattern: "secret"
+`;
+        const config = parseConfigYaml(yaml);
+        const rule = config.masking.rules[0];
+        if (rule.type === "REGEX") {
+            expect(rule.replacement).toBe("[REDACTED]");
+        }
+    });
+
+    it("KEY_MATCH rule without replacement is undefined", () => {
+        const yaml = `
+project_name: p
+service_id: s
+masking:
+  rules:
+    - type: KEY_MATCH
+      sensitive_keys:
+        - password
+`;
+        const config = parseConfigYaml(yaml);
+        const rule = config.masking.rules[0];
+        if (rule.type === "KEY_MATCH") {
+            expect(rule.replacement).toBeUndefined();
+        }
+    });
+
+    it("config without whitelist results in undefined whitelist", () => {
+        const yaml = `
+project_name: p
+service_id: s
+`;
+        const config = parseConfigYaml(yaml);
+        expect(config.whitelist).toBeUndefined();
+    });
+
+    it("config without security section uses defaults", () => {
+        const yaml = `
+project_name: p
+service_id: s
+`;
+        const config = parseConfigYaml(yaml);
+        expect(config.security.enableHashChain).toBe(true);
+        expect(config.security.signingKeyId).toBeUndefined();
     });
 
     it("multiple masking rules (PII + REGEX + KEY_MATCH) work together", async () => {
