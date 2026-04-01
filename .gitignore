@@ -21,3 +21,4 @@ Thumbs.db
 .security/
 coverage/
 certs/
+packages/server/server
