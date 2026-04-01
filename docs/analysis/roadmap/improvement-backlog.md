@@ -184,19 +184,12 @@ func (d *BlockDispatcher) Execute(target ThreatTarget) error {
 
 **優先度:** ✅ 対応済み — SDK側を `Record<string, string>` に変更し Proto と統一（commit 298e130）。
 
-### SCALE-08: Zero-dependency に伴う ReDoS 責任
+### ~~SCALE-08: ReDoS 防御~~ ✅ 対策済み
 
-**現状:** TS SDK はランタイム依存ゼロ。PII検出の正規表現（email, credit card, phone 等）を自前で実装・メンテナンスしている。悪意のある攻撃者が「計算量が指数関数的に爆発する文字列」をログに流し込むことで、Node.js のシングルスレッドのイベントループをブロックさせる ReDoS 攻撃の標的になりうる。
-
-**現状の対策:**
-- `EventDetector`: messagePattern に `/g` `/y` フラグを拒否（非決定的検知防止）
-- `EventDetector`: `MAX_REGEX_INPUT_LENGTH = 65536` で巨大入力への regex 実行を回避
-- `MaskingService`: PII パターンは `/g` なしで定義（`lastIndex` 問題を回避）
-- テスト: `redos.test.ts` + `fuzz_test.go` で主要パターンの ReDoS 耐性を検証
-
-**残存リスク:** V8 エンジンの内部最適化に依存。将来的にパターンが増えた場合、専用の ReDoS 検証ツール（例: `safe-regex2`）をCI に組み込むべき。
-
-**優先度:** PII パターン追加時に必ず ReDoS 検証を実施。CI 統合は中期目標。
+以下の対策により対処完了。将来PIIパターン追加時は `safe-regex2` 等でCI検証を推奨。
+- `EventDetector`: 入力長上限 65536 + `/g`/`y` フラグ拒否
+- `MaskingService`: PII パターンは `/g` なし
+- テスト: `redos.test.ts` + `fuzz_test.go`
 
 ### SCALE-09: AIプロンプトインジェクション防御
 

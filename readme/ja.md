@@ -1,323 +1,103 @@
-# Sentinel (注意：仮ドキュメントです。)
+# Sentinel
 
-**AIエージェント駆動タスク自動化ミドルウェアサーバ：ミッションクリティカルシステム向け決定論的保証**
+**ログから脅威を検知し、自動で対応する。**
 
-Sentinel は、**TypeScript 製ログライブラリ**および **Go 製ミドルウェアサーバ**であり、
-SIEM/XDR ツールとの統合、AIエージェントによる自動パッチ適用およびタスク実行のトリガ、
-さらに本番環境向けの軽量なログクライアントとして動作するよう設計されています。
+Sentinel はアプリケーションログを監視し、セキュリティ脅威やシステム障害を検知して、自動でアクション（IPブロック、チーム通知、AI分析エスカレーション）を実行します。
 
-本プロジェクトは、履歴ログデータからの**実験的タスク生成**を探究するとともに、
-高度な暗号技術（ハッシュチェインおよび厳密なメタデータ管理）を活用した
-**金融グレードの耐久性・整合性・プライバシ保証**を目指しています。
+```
+アプリログ: "203.0.113.45 からのログイン失敗（5分間で50回目）"
+    |
+    v
+Sentinel 検知: ブルートフォース攻撃
+    |
+    v
+自動実行: IPブロック + Slack #security 通知 + 監査ログ記録
+```
 
-メインサーバは nginx のようなプロキシ機構を備えた **ミドルウェアサーバ**として動作し、
-認証（mTLS/JWT）、レート制限、およびタスクオーケストレーション全体の
-ライフサイクル管理を担います。
-**現在は設計段階**であり、npm パッケージ名として `@sentinel/client` での公開を計画しています。
-[English README](sentinel/readme/en.md)
+[アーキテクチャ](../docs/architecture.md) | [セキュリティ](../docs/security.md) | [使い方ガイド](../docs/usage-guide.md) | [English](en(default).md)
 
 ---
 
-## 🧪 現在のプロジェクトステータス: **設計段階**
+## コンポーネント
 
-> [!WARNING]
-> **未実装 - 設計／開発フェーズ中**
->
-> ⚠️ **アーキテクチャ設計進行中**（ハッシュチェイン／WAL評価中）
-> ⚠️ **Goミドルウェアサーバ設計開始**
-> ⚠️ **実行可能コードは未存在**
-> 🎯 **設計完了 → MVP → npm公開（2026年Q2〜Q3を目標）**
+- **TypeScript SDK** — ゼロ依存のクライアントライブラリ。単体（Local Mode）またはGoサーバ連携（Remote/Dual Mode）で動作。
+- **Go Server** — SQLite/SQLCipher永続化、RBAC認可、アンサンブル検知、脅威レスポンス、マルチチャネル通知（Slack/Discord/Gmail/Webhook）を備えたバックエンド。
 
----
+## 主要機能
 
-## 🎯 計画中の主要目的
+### SDK（TypeScript）
+- **カスタム検知ルール** — logType、level、messagePattern、タグによるパターンマッチ検知を設定で定義
+- **ホワイトリスト検証** — 4段階のセキュリティレベル: strict / standard / permissive / off
+- **PIIマスキング** — 8種のPIIカテゴリ + REGEX + KEY_MATCH、再帰的depth保護付き
+- **ハッシュチェーン** — SHA-256整合性チェーン（signingKeyId対応）
+- **エラールーティング** — 分類 → ルーティング → 実行（監査sink、デッドレター、タスク、通知）
+- **メトリクス・トレーシングフック** — OpenTelemetry / Datadog / カスタムバックエンド向けゼロオーバーヘッドDI
+- **ゼロ依存** — サプライチェーン攻撃のリスクゼロ
 
-1. **SIEM/XDR 統合** - Splunk, Elastic, Microsoft Sentinel, CrowdStrike などのセキュリティ監視プラットフォームとのシームレスなAPI連携
-2. **AIエージェント駆動オートメーション** - 外部AIサービス（OpenAI、Anthropic等）によるログ解析をトリガとして自動パッチ／タスク実行を実現
-3. **履歴ログベースタスク生成** - 蓄積ログからのパターン認識によるプロアクティブなタスク生成（精度限定の実験的機能）
-4. **Go製メインサーバ** - nginxのようなプロキシ能力を持つ **ミドルウェアサーバ** として認証・レート制限・タスクオーケストレーション全工程を担当
-5. **軽量npmログライブラリ** - 開発者向け統合用パッケージ：`@sentinel/client`
-6. **Sentry/Datadogエコシステム統合** - メトリクス／トレース／アラート用のWebhook受信機能
-7. **認証・認可機構** - mTLSおよびJWTベースの包括的認証と、サービス単位のレート制限
+### サーバ（Go）
+- **アンサンブル検知** — マルチルールスコアリング + 異常検知
+- **脅威レスポンス** — BLOCK_AND_NOTIFY / ANALYZE_AND_NOTIFY / NOTIFY_ONLY 戦略
+- **mTLS** — クライアント証明書検証 + SIGHUPベースの証明書ホットリロード
+- **RBAC** — ロールベースアクセス制御（admin/writer/viewer/restricted）
+- **承認ワークフロー** — コンテンツハッシュ検証付きマルチステップ承認
+- **通知アダプタ** — Slack、Discord、Gmail、Webhook（HMAC署名付き）
 
----
-
-## 🔒 設計中のアーキテクチャ保証
-
-### **データ完全性・改ざん耐性**（設計中）
-
-- **ハッシュチェイン**：
-  各ログエントリを順次暗号的に連鎖
-  \(H*n = \text{SHA256}(L_n \parallel H*{n-1} \parallel \text{timestamp} \parallel \text{serviceId})\)
-- **メタデータ精度**：
-  サービスコンテキスト、時間的関係、処理系統の原子的記録
-- **改ざん検出**：
-  挿入・削除・改変攻撃を数学的検証によって防止
-
-### **耐久性・整合性**（設計中）
-
-- WAL（Write-Ahead Logging）パターン、分散ストレージ、アトミックバッチングを含む複数の永続化戦略を検討中
-- 運用展開時の整合性×完全性トレードオフ評価を計画
-
----
-
-## 🏗 システムアーキテクチャ（計画）
-
-```
-┌─────────────────┐ gRPC/mTLS ┌──────────────────┐ ┌──────────────┐
-│ Applications │ ──────────▶ │ Go Sentinel API │▶ │ DynamoDB │
-│ (@sentinel/ │ │ (middleware) │ │ (Task Recipes │
-│ client) │ │ Auth/Rate-limit │ │ + Metadata) │
-└─────────────────┘ └──────────────────┘ └──────────────┘
-▲ │ Redis Streams
-┌────┼──────┐ ┌─────────▼──────────┐
-│Sentry│ │ │ Lambda Workers │
-│Datadog│ │ │ - AI Agents │
-│SIEM │ │ │ - Patch Generator │
-└─────┴──────┘ │ - SIEM Integration│
-└────────────────────┘
-```
-
-**設計哲学**：
-運用コストを最小化しつつ、自動化効果を最大化するための精密なコンポーネント選定による**コスト最適化アーキテクチャ**。
-
----
-
-## 📋 コンポーネント仕様（計画）
-
-| コンポーネント       | 技術           | 役割                                                                      | 状態   |
-| -------------------- | -------------- | ------------------------------------------------------------------------- | ------ |
-| **クライアントSDK**  | TypeScript/ESM | 開発者向けログインターフェース                                            | 設計中 |
-| **メインサーバ**     | Go             | 認証、レート制限、タスクオーケストレーションを行う **ミドルウェアサーバ** | 設計中 |
-| **タスクストレージ** | DynamoDB       | レシピ参照・メタデータ保持                                                | 設計中 |
-| **タスクキュー**     | Redis Streams  | AI/SIEM 実行の非同期処理                                                  | 設計中 |
-| **オートメーション** | AWS Lambda     | AIエージェント実行・外部統合                                              | 設計中 |
-
----
-
-## 🔐 認証・認可設計（設計中）
-
-**フェーズ1**：JWTサービストークン + APIキー自動ローテーション（計画中）
-**フェーズ2**：サービス別証明書管理を伴うmTLS相互認証（設計中）
-**フェーズ3**：ゼロトラスト環境向けサービスメッシュ統合（Linkerd / Istio）（評価中）
-
-```
-ServiceA → mTLS → Sentinel API → DynamoDB → Lambda AI Agent → SIEM
-↖ ServiceB 証明書は90日ごとに自動ローテーション
-```
-
----
-
-## 🤝 統合エコシステム（計画）
-
-```
-入力ソース：監視ツール、SIEM/XDRプラットフォーム（Webhook/API経由）
-出力アクション：AIサービス、Git自動化、インフラ関連API
-```
-
----
-
-## 📂 プロジェクト構成
-
-### 計画構成
-
-```
-sentinel/
-├── packages/
-│   ├── client/          # @sentinel/client npmパッケージ
-│   ├── api/             # Go製メインサーバ（ミドルウェア）
-│   └── workers/         # Lambda AI/SIEM 自動化ワーカー
-├── deploy/              # インフラ構築スクリプト（IaC）
-├── docs/                # アーキテクチャ＆統合ガイド
-└── examples/            # 統合利用パターン
-```
-
-### 現行構成（初期開発中）
-
-```
-
-sentinel/
-├── dir_structure.txt
-├── docs
-│   ├── coop-siem-like-tools-agent.md
-│   ├── dir_structure.txt
-│   ├── instance-manage.md
-│   ├── modules-desc.txt
-│   └── task-gen.md
-├── eslint.config.js
-├── package-lock.json
-├── package.json
-├── readme
-│   ├── en(default).md
-│   └── ja.md
-├── README.md
-├── rollup.config.js
-├── samples
-│   ├── basic_usage.ts
-│   └── security_anomaly_ai.ts
-├── src
-│   ├── bootstrap
-│   │   ├── di-container.ts
-│   │   └── worker-pool.ts
-│   ├── configs
-│   │   ├── detailed-config.ts
-│   │   └── global-config.ts
-│   ├── core
-│   │   ├── engine
-│   │   │   ├── i-interfaces.ts
-│   │   │   ├── index.ts
-│   │   │   ├── ingestion-engine.ts
-│   │   │   ├── log-normalizer.ts
-│   │   │   ├── persistence-layer.ts
-│   │   │   ├── queue-adapter.ts
-│   │   │   ├── recovery-service.ts
-│   │   │   └── types.ts
-│   │   └── system
-│   │       └── i-env-provider.ts
-│   ├── generated
-│   │   └── src
-│   │       └── proto
-│   │           └── wal.ts
-│   ├── index.ts
-│   ├── infra
-│   │   └── wal
-│   │       ├── atomic-file.ts
-│   │       ├── file-lock.ts
-│   │       └── wal-mapper.ts
-│   ├── infrastructure
-│   │   ├── persistence
-│   │   │   ├── i-storage-provider.ts
-│   │   │   ├── i-wal-repository.ts
-│   │   │   ├── wal-manager.ts
-│   │   │   └── wal-repository.ts
-│   │   ├── security
-│   │   └── system
-│   │       └── environment-metadata.ts
-│   ├── intelligence
-│   │   ├── ai
-│   │   │   ├── i-agent-provider.ts
-│   │   │   └── openai-agent-provider.ts
-│   │   ├── detector
-│   │   │   └── event-detector.ts
-│   │   └── task
-│   │       ├── i-task-repository.ts
-│   │       ├── sql-task-repository.ts
-│   │       └── task-manager.ts
-│   ├── lib
-│   │   ├── crypto
-│   │   │   ├── aesGcmEncryptionStrategy.ts
-│   │   │   ├── cryptoFactory.ts
-│   │   │   ├── cryptoTypes.ts
-│   │   │   ├── index.ts
-│   │   │   └── keyDerivation.ts
-│   │   ├── env
-│   │   │   ├── di.ts
-│   │   │   ├── factory.ts
-│   │   │   ├── index.ts
-│   │   │   ├── types.ts
-│   │   │   └── validator.ts
-│   │   └── time
-│   │       └── date-time-provider.ts
-│   ├── proto
-│   │   └── wal.proto
-│   ├── security
-│   │   ├── integrity-signer.ts
-│   │   └── masking-service.ts
-│   ├── shared
-│   │   ├── constants
-│   │   │   ├── error-layer.ts
-│   │   │   ├── error-protocol-kind.ts
-│   │   │   ├── http-status.ts
-│   │   │   ├── index.ts
-│   │   │   ├── infra
-│   │   │   │   ├── cache
-│   │   │   │   ├── datastore
-│   │   │   │   ├── db
-│   │   │   │   │   └── db-error-kind.ts
-│   │   │   │   └── storage
-│   │   │   └── kinds
-│   │   │       ├── application
-│   │   │       │   ├── access.ts
-│   │   │       │   ├── auth.ts
-│   │   │       │   ├── index.ts
-│   │   │       │   ├── limit-over.ts
-│   │   │       │   ├── permission.ts
-│   │   │       │   ├── security.ts
-│   │   │       │   └── validation.ts
-│   │   │       ├── index.ts
-│   │   │       └── persistence
-│   │   │           ├── cache-error-kind.ts
-│   │   │           ├── datastore-error-kind.ts
-│   │   │           ├── db-error-kind.ts
-│   │   │           ├── index.ts
-│   │   │           └── storage-error-kind.ts
-│   │   ├── errors
-│   │   │   ├── app
-│   │   │   │   ├── auth-error.ts
-│   │   │   │   └── validation-error.ts
-│   │   │   ├── error-payload-protocol.ts
-│   │   │   ├── index.ts
-│   │   │   └── infra
-│   │   │       ├── db-error.ts
-│   │   │       └── wal-error.ts
-│   │   ├── functional
-│   │   │   └── result.ts
-│   │   └── utils
-│   │       ├── error-utils.ts
-│   │       ├── guard-wal-entry-raw.ts
-│   │       └── seed-to-union-types.ts
-│   ├── transport
-│   │   ├── batch-transport.ts
-│   │   ├── cloudwatch-transport.ts
-│   │   ├── datadog-transport.ts
-│   │   ├── http-transport.ts
-│   │   ├── i-log-transport.ts
-│   │   ├── index.ts
-│   │   └── transport-manager.ts
-│   ├── types
-│   │   ├── agent.ts
-│   │   ├── event.ts
-│   │   ├── log.ts
-│   │   └── task.ts
-│   └── workers
-│       └── log.worker.ts
-├── tests
-├── tsconfig.json
-├── types
-│   └── global.d.ts
-└── util-commands.md
-
-```
-
----
-
-## 🎛 想定運用コマンド
+## クイックスタート
 
 ```bash
-# クライアント開発
-cd packages/client
-npm install && npm run build
-
-# API開発
-cd packages/api
-go build -ldflags="-s -w" -o sentinel-api
-
-# インフラ構築
-cd deploy
-terraform apply
+npm install @schro-cat-dev/sentinel
 ```
 
----
+```typescript
+import { Sentinel, createDefaultConfig } from "@schro-cat-dev/sentinel";
 
-## 🔮 現在の設計注力領域（全て設計中）
+const sentinel = Sentinel.initialize(createDefaultConfig({
+  projectName: "my-app",
+  serviceId: "payment-service",
+  security: { enableHashChain: true },
+  masking: {
+    enabled: true,
+    rules: [{ type: "PII_TYPE", category: "EMAIL" }],
+    preserveFields: ["traceId"],
+  },
+  detectionRules: [{
+    ruleId: "brute-force",
+    eventName: "SECURITY_INTRUSION_DETECTED",
+    priority: "HIGH",
+    conditions: {
+      logTypes: ["SECURITY"],
+      messagePattern: /failed.*login|brute.*force/i,
+    },
+  }],
+  whitelist: { level: "strict" },
+}));
 
-- **データ完全性メカニズム設計**（ハッシュチェイン、WALパターン、分散合意）
-- **タスク系統・メタデータ保持の完全性保証設計**
-- **運用コスト×性能最適化**（リソース精査によるコスト見積）
-- **認証設計進化**（JWT→mTLS→ゼロトラストサービスメッシュ）
+sentinel.onTaskAction("ESCALATE", async (task) => {
+  console.log(`アラート: ${task.description}`);
+});
 
----
+await sentinel.ingest({
+  message: "10.0.0.99 からのブルートフォース攻撃検知",
+  type: "SECURITY",
+  level: 5,
+});
 
-## 📄 ライセンス
+await sentinel.shutdown();
+```
 
-MIT License - Copyright (c) 2026 sy (schro-cat-dev)
+## プロジェクト状況
+
+| コンポーネント | 技術 | 状態 | テスト |
+|--------------|------|------|--------|
+| Client SDK | TypeScript（ゼロ依存） | 実装済み | 2,487テスト |
+| Backend Server | Go 1.22+ / gRPC | 実装済み | 786テスト |
+
+**合計: 3,273テスト、0 FAIL**
+
+## ドキュメント
+
+全ドキュメントへのリンクは[メインREADME](../README.md)を参照。
+
+## ライセンス
+
+リポジトリルートを参照。
