@@ -49,8 +49,9 @@ export const maskPiiContext = (
 ): Record<string, SafeValue> => {
     const safe = { ...context };
 
-    // キー名PIIチェック＆マスク
+    // キー名PIIチェック＆マスク（prototype pollution防御: hasOwnPropertyガード）
     for (const key in safe) {
+        if (!Object.prototype.hasOwnProperty.call(safe, key)) continue;
         const typedKey = key as keyof typeof safe;
         const value = safe[typedKey];
 

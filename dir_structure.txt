@@ -80,7 +80,8 @@
 │   │   │   ├── whitelist-definitions.test.ts    # 定義正確性: ソースオブトゥルース一致 (10)
 │   │   │   ├── whitelist-config-yaml.test.ts    # YAML設定シミュレーション, 設定切替 (9)
 │   │   │   ├── whitelist-security-level.test.ts # セキュリティレベル: strict/standard/permissive/off (18)
-│   │   │   └── whitelist-routing-e2e.test.ts    # E2Eルーティング: 全パイプラインステージ到達 (20)
+│   │   │   ├── whitelist-routing-e2e.test.ts    # E2Eルーティング: 全パイプラインステージ到達 (20)
+│   │   │   └── pollution-guard.test.ts          # 汚染防御: hasOwnPropertyガード, messagePattern型検証 (11)
 │   │   ├── transport/
 │   │   │   └── transport.test.ts                # Transport: local/remote/dual 基本動作 (7)
 │   │   ├── shared/

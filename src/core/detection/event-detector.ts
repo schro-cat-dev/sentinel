@@ -10,6 +10,26 @@ export class EventDetector {
 
     constructor(customRules?: DetectionRule[]) {
         this.customRules = customRules ?? [];
+        this.validateCustomRules();
+    }
+
+    /**
+     * カスタムルールのランタイム整合性を検証する。
+     * TypeScriptの型チェックでは防げないケース（JSON parse由来のstring等）を検出。
+     */
+    private validateCustomRules(): void {
+        for (const rule of this.customRules) {
+            if (
+                rule.conditions.messagePattern !== undefined &&
+                !(rule.conditions.messagePattern instanceof RegExp)
+            ) {
+                throw new Error(
+                    `detectionRules[${rule.ruleId}].conditions.messagePattern must be a RegExp instance, ` +
+                    `got ${typeof rule.conditions.messagePattern}. ` +
+                    `If loading from JSON/YAML, convert the string to RegExp: new RegExp("pattern", "flags")`,
+                );
+            }
+        }
     }
 
     /**
