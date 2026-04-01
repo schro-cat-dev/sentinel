@@ -90,8 +90,11 @@ export interface ConfigLoaderOptions {
     expandEnv?: boolean;
     /** 環境変数のソース（テスト用にオーバーライド可能） */
     envSource?: Record<string, string | undefined>;
-    /** YAMLパーサー関数（テスト用にインジェクション可能。省略時は `yaml` パッケージを使用） */
-    yamlParser?: (content: string) => RawYamlConfig;
+    /**
+     * YAMLパーサー関数（テスト用にインジェクション可能。省略時は `yaml` パッケージを使用）。
+     * `false` を渡すと「yamlパッケージ未インストール」をシミュレートする（テスト専用）。
+     */
+    yamlParser?: ((content: string) => RawYamlConfig) | false;
 }
 
 // =========================================================================
@@ -185,12 +188,18 @@ function expandEnvVars(
 
 function parseYaml(
     content: string,
-    customParser?: (content: string) => RawYamlConfig,
+    customParser?: ((content: string) => RawYamlConfig) | false,
 ): RawYamlConfig {
-    if (customParser) return customParser(content);
+    if (typeof customParser === "function") return customParser(content);
+
+    // customParser === false はテスト専用: yaml未インストールをシミュレート
+    if (customParser === false) {
+        throw new Error(
+            'YAML parsing requires the "yaml" package. Install it with: npm install yaml',
+        );
+    }
 
     try {
-        // Dynamic import of yaml package (optional peer dependency)
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const yamlModule = require("yaml") as { parse: (s: string) => RawYamlConfig };
         return yamlModule.parse(content);
@@ -227,13 +236,10 @@ function validateRawConfig(raw: RawYamlConfig): void {
         throw new ConfigLoadError("environment", `must be one of: ${[...VALID_ENVIRONMENTS].join(", ")}`);
     }
 
-    // masking rules
+    // masking rules — type固有フィールドの検証は convertMaskingRule で実施
     if (raw.masking?.rules) {
         for (let i = 0; i < raw.masking.rules.length; i++) {
             const rule = raw.masking.rules[i];
-            if (!VALID_MASKING_TYPES.has(rule.type)) {
-                throw new ConfigLoadError(`masking.rules[${i}].type`, `invalid type "${rule.type}"`);
-            }
             if (rule.type === "PII_TYPE" && (!rule.category || !VALID_PII_CATEGORIES.has(rule.category))) {
                 throw new ConfigLoadError(`masking.rules[${i}].category`, `invalid category "${rule.category}"`);
             }
@@ -267,7 +273,7 @@ function validateRawConfig(raw: RawYamlConfig): void {
 // =========================================================================
 
 function convertToSentinelConfig(raw: RawYamlConfig): SentinelConfig {
-    const maskingRules: MaskingRule[] = (raw.masking?.rules ?? []).map(convertMaskingRule);
+    const maskingRules: MaskingRule[] = (raw.masking?.rules ?? []).map((r, i) => convertMaskingRule(r, i));
     const taskRules: TaskRule[] = (raw.task_rules ?? []).map(convertTaskRule);
     const detectionRules: DetectionRule[] | undefined = raw.detection_rules?.map(convertDetectionRule);
 
@@ -294,26 +300,26 @@ function convertToSentinelConfig(raw: RawYamlConfig): SentinelConfig {
     });
 }
 
-function convertMaskingRule(raw: RawMaskingRule): MaskingRule {
-    switch (raw.type) {
-        case "PII_TYPE":
-            return { type: "PII_TYPE", category: raw.category as MaskingRule extends { category: infer C } ? C : never };
-        case "REGEX":
-            return {
-                type: "REGEX",
-                pattern: new RegExp(raw.pattern!, raw.description?.includes("global") ? "g" : ""),
-                replacement: raw.replacement ?? "[REDACTED]",
-                description: raw.description ?? "",
-            };
-        case "KEY_MATCH":
-            return {
-                type: "KEY_MATCH",
-                sensitiveKeys: raw.sensitive_keys ?? [],
-                replacement: raw.replacement,
-            };
-        default:
-            throw new ConfigLoadError("masking.rule.type", `unknown type: ${raw.type}`);
+function convertMaskingRule(raw: RawMaskingRule, index: number): MaskingRule {
+    if (raw.type === "PII_TYPE") {
+        return { type: "PII_TYPE", category: raw.category as MaskingRule extends { category: infer C } ? C : never };
     }
+    if (raw.type === "REGEX") {
+        return {
+            type: "REGEX",
+            pattern: new RegExp(raw.pattern!, raw.description?.includes("global") ? "g" : ""),
+            replacement: raw.replacement ?? "[REDACTED]",
+            description: raw.description ?? "",
+        };
+    }
+    if (raw.type === "KEY_MATCH") {
+        return {
+            type: "KEY_MATCH",
+            sensitiveKeys: raw.sensitive_keys ?? [],
+            replacement: raw.replacement,
+        };
+    }
+    throw new ConfigLoadError(`masking.rules[${index}].type`, `invalid type "${raw.type}"`);
 }
 
 function convertTaskRule(raw: RawTaskRule): TaskRule {

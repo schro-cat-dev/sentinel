@@ -127,6 +127,30 @@ describe("validateLogInput", () => {
         }
     });
 
+    // --- resourceIds[i] non-string (line 162) ---
+    it("rejects non-string element in resourceIds", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            resourceIds: [42 as unknown as string],
+        })).toThrow(ValidationError);
+        expect(() => validateLogInput({
+            message: "test",
+            resourceIds: [42 as unknown as string],
+        })).toThrow("resourceIds[0]");
+    });
+
+    // --- details non-string (line 176) ---
+    it("rejects non-string details", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            details: 123 as unknown as string,
+        })).toThrow(ValidationError);
+        expect(() => validateLogInput({
+            message: "test",
+            details: 123 as unknown as string,
+        })).toThrow("details");
+    });
+
     // --- undefined message is now rejected at validator boundary (NEW-11 fix) ---
     it("rejects undefined message", () => {
         expect(() => validateLogInput({})).toThrow(ValidationError);

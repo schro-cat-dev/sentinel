@@ -249,7 +249,8 @@ export class Sentinel {
         const transport = this.transportConfig.transport!;
         const timeoutMs = this.transportConfig.timeoutMs ?? 30_000;
 
-        let timer: ReturnType<typeof setTimeout> | undefined;
+        // setTimeout は同期代入なのでtryブロック内で必ずtimerに値が入る
+        let timer: ReturnType<typeof setTimeout>;
         try {
             const sendPromise = transport.send(log);
             const timeoutPromise = new Promise<never>((_, reject) => {
@@ -257,7 +258,7 @@ export class Sentinel {
             });
             return await Promise.race([sendPromise, timeoutPromise]);
         } finally {
-            if (timer !== undefined) clearTimeout(timer);
+            clearTimeout(timer!);
         }
     }
 }

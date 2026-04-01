@@ -93,6 +93,12 @@ afterEach(() => Sentinel.reset());
 // 正常系
 // =========================================================================
 describe("parseConfigYaml — normal cases", () => {
+    it("uses built-in yaml package when no yamlParser provided", () => {
+        // yamlParser を省略 → require("yaml") が使われる
+        const config = parseConfigYaml(MINIMAL_YAML, { expandEnv: false });
+        expect(config.projectName).toBe("test-project");
+    });
+
     it("parses minimal config with defaults", () => {
         const config = parseConfigYaml(MINIMAL_YAML);
         expect(config.projectName).toBe("test-project");
@@ -337,6 +343,18 @@ task_rules:
 
     it("throws on invalid YAML syntax", () => {
         expect(() => parseConfigYaml("{{invalid: yaml::")).toThrow();
+    });
+
+    it("throws on invalid masking rule type at conversion stage", () => {
+        const yaml = `
+project_name: p
+service_id: s
+masking:
+  rules:
+    - type: CUSTOM_UNKNOWN
+`;
+        expect(() => parseConfigYaml(yaml)).toThrow(ConfigLoadError);
+        expect(() => parseConfigYaml(yaml)).toThrow("invalid type");
     });
 });
 

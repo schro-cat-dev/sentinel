@@ -228,7 +228,7 @@ export class EventDetector {
                     },
                 };
             default: {
-                // 網羅性チェック: SystemEventNameに新しい値が追加された場合にコンパイルエラーにする
+                /* v8 ignore next 2 -- exhaustive check: unreachable at runtime, compile-time guard */
                 const _exhaustive: never = rule.eventName;
                 throw new Error(`Unknown eventName: ${_exhaustive}`);
             }
