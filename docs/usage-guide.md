@@ -33,6 +33,28 @@ npm install ../path/to/sentinel
 
 > **Note:** 将来的に npm registry に公開された場合は `npm install @schro-cat-dev/sentinel` で利用可能になります。
 
+#### セキュリティチェック（利用前に必ず実施）
+
+clone 後、利用前に以下を確認してください。外部から取得したコードにはマルウェアや改竄のリスクがあります。
+
+```bash
+# 1. devDependencies の脆弱性チェック
+npm audit
+
+# 2. ビルド成果物にランタイム依存がないことを確認（0 dependencies が正常）
+npm ls --prod --depth=0
+
+# 3. テストが全て通ることを確認
+npm test
+
+# 4. (推奨) commit署名の検証（GPG署名がある場合）
+git log --show-signature -5
+```
+
+- Sentinel SDK はランタイム依存ゼロです。`npm ls --prod` で依存が表示される場合は改竄の可能性があります
+- `npm audit` で HIGH/CRITICAL が報告された場合は、devDependencies を最新化してから利用してください
+- 信頼できないフォークからの clone は避け、公式リポジトリを使用してください
+
 Requirements: Node.js >= 20.0.0
 
 Dependencies: **none** (zero npm dependencies, uses only `node:crypto`)
