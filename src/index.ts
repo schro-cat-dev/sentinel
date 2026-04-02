@@ -246,7 +246,9 @@ export class Sentinel {
                 return localResult;
             }
             try {
-                await this.sendWithTimeout(lastLog);
+                const serverResult = await this.sendWithTimeout(lastLog);
+                // Phase 2-A: Server タスクをマージ + ruleId ベースの dedup
+                this.mergeServerTasks(localResult, serverResult);
             } catch (e) {
                 const error = e instanceof Error ? e : new Error(String(e));
                 localResult.transportError = error.message;
@@ -362,6 +364,31 @@ export class Sentinel {
             }
         }
         return obj;
+    }
+
+    /**
+     * Phase 2-A: Server タスクをローカル結果にマージし、ruleId で dedup する。
+     * SDK ローカルのタスクを優先（先に生成されたため）。
+     * Server のみが生成したタスク（SDK にないruleId）は追加する。
+     */
+    private mergeServerTasks(localResult: IngestionResult, serverResult: IngestionResult): void {
+        if (!serverResult?.tasksGenerated?.length) return;
+
+        const localRuleIds = new Set(localResult.tasksGenerated.map((t) => t.ruleId));
+        for (const serverTask of serverResult.tasksGenerated) {
+            if (!localRuleIds.has(serverTask.ruleId)) {
+                localResult.tasksGenerated.push(serverTask);
+                localRuleIds.add(serverTask.ruleId);
+            }
+        }
+
+        // threatResponses もマージ
+        if (serverResult.threatResponses?.length) {
+            localResult.threatResponses = [
+                ...(localResult.threatResponses ?? []),
+                ...serverResult.threatResponses,
+            ];
+        }
     }
 
     /**

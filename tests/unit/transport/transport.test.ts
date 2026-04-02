@@ -124,25 +124,93 @@ describe("Transport: threatResponses (Phase 2-C)", () => {
     });
 });
 
-describe("Transport: detection rules sync awareness (Phase 2-A)", () => {
-    it("Server detection_rules config is exposed via HealthCheck ConfigSummary", async () => {
-        // This verifies the architecture: Server exposes detection_rules_count
-        // in HealthCheck so SDK can compare its own rules count.
-        // Actual gRPC call is E2E test scope; here we validate the type contract.
+describe("Transport: dual-mode task dedup (Phase 2-A)", () => {
+    it("deduplicates tasks by ruleId between SDK and Server in dual mode", async () => {
         Sentinel.reset();
-        const sentinel = Sentinel.initialize(baseConfig);
-        const config = sentinel.getConfig();
-        // SDK has detectionRules available for comparison
-        expect(config.detectionRules ?? []).toBeDefined();
+        const mockTransport: RemoteTransport = {
+            async send(log: Log): Promise<IngestionResult> {
+                return {
+                    traceId: log.traceId,
+                    hashChainValid: true,
+                    masked: true,
+                    detection: null,
+                    tasksGenerated: [
+                        // Server generated the same task (same ruleId)
+                        { taskId: "server-task-1", ruleId: "crit-notify", status: "dispatched", dispatchedAt: "2026-04-02T00:00:00Z" },
+                        // Server generated a unique task (different ruleId)
+                        { taskId: "server-task-2", ruleId: "server-only-rule", status: "dispatched", dispatchedAt: "2026-04-02T00:00:00Z" },
+                    ],
+                };
+            },
+        };
+
+        const sentinel = Sentinel.initialize(baseConfig, {
+            transport: { mode: "dual", transport: mockTransport },
+        });
+
+        // This log triggers SYSTEM_CRITICAL_FAILURE → ruleId "crit-notify" locally
+        const result = await sentinel.ingest({
+            message: "DB pool exhausted",
+            isCritical: true,
+            level: 6,
+            boundary: "db-svc",
+        });
+
+        // SDK local should have generated crit-notify task
+        // Server also returned crit-notify + server-only-rule
+        // After dedup: crit-notify (SDK local, kept) + server-only-rule (Server, merged)
+        const ruleIds = result.tasksGenerated.map(t => t.ruleId);
+        const uniqueRuleIds = new Set(ruleIds);
+        expect(uniqueRuleIds.size).toBe(ruleIds.length); // no duplicates
+        expect(ruleIds).toContain("crit-notify");
+        expect(ruleIds).toContain("server-only-rule");
     });
 
-    it("integration.syncDetectionRules flag is available in config", () => {
+    it("returns only local tasks when Server transport fails in dual mode", async () => {
         Sentinel.reset();
-        const sentinel = Sentinel.initialize({
-            ...baseConfig,
-            integration: { syncDetectionRules: true },
+        const failTransport: RemoteTransport = {
+            async send(): Promise<IngestionResult> {
+                throw new Error("server down");
+            },
+        };
+
+        const sentinel = Sentinel.initialize(baseConfig, {
+            transport: { mode: "dual", transport: failTransport },
         });
-        expect(sentinel.getConfig().integration?.syncDetectionRules).toBe(true);
+
+        const result = await sentinel.ingest({
+            message: "DB pool exhausted", isCritical: true, level: 6, boundary: "db-svc",
+        });
+
+        // Local tasks should still be present
+        expect(result.tasksGenerated.length).toBeGreaterThan(0);
+        expect(result.tasksGenerated[0].ruleId).toBe("crit-notify");
+        expect(result.transportError).toContain("server down");
+    });
+
+    it("merges Server-only tasks into local result in dual mode", async () => {
+        Sentinel.reset();
+        const mockTransport: RemoteTransport = {
+            async send(log: Log): Promise<IngestionResult> {
+                return {
+                    traceId: log.traceId,
+                    hashChainValid: true,
+                    masked: true,
+                    detection: null,
+                    tasksGenerated: [
+                        { taskId: "server-unique", ruleId: "server-exclusive", status: "dispatched", dispatchedAt: "2026-04-02T00:00:00Z" },
+                    ],
+                };
+            },
+        };
+
+        const sentinel = Sentinel.initialize(baseConfig, {
+            transport: { mode: "dual", transport: mockTransport },
+        });
+
+        // Non-critical log: SDK won't generate tasks, but Server might
+        const result = await sentinel.ingest({ message: "normal log" });
+        expect(result.tasksGenerated.some(t => t.ruleId === "server-exclusive")).toBe(true);
     });
 });
 
