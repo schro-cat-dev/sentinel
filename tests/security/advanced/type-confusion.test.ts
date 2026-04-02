@@ -306,6 +306,141 @@ describe("Security: Runtime Type Confusion Attacks", () => {
     });
 
     // =========================================================================
+    // Wrong types for timestamp field (A-03 gap)
+    // =========================================================================
+    describe("timestamp field type confusion", () => {
+        it("rejects number as timestamp", () => {
+            expect(() => validateLogInput({ message: "test", timestamp: 1234567890 as never })).toThrow(ValidationError);
+        });
+
+        it("rejects boolean as timestamp", () => {
+            expect(() => validateLogInput({ message: "test", timestamp: true as never })).toThrow(ValidationError);
+        });
+
+        it("rejects object as timestamp", () => {
+            expect(() => validateLogInput({ message: "test", timestamp: new Date() as never })).toThrow(ValidationError);
+        });
+
+        it("rejects array as timestamp", () => {
+            expect(() => validateLogInput({ message: "test", timestamp: ["2024-01-01"] as never })).toThrow(ValidationError);
+        });
+
+        it("rejects empty string as timestamp", () => {
+            expect(() => validateLogInput({ message: "test", timestamp: "" as never })).toThrow(ValidationError);
+        });
+
+        it("rejects non-ISO8601 string as timestamp", () => {
+            expect(() => validateLogInput({ message: "test", timestamp: "not-a-date" as never })).toThrow(ValidationError);
+        });
+
+        it("rejects unix timestamp string as timestamp", () => {
+            expect(() => validateLogInput({ message: "test", timestamp: "1234567890" as never })).toThrow(ValidationError);
+        });
+
+        it("accepts valid ISO8601 timestamp", () => {
+            expect(() => validateLogInput({ message: "test", timestamp: "2024-04-02T10:30:00.000Z" })).not.toThrow();
+        });
+
+        it("accepts ISO8601 without milliseconds", () => {
+            expect(() => validateLogInput({ message: "test", timestamp: "2024-04-02T10:30:00Z" })).not.toThrow();
+        });
+
+        it("accepts ISO8601 with timezone offset", () => {
+            expect(() => validateLogInput({ message: "test", timestamp: "2024-04-02T10:30:00+09:00" })).not.toThrow();
+        });
+
+        it("allows undefined timestamp (optional)", () => {
+            expect(() => validateLogInput({ message: "test" })).not.toThrow();
+        });
+    });
+
+    // =========================================================================
+    // Wrong types for logicalClock field (A-03 gap)
+    // =========================================================================
+    describe("logicalClock field type confusion", () => {
+        it("rejects string as logicalClock", () => {
+            expect(() => validateLogInput({ message: "test", logicalClock: "123" as never })).toThrow(ValidationError);
+        });
+
+        it("rejects boolean as logicalClock", () => {
+            expect(() => validateLogInput({ message: "test", logicalClock: true as never })).toThrow(ValidationError);
+        });
+
+        it("rejects object as logicalClock", () => {
+            expect(() => validateLogInput({ message: "test", logicalClock: {} as never })).toThrow(ValidationError);
+        });
+
+        it("rejects array as logicalClock", () => {
+            expect(() => validateLogInput({ message: "test", logicalClock: [42] as never })).toThrow(ValidationError);
+        });
+
+        it("rejects NaN as logicalClock", () => {
+            expect(() => validateLogInput({ message: "test", logicalClock: NaN as never })).toThrow(ValidationError);
+        });
+
+        it("rejects Infinity as logicalClock", () => {
+            expect(() => validateLogInput({ message: "test", logicalClock: Infinity as never })).toThrow(ValidationError);
+        });
+
+        it("rejects negative number as logicalClock", () => {
+            expect(() => validateLogInput({ message: "test", logicalClock: -1 as never })).toThrow(ValidationError);
+        });
+
+        it("accepts valid positive number as logicalClock", () => {
+            expect(() => validateLogInput({ message: "test", logicalClock: 1712345678000 })).not.toThrow();
+        });
+
+        it("accepts zero as logicalClock", () => {
+            expect(() => validateLogInput({ message: "test", logicalClock: 0 })).not.toThrow();
+        });
+
+        it("allows undefined logicalClock (optional)", () => {
+            expect(() => validateLogInput({ message: "test" })).not.toThrow();
+        });
+    });
+
+    // =========================================================================
+    // Wrong types for triggerAgent field (A-03 gap)
+    // =========================================================================
+    describe("triggerAgent field type confusion", () => {
+        it("rejects string 'true' as triggerAgent", () => {
+            expect(() => validateLogInput({ message: "test", triggerAgent: "true" as never })).toThrow(ValidationError);
+        });
+
+        it("rejects string 'false' as triggerAgent (truthy in JS!)", () => {
+            expect(() => validateLogInput({ message: "test", triggerAgent: "false" as never })).toThrow(ValidationError);
+        });
+
+        it("rejects number 1 as triggerAgent", () => {
+            expect(() => validateLogInput({ message: "test", triggerAgent: 1 as never })).toThrow(ValidationError);
+        });
+
+        it("rejects number 0 as triggerAgent", () => {
+            expect(() => validateLogInput({ message: "test", triggerAgent: 0 as never })).toThrow(ValidationError);
+        });
+
+        it("rejects object as triggerAgent", () => {
+            expect(() => validateLogInput({ message: "test", triggerAgent: {} as never })).toThrow(ValidationError);
+        });
+
+        it("rejects array as triggerAgent", () => {
+            expect(() => validateLogInput({ message: "test", triggerAgent: [] as never })).toThrow(ValidationError);
+        });
+
+        it("accepts true as triggerAgent", () => {
+            expect(() => validateLogInput({ message: "test", triggerAgent: true })).not.toThrow();
+        });
+
+        it("accepts false as triggerAgent", () => {
+            expect(() => validateLogInput({ message: "test", triggerAgent: false })).not.toThrow();
+        });
+
+        it("allows undefined triggerAgent (optional)", () => {
+            expect(() => validateLogInput({ message: "test" })).not.toThrow();
+        });
+    });
+
+    // =========================================================================
     // Objects with getters that throw
     // =========================================================================
     describe("Objects with getters that throw", () => {

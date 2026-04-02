@@ -269,27 +269,42 @@ func main() {
 		multiNotifier := notify.NewMultiNotifier()
 		multiNotifier.Register(notify.NewLogNotifier()) // fallback: 常にログ出力
 
-		// Webhook provider (legacy config path)
+		// Webhook provider (legacy config path) — F-05: URL validation
 		if cfg.Webhook.Enabled && cfg.Webhook.URL != "" {
-			multiNotifier.Register(notify.NewWebhookNotifier(notify.WebhookConfig{
+			wh, err := notify.NewWebhookNotifierValidated(notify.WebhookConfig{
 				URL: cfg.Webhook.URL, TimeoutSec: cfg.Webhook.TimeoutSec, Secret: cfg.Webhook.Secret,
-			}))
-			slog.Info("webhook notifier registered", "url", cfg.Webhook.URL)
+			})
+			if err != nil {
+				slog.Error("webhook notifier rejected", "error", err)
+			} else {
+				multiNotifier.Register(wh)
+				slog.Info("webhook notifier registered", "url", cfg.Webhook.URL)
+			}
 		}
-		// Slack provider (config.notify.slack or SENTINEL_SLACK_WEBHOOK_URL)
+		// Slack provider (config.notify.slack or SENTINEL_SLACK_WEBHOOK_URL) — F-05: URL validation
 		if cfg.Notify.Slack.Enabled && cfg.Notify.Slack.WebhookURL != "" {
-			multiNotifier.Register(notify.NewSlackNotifier(notify.SlackConfig{
+			sn, err := notify.NewSlackNotifierValidated(notify.SlackConfig{
 				WebhookURL: cfg.Notify.Slack.WebhookURL,
-			}))
-			slog.Info("slack notifier registered")
+			})
+			if err != nil {
+				slog.Error("slack notifier rejected", "error", err)
+			} else {
+				multiNotifier.Register(sn)
+				slog.Info("slack notifier registered")
+			}
 		}
-		// Discord provider (config.notify.discord or SENTINEL_DISCORD_WEBHOOK_URL)
+		// Discord provider (config.notify.discord or SENTINEL_DISCORD_WEBHOOK_URL) — F-05: URL validation
 		if cfg.Notify.Discord.Enabled && cfg.Notify.Discord.WebhookURL != "" {
-			multiNotifier.Register(notify.NewDiscordNotifier(notify.DiscordConfig{
+			dn, err := notify.NewDiscordNotifierValidated(notify.DiscordConfig{
 				WebhookURL: cfg.Notify.Discord.WebhookURL,
 				Username:   cfg.Notify.Discord.Username,
-			}))
-			slog.Info("discord notifier registered")
+			})
+			if err != nil {
+				slog.Error("discord notifier rejected", "error", err)
+			} else {
+				multiNotifier.Register(dn)
+				slog.Info("discord notifier registered")
+			}
 		}
 		// Gmail/SMTP provider (config.notify.gmail or SENTINEL_GMAIL_FROM)
 		if cfg.Notify.Gmail.Enabled && cfg.Notify.Gmail.From != "" {

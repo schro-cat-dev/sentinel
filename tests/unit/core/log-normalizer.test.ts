@@ -129,6 +129,75 @@ describe("LogNormalizer", () => {
         });
     });
 
+    describe("defensive type coercion (A-03)", () => {
+        it("falls back to ISO string when timestamp is a number", () => {
+            const log = normalizer.normalize({ message: "test", timestamp: 1234567890 as never });
+            expect(typeof log.timestamp).toBe("string");
+            expect(log.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+        });
+
+        it("falls back to ISO string when timestamp is a boolean", () => {
+            const log = normalizer.normalize({ message: "test", timestamp: true as never });
+            expect(typeof log.timestamp).toBe("string");
+            expect(log.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+        });
+
+        it("falls back to ISO string when timestamp is an object", () => {
+            const log = normalizer.normalize({ message: "test", timestamp: {} as never });
+            expect(typeof log.timestamp).toBe("string");
+            expect(log.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+        });
+
+        it("preserves valid ISO8601 timestamp string", () => {
+            const ts = "2024-04-02T10:30:00.000Z";
+            const log = normalizer.normalize({ message: "test", timestamp: ts });
+            expect(log.timestamp).toBe(ts);
+        });
+
+        it("falls back to auto-clock when logicalClock is a string", () => {
+            const log = normalizer.normalize({ message: "test", logicalClock: "123" as never });
+            expect(typeof log.logicalClock).toBe("number");
+            expect(log.logicalClock).toBeGreaterThan(0);
+        });
+
+        it("falls back to auto-clock when logicalClock is NaN", () => {
+            const log = normalizer.normalize({ message: "test", logicalClock: NaN as never });
+            expect(typeof log.logicalClock).toBe("number");
+            expect(Number.isFinite(log.logicalClock)).toBe(true);
+        });
+
+        it("falls back to auto-clock when logicalClock is negative", () => {
+            const log = normalizer.normalize({ message: "test", logicalClock: -5 as never });
+            expect(typeof log.logicalClock).toBe("number");
+            expect(log.logicalClock).toBeGreaterThanOrEqual(0);
+        });
+
+        it("preserves valid logicalClock number", () => {
+            const log = normalizer.normalize({ message: "test", logicalClock: 42 });
+            expect(log.logicalClock).toBe(42);
+        });
+
+        it("falls back to false when triggerAgent is string 'true'", () => {
+            const log = normalizer.normalize({ message: "test", triggerAgent: "true" as never });
+            expect(log.triggerAgent).toBe(false);
+        });
+
+        it("falls back to false when triggerAgent is string 'false'", () => {
+            const log = normalizer.normalize({ message: "test", triggerAgent: "false" as never });
+            expect(log.triggerAgent).toBe(false);
+        });
+
+        it("falls back to false when triggerAgent is number 1", () => {
+            const log = normalizer.normalize({ message: "test", triggerAgent: 1 as never });
+            expect(log.triggerAgent).toBe(false);
+        });
+
+        it("preserves valid boolean triggerAgent", () => {
+            const log = normalizer.normalize({ message: "test", triggerAgent: true });
+            expect(log.triggerAgent).toBe(true);
+        });
+    });
+
     describe("message trimming", () => {
         it("trims leading/trailing whitespace", () => {
             const log = normalizer.normalize({ message: "  hello world  " });

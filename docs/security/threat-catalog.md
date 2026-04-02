@@ -14,7 +14,7 @@ status: active
 |----|------|-------------|------|------|
 | A-01 | Null byte injection | message/tags/resourceIds等にnull byte注入 → ログ切り詰め、WAF回避 | **対策済**: 全文字列フィールドでnull byte検査 | log-validator.ts |
 | A-02 | Oversized payload DoS | 巨大message/agentBackLog → メモリ枯渇 | **対策済**: estimateLogSize + maxTotalLogSize (agentBackLog含む) | log-validator.ts |
-| A-03 | Type confusion | number型をstring型フィールドに注入 → 予期しない分岐 | **部分対策**: message/level/isCritical は型検証、timestamp/logicalClock/triggerAgent は未検証 | log-validator.ts |
+| A-03 | Type confusion | number型をstring型フィールドに注入 → 予期しない分岐 | **対策済**: 全フィールド型検証（timestamp=ISO8601 string, logicalClock=finite非負number, triggerAgent=boolean）+ normalizer防御的フォールバック | log-validator.ts, log-normalizer.ts |
 | A-04 | Prototype pollution (input) | `__proto__` in tags/input → Object.prototype汚染 | **対策済**: tags はkey/category個別検証、MaskingService hasOwnPropertyガード | log-validator.ts, masking-service.ts |
 | A-05 | ReDoS via detectionRules | 悪意のあるRegExpパターン → CPU枯渇 | **部分対策**: messagePattern instanceof RegExp検証あり。ReDoS耐性はV8依存 | event-detector.ts |
 | A-06 | Unicode normalization bypass | NFC/NFD混在でPIIマスキング回避 | **テスト済**: encoding-bypass.test.ts | masking-service.ts |
@@ -65,7 +65,7 @@ status: active
 | F-02 | Auth bypass | API key偽装 → 不正アクセス | **対策済**: AuthUnaryInterceptor + HMAC検証 | grpc/interceptors.go |
 | F-03 | RBAC escalation | viewer権限でadmin操作 | **対策済**: RBACAuthorizer | middleware/authorizer.go |
 | F-04 | SQLite injection | 永続化クエリ注入 | **対策済**: パラメータバインド | store/ |
-| F-05 | Notification provider abuse | Slack/Discord webhook偽装 | **部分対策**: webhook HMAC署名。provider URLの検証は設定依存 | notify/ |
+| F-05 | Notification provider abuse | Slack/Discord webhook偽装 | **対策済**: webhook HMAC署名 + ValidateWebhookURL（HTTPS必須、プライベートIP/localhost/リンクローカル拒否）。main.goでValidated constructors使用 | notify/url_validation.go |
 
 ### G. 運用・監査攻撃
 

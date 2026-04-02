@@ -119,6 +119,28 @@ export function validateLogInput(
         throw new ValidationError("isCritical", "must be boolean");
     }
 
+    // timestamp (A-03: must be ISO8601 string if provided)
+    if (input.timestamp !== undefined) {
+        if (typeof input.timestamp !== "string") {
+            throw new ValidationError("timestamp", "must be a string");
+        }
+        if (!isISO8601(input.timestamp)) {
+            throw new ValidationError("timestamp", "must be a valid ISO8601 date string");
+        }
+    }
+
+    // logicalClock (A-03: must be finite non-negative number if provided)
+    if (input.logicalClock !== undefined) {
+        if (typeof input.logicalClock !== "number" || !Number.isFinite(input.logicalClock) || input.logicalClock < 0) {
+            throw new ValidationError("logicalClock", "must be a finite non-negative number");
+        }
+    }
+
+    // triggerAgent (A-03: must be boolean if provided)
+    if (input.triggerAgent !== undefined && typeof input.triggerAgent !== "boolean") {
+        throw new ValidationError("triggerAgent", "must be boolean");
+    }
+
     // string fields with length limit
     validateStringField(input.actorId, "actorId", L.maxStringFieldLength);
     validateStringField(input.traceId, "traceId", L.maxStringFieldLength);
@@ -248,6 +270,18 @@ export function validateLogInput(
     if (totalSize > L.maxTotalLogSize) {
         throw new ValidationError("_total", `log exceeds max total size ~${L.maxTotalLogSize} bytes (estimated ${totalSize})`);
     }
+}
+
+/**
+ * ISO8601日時文字列の簡易検証。
+ * Date.parse()のみに頼ると "1234567890" 等の数値文字列も通過するため、
+ * パターンマッチ + Date.parse の二重検証で安全性を確保する。
+ */
+const ISO8601_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+
+function isISO8601(value: string): boolean {
+    if (!ISO8601_PATTERN.test(value)) return false;
+    return !isNaN(Date.parse(value));
 }
 
 function validateStringField(value: string | undefined | null, field: string, maxLength: number): void {

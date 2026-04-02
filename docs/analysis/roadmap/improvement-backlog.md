@@ -4,7 +4,7 @@
 analyzed_at: "2026-04-01"
 based_on: "pending commit"
 status: current
-last_updated: "2026-04-01T17:00:00Z"
+last_updated: "2026-04-02T13:30:00Z"
 ```
 
 ## 全項目ステータス
@@ -62,7 +62,7 @@ last_updated: "2026-04-01T17:00:00Z"
 | TEST-02 | normalizeOnly()テスト | ✅ |
 | TEST-03 | mutex検証 | ✅ |
 
-### Go Server — 全4件完了
+### Go Server — 全5件完了
 
 | ID | 問題 | ステータス |
 |----|------|-----------|
@@ -70,6 +70,7 @@ last_updated: "2026-04-01T17:00:00Z"
 | S-002ext | API Key最小長 | ✅ |
 | S-005 | 暗号化鍵検証 | ✅ |
 | S-006 | レートリミット | ✅ |
+| F-05 | webhook URL検証（SSRF防止） | ✅ ValidateWebhookURL + Validated constructors |
 
 ---
 
@@ -81,8 +82,8 @@ last_updated: "2026-04-01T17:00:00Z"
 | P1 | 6 | 6 | 0 | |
 | P2 | 14 | 13 | 1 | CFG-01: 意図的NA |
 | P3 | 9 | 8 | 1 | DEAD-03: 鍵管理設計必要 |
-| Go | 4 | 4 | 0 | |
-| **合計** | **37** | **35** | **2** | |
+| Go | 5 | 5 | 0 | |
+| **合計** | **38** | **36** | **2** | |
 
 **残り6件の保留理由:**
 - OBS-03: ロガーI/Fは利用者のログ基盤との統合設計が必要
