@@ -2,7 +2,7 @@
 
 ```yaml
 created_at: "2026-04-02T17:00:00Z"
-status: planning
+status: in_progress (Phase 1 complete, Phase 2 next)
 scope: SDK-Server integration gaps
 related_issues:
   - ハッシュチェーン鍵管理 (DEAD-03)
