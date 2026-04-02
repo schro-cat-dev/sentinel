@@ -166,6 +166,7 @@
 │   │   └── pipeline.test.ts                     # SDKパイプラインE2E
 │   └── e2e/
 │       ├── sdk-server.test.ts                   # SDK→Go gRPC実通信
+│       ├── server-config-matrix.test.ts         # サーバ設定マトリクスE2E（25テスト）
 │       ├── sdk-runtime-verification.test.ts     # 全機能シナリオ動作検証
 │       └── test-server-config.yaml              # E2Eテスト用Goサーバ設定
 │

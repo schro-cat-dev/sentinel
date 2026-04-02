@@ -1,6 +1,6 @@
 # 統合・E2Eテスト一覧
 
-**テスト数:** 40 (Integration 18 + E2E 22)（`npx vitest run tests/integration/ tests/e2e/` で最新数を確認）
+**テスト数:** 65 (Integration 18 + E2E 47)（`npx vitest run tests/integration/ tests/e2e/` で最新数を確認）
 
 ## tests/integration/pipeline.test.ts (18テスト)
 
@@ -57,9 +57,39 @@ store:
   dsn: "file::memory:"  # インメモリDB
 ```
 
+## tests/e2e/server-config-matrix.test.ts (25テスト)
+
+**異なる設定でGoサーバを起動し、設定内容に応じた挙動変化を検証するコンフィグマトリクステスト。**
+
+各テストが独立したサーバインスタンスを起動→検証→クリーンアップする設計。
+
+| テスト群 | テスト数 | 検証内容 | なぜ |
+|---------|---------|---------|------|
+| ConfigSummary verification | 2 | HealthCheckが設定内容を正しく返す | SDK/Server設定整合性 |
+| HMAC key and hash chain | 2 | ハッシュチェーン有効/無効の挙動 | セキュリティ機能のon/off確認 |
+| Full pipeline | 2 | ログ投入→検知→タスク生成→レスポンス | 正常系E2Eフロー |
+| Empty rules / all disabled | 2 | 空ルール・全機能無効でもサーバ動作 | エッジケース |
+| Auth (API key) | 3 | 認証なし・有効キー・無効キー | 認証バリデーション |
+| SDK dual mode | 1 | ローカル+リモート同時処理 | dualモード設定変更 |
+| Response module toggle | 2 | response有効/無効でthreat_responses変化 | integration flag切替 |
+| Connection timeout / fallback | 2 | タイムアウト・フォールバック | 異常系ネットワーク |
+| Masking rule variations | 1 | PHONE-onlyルールでのマスキング動作 | ルール構成バリエーション |
+| Multiple task rules | 1 | 3ルール構成で異なるイベント→別ルール発火 | タスクルールマッチング |
+| ConfigSummary detectionRulesCount | 1 | detection_rulesのカウント検証 | 設定値精度 |
+| Ensemble detection | 1 | ensemble有効時のスコア集約検知 | ensemble検知パイプライン |
+| Anomaly detection | 1 | anomaly有効時の正常動作 | 異常検知パイプライン |
+| Authorization (RBAC) | 3 | writer/reader権限、authz有効/無効 | RBAC権限制御 |
+| Full feature config | 1 | masking+hash+ensemble+response全有効 | 全機能組み合わせ |
+
+### 発見事項
+
+- **`masked` フィールドの意味**: `masked=true` は「マスキングパイプラインが実行された」ことを示し、「コンテンツが実際に変更された」ことではない。`enable_masking=true` なら PII の有無に関わらず常に `masked=true` が返る。
+- **Context Key 不一致（修正済み）**: `grpc/interceptors.go` の `clientIDKey = "clientID"` と `middleware/authorizer.go` の `ctxKeyClientID = "client_id"` が不一致だった。grpc interceptor が `middleware.ContextWithClientID()` を使うように修正し、client_roles による RBAC 権限切替が正しく機能するようになった。
+
 ### なぜE2Eテストが必要か
 
 - **Protobuf型変換**: TS SDKのLog型とGo側のprotobuf間の変換が正しいか
 - **マスキング一貫性**: TS側とGo側のマスキングルール解釈が一致するか
 - **エラーコード**: gRPCステータスコードの翻訳が正しいか
 - **設定反映**: Go側のconfig.yamlとSDK側のconfigが整合するか
+- **設定バリエーション**: 機能フラグの組み合わせで挙動が正しく変化するか

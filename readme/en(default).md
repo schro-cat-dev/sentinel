@@ -2,6 +2,8 @@
 
 **Detect threats in your logs. Automatically respond.**
 
+> **Important:** This project is a reference implementation for log-based threat detection and automated response. Before using in production, thoroughly review the implementation details, adapt configuration to your specific use case, and conduct your own security audit. The default settings, detection rules, and response strategies are starting points — not production-ready defaults. Always test with your own workloads and verify that masking, authorization, and response behaviors meet your requirements.
+
 Sentinel watches your application logs, detects security threats and system failures, and automatically triggers actions — blocking malicious IPs, notifying your team, or escalating to an AI analyst.
 
 ```
@@ -20,8 +22,8 @@ Automatically: Block IP + Notify #security on Slack + Log for audit
 
 ## Components
 
-- **TypeScript SDK** — Zero-dependency client library. Works standalone (Local Mode) or with the Go server (Remote/Dual Mode).
-- **Go Server** — Backend with SQLite/SQLCipher persistence, RBAC authorization, ensemble detection, threat response orchestration, and multi-channel notifications (Slack/Discord/Gmail/Webhook).
+- **TypeScript SDK** — Zero-dependency client library. PII masking, hash-chain integrity, detection rules, and task generation. Works standalone (Local Mode) or with the Go server (Remote/Dual Mode).
+- **Go Server** — gRPC backend with SQLite/SQLCipher persistence, RBAC authorization, ensemble detection, anomaly detection, threat response orchestration (block/analyze/notify), and approval workflows with multi-channel notifications (Slack/Discord/Gmail/Webhook).
 
 ## Key Features
 
@@ -89,10 +91,10 @@ await sentinel.shutdown();
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
-| Client SDK | TypeScript (zero dependencies) | Implemented | 2,487 tests |
+| Client SDK | TypeScript (zero dependencies) | Implemented | 3,038+ tests |
 | Backend Server | Go 1.22+ / gRPC | Implemented | 786 tests |
 
-**Total: 3,273 tests, 0 FAIL**
+**Total: 3,824+ tests, 0 FAIL**
 
 ## Documentation
 

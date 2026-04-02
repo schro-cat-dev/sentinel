@@ -4,6 +4,8 @@
 
 [Architecture](docs/architecture.md) | [Security](docs/security.md) | [Usage Guide](docs/usage-guide.md) | [日本語](readme/ja.md)
 
+> **Important:** This project is a reference implementation for log-based threat detection and automated response. Before using in production, thoroughly review the implementation details, adapt configuration to your specific use case, and conduct your own security audit. The default settings, detection rules, and response strategies are starting points — not production-ready defaults. Always test with your own workloads and verify that masking, authorization, and response behaviors meet your requirements.
+
 ---
 
 ## What It Does
@@ -21,8 +23,8 @@ Automatically: Block IP + Notify #security on Slack + Log for audit
 ```
 
 The system has two components:
-- **TypeScript SDK** — Zero-dependency client library. Works standalone or with the server.
-- **Go Server** — Backend with persistence, RBAC, ensemble detection, and threat response.
+- **TypeScript SDK** — Zero-dependency client library. PII masking, hash-chain integrity, detection rules, and task generation. Works standalone (local mode) or with the server (remote/dual mode).
+- **Go Server** — gRPC backend with SQLite persistence, RBAC authorization, ensemble detection, anomaly detection, threat response orchestration (block/analyze/notify), and approval workflows.
 
 ---
 
@@ -270,11 +272,11 @@ implementations. Users inject their own adapters for real providers.
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
-| Client SDK | TypeScript (zero dependencies) | Implemented | 3,013+ tests (Vitest) |
+| Client SDK | TypeScript (zero dependencies) | Implemented | 3,038+ tests (Vitest) |
 | Backend Server | Go 1.22+ / gRPC | Implemented | 786 tests (`-race` verified, fuzz tested) |
-| gRPC Communication | Protocol Buffers v3 | Implemented | E2E verified (22 tests via real gRPC) |
+| gRPC Communication | Protocol Buffers v3 | Implemented | E2E verified (47 tests via real gRPC) |
 
-**Total: 3,799+ tests (SDK 3,013+ + Server 786), 0 FAIL**
+**Total: 3,824+ tests (SDK 3,038+ + Server 786), 0 FAIL**
 
 ---
 
@@ -294,11 +296,11 @@ sentinel/
 │   ├── transport/                # RemoteTransport, TaskTransport, HTTP webhook, circuit breaker
 │   ├── shared/                   # Error taxonomy, audit utilities
 │   └── types/                    # Domain models (Log, Task, Event)
-├── tests/                        # 3,013+ tests
+├── tests/                        # 3,038+ tests
 │   ├── unit/                     # Unit tests (606)
 │   ├── config/                   # Config tests (432)
 │   ├── security/                 # Security + advanced tests (992)
-│   ├── e2e/                      # SDK + Go Server E2E (22)
+│   ├── e2e/                      # SDK + Go Server E2E (47)
 │   └── integration/              # Pipeline integration (18)
 ├── packages/server/              # Go Backend Server
 │   ├── cmd/server/               # Entry point

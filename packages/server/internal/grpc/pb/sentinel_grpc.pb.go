@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.1
 // - protoc             v7.34.0
-// source: sentinel.proto
+// source: proto/sentinel.proto
 
 package pb
 
@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	SentinelService_Ingest_FullMethodName             = "/sentinel.v1.SentinelService/Ingest"
 	SentinelService_HealthCheck_FullMethodName        = "/sentinel.v1.SentinelService/HealthCheck"
+	SentinelService_GetLog_FullMethodName             = "/sentinel.v1.SentinelService/GetLog"
 	SentinelService_GetTaskStatus_FullMethodName      = "/sentinel.v1.SentinelService/GetTaskStatus"
 	SentinelService_ListTasks_FullMethodName          = "/sentinel.v1.SentinelService/ListTasks"
 	SentinelService_ApproveTask_FullMethodName        = "/sentinel.v1.SentinelService/ApproveTask"
@@ -37,6 +38,7 @@ const (
 type SentinelServiceClient interface {
 	Ingest(ctx context.Context, in *IngestRequest, opts ...grpc.CallOption) (*IngestResponse, error)
 	HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error)
+	GetLog(ctx context.Context, in *GetLogRequest, opts ...grpc.CallOption) (*GetLogResponse, error)
 	GetTaskStatus(ctx context.Context, in *GetTaskStatusRequest, opts ...grpc.CallOption) (*GetTaskStatusResponse, error)
 	ListTasks(ctx context.Context, in *ListTasksRequest, opts ...grpc.CallOption) (*ListTasksResponse, error)
 	ApproveTask(ctx context.Context, in *ApproveTaskRequest, opts ...grpc.CallOption) (*ApproveTaskResponse, error)
@@ -69,6 +71,16 @@ func (c *sentinelServiceClient) HealthCheck(ctx context.Context, in *HealthCheck
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(HealthCheckResponse)
 	err := c.cc.Invoke(ctx, SentinelService_HealthCheck_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sentinelServiceClient) GetLog(ctx context.Context, in *GetLogRequest, opts ...grpc.CallOption) (*GetLogResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetLogResponse)
+	err := c.cc.Invoke(ctx, SentinelService_GetLog_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -161,6 +173,7 @@ func (c *sentinelServiceClient) GetThreatResponses(ctx context.Context, in *GetT
 type SentinelServiceServer interface {
 	Ingest(context.Context, *IngestRequest) (*IngestResponse, error)
 	HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error)
+	GetLog(context.Context, *GetLogRequest) (*GetLogResponse, error)
 	GetTaskStatus(context.Context, *GetTaskStatusRequest) (*GetTaskStatusResponse, error)
 	ListTasks(context.Context, *ListTasksRequest) (*ListTasksResponse, error)
 	ApproveTask(context.Context, *ApproveTaskRequest) (*ApproveTaskResponse, error)
@@ -184,6 +197,9 @@ func (UnimplementedSentinelServiceServer) Ingest(context.Context, *IngestRequest
 }
 func (UnimplementedSentinelServiceServer) HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method HealthCheck not implemented")
+}
+func (UnimplementedSentinelServiceServer) GetLog(context.Context, *GetLogRequest) (*GetLogResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetLog not implemented")
 }
 func (UnimplementedSentinelServiceServer) GetTaskStatus(context.Context, *GetTaskStatusRequest) (*GetTaskStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTaskStatus not implemented")
@@ -262,6 +278,24 @@ func _SentinelService_HealthCheck_Handler(srv interface{}, ctx context.Context, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(SentinelServiceServer).HealthCheck(ctx, req.(*HealthCheckRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SentinelService_GetLog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLogRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SentinelServiceServer).GetLog(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SentinelService_GetLog_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SentinelServiceServer).GetLog(ctx, req.(*GetLogRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -426,6 +460,10 @@ var SentinelService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _SentinelService_HealthCheck_Handler,
 		},
 		{
+			MethodName: "GetLog",
+			Handler:    _SentinelService_GetLog_Handler,
+		},
+		{
 			MethodName: "GetTaskStatus",
 			Handler:    _SentinelService_GetTaskStatus_Handler,
 		},
@@ -459,5 +497,5 @@ var SentinelService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "sentinel.proto",
+	Metadata: "proto/sentinel.proto",
 }

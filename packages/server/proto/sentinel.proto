@@ -228,11 +228,33 @@ message GetThreatResponsesResponse {
   repeated ThreatResponseDetail responses = 1;
 }
 
+// --- Log Retrieval ---
+
+message GetLogRequest {
+  string trace_id = 1;
+}
+
+message GetLogResponse {
+  string trace_id = 1;
+  string message = 2;
+  string type = 3;
+  int32 level = 4;
+  string boundary = 5;
+  string service_id = 6;
+  bool is_critical = 7;
+  string origin = 8;
+  string actor_id = 9;
+  repeated LogTag tags = 10;
+  string hash = 11;
+  string previous_hash = 12;
+}
+
 // --- Service ---
 
 service SentinelService {
   rpc Ingest(IngestRequest) returns (IngestResponse);
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+  rpc GetLog(GetLogRequest) returns (GetLogResponse);
   rpc GetTaskStatus(GetTaskStatusRequest) returns (GetTaskStatusResponse);
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
   rpc ApproveTask(ApproveTaskRequest) returns (ApproveTaskResponse);

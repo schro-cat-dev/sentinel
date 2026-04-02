@@ -140,3 +140,4 @@ SDK: ingest → handle(local pipeline) ──→ IngestionResult (即座に返�
 - Proto 定義: [packages/server/proto/sentinel.proto](../packages/server/proto/sentinel.proto)
 - Server 設定: [packages/server/config/sentinel.yaml](../packages/server/config/sentinel.yaml)
 - E2E テスト: [tests/e2e/sdk-server.test.ts](../tests/e2e/sdk-server.test.ts)
+- E2E 設定マトリクス: [tests/e2e/server-config-matrix.test.ts](../tests/e2e/server-config-matrix.test.ts)

@@ -247,6 +247,49 @@ func (s *SentinelServer) HealthCheck(ctx context.Context, req *pb.HealthCheckReq
 	return &pb.HealthCheckResponse{Status: healthStatus, Version: version, ConfigSummary: summary}, nil
 }
 
+// --- GetLog ---
+
+func (s *SentinelServer) GetLog(ctx context.Context, req *pb.GetLogRequest) (*pb.GetLogResponse, error) {
+	if req.TraceId == "" {
+		return nil, status.Error(codes.InvalidArgument, "trace_id is required")
+	}
+	if s.authorizer != nil {
+		clientID := ClientIDFromContext(ctx)
+		if !s.authorizer.CanRead(clientID) {
+			return nil, status.Error(codes.PermissionDenied, "insufficient permission: CanRead required")
+		}
+	}
+
+	log, err := s.store.GetLogByTraceID(ctx, req.TraceId)
+	if err != nil {
+		slog.Error("get log error", "traceId", req.TraceId, "error", err)
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	if log == nil {
+		return nil, status.Error(codes.NotFound, "log not found")
+	}
+
+	var tags []*pb.LogTag
+	for _, t := range log.Tags {
+		tags = append(tags, &pb.LogTag{Key: t.Key, Category: t.Category})
+	}
+
+	return &pb.GetLogResponse{
+		TraceId:      log.TraceID,
+		Message:      log.Message,
+		Type:         string(log.Type),
+		Level:        int32(log.Level),
+		Boundary:     log.Boundary,
+		ServiceId:    log.ServiceID,
+		IsCritical:   log.IsCritical,
+		Origin:       string(log.Origin),
+		ActorId:      log.ActorID,
+		Tags:         tags,
+		Hash:         log.Hash,
+		PreviousHash: log.PreviousHash,
+	}, nil
+}
+
 // --- GetTaskStatus ---
 
 func (s *SentinelServer) GetTaskStatus(ctx context.Context, req *pb.GetTaskStatusRequest) (*pb.GetTaskStatusResponse, error) {

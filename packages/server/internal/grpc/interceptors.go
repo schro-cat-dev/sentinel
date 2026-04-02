@@ -11,11 +11,9 @@ import (
 	"google.golang.org/grpc/status"
 
 	"golang.org/x/time/rate"
+
+	"github.com/schro-cat-dev/sentinel-server/internal/middleware"
 )
-
-type contextKey string
-
-const clientIDKey contextKey = "clientID"
 
 // AuthUnaryInterceptor はAPI Key認証インターセプター
 func AuthUnaryInterceptor(validKeys map[string]bool) ggrpc.UnaryServerInterceptor {
@@ -36,7 +34,7 @@ func AuthUnaryInterceptor(validKeys map[string]bool) ggrpc.UnaryServerIntercepto
 			return nil, status.Error(codes.Unauthenticated, "invalid or missing API key")
 		}
 
-		ctx = context.WithValue(ctx, clientIDKey, keys[0])
+		ctx = middleware.ContextWithClientID(ctx, keys[0])
 		return handler(ctx, req)
 	}
 }
@@ -58,7 +56,7 @@ func RateLimitUnaryInterceptor(rps float64, burst int) ggrpc.UnaryServerIntercep
 	}
 
 	return func(ctx context.Context, req any, info *ggrpc.UnaryServerInfo, handler ggrpc.UnaryHandler) (any, error) {
-		clientID, _ := ctx.Value(clientIDKey).(string)
+		clientID := middleware.ClientIDFromContext(ctx)
 		if clientID == "" {
 			clientID = "__anonymous__"
 		}
@@ -73,9 +71,9 @@ func RateLimitUnaryInterceptor(rps float64, burst int) ggrpc.UnaryServerIntercep
 }
 
 // ClientIDFromContext はコンテキストからクライアントIDを取得する
+// middleware.ClientIDFromContext に委譲（context key の統一）
 func ClientIDFromContext(ctx context.Context) string {
-	id, _ := ctx.Value(clientIDKey).(string)
-	return id
+	return middleware.ClientIDFromContext(ctx)
 }
 
 // AuditLogUnaryInterceptor は全gRPCリクエストのアクセスログを記録する

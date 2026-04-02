@@ -8,6 +8,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"github.com/schro-cat-dev/sentinel-server/internal/middleware"
 )
 
 // mock handler that records calls
@@ -116,7 +118,7 @@ func TestAuth_ClientIDPropagation(t *testing.T) {
 
 func TestRateLimit_AllowsWithinLimit(t *testing.T) {
 	interceptor := RateLimitUnaryInterceptor(100, 10) // 100 rps, burst 10
-	ctx := context.WithValue(context.Background(), clientIDKey, "client-1")
+	ctx := middleware.ContextWithClientID(context.Background(), "client-1")
 
 	for i := 0; i < 10; i++ {
 		_, err := interceptor(ctx, nil, mockInfo("/test"), mockHandler("ok"))
@@ -128,7 +130,7 @@ func TestRateLimit_AllowsWithinLimit(t *testing.T) {
 
 func TestRateLimit_BlocksExcessBurst(t *testing.T) {
 	interceptor := RateLimitUnaryInterceptor(1, 2) // 1 rps, burst 2
-	ctx := context.WithValue(context.Background(), clientIDKey, "client-burst")
+	ctx := middleware.ContextWithClientID(context.Background(), "client-burst")
 
 	// First 2 should pass (burst)
 	for i := 0; i < 2; i++ {
@@ -150,8 +152,8 @@ func TestRateLimit_BlocksExcessBurst(t *testing.T) {
 
 func TestRateLimit_PerClientIsolation(t *testing.T) {
 	interceptor := RateLimitUnaryInterceptor(1, 1)
-	ctx1 := context.WithValue(context.Background(), clientIDKey, "client-A")
-	ctx2 := context.WithValue(context.Background(), clientIDKey, "client-B")
+	ctx1 := middleware.ContextWithClientID(context.Background(), "client-A")
+	ctx2 := middleware.ContextWithClientID(context.Background(), "client-B")
 
 	// Client A exhausts its limit
 	interceptor(ctx1, nil, mockInfo("/test"), mockHandler("ok"))
@@ -186,7 +188,7 @@ func TestRateLimit_AnonymousClient(t *testing.T) {
 
 func TestAuditLog_DoesNotBlockRequest(t *testing.T) {
 	interceptor := AuditLogUnaryInterceptor()
-	ctx := context.WithValue(context.Background(), clientIDKey, "audit-client")
+	ctx := middleware.ContextWithClientID(context.Background(), "audit-client")
 
 	resp, err := interceptor(ctx, nil, mockInfo("/test"), mockHandler("audited"))
 	if err != nil {
