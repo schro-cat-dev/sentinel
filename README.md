@@ -107,7 +107,7 @@ go build -o sentinel-server ./cmd/server/ && ./sentinel-server
 ```bash
 # SDK tests
 npm test
-# => 3,013+ tests passed
+# => 3,038+ tests passed
 
 # Go server tests
 cd packages/server && go test ./... -race -count=1

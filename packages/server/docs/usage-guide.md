@@ -282,6 +282,12 @@ rpc Ingest(IngestRequest) returns (IngestResponse)
 rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse)
 ```
 
+### GetLog（ログ取得）
+```protobuf
+rpc GetLog(GetLogRequest) returns (GetLogResponse)
+```
+trace_id でログを取得する。マスキング適用後の保存済みログ内容を返す。CanRead 権限が必要。
+
 ### GetTaskStatus / ListTasks
 ```protobuf
 rpc GetTaskStatus(GetTaskStatusRequest) returns (GetTaskStatusResponse)

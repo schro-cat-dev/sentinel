@@ -242,6 +242,8 @@ Every processed log produces an `IngestionResult` containing:
 }
 ```
 
+**`masked` field semantics:** `masked=true` indicates that PII was actually detected and replaced in the log content (message, actorId, input, tags, details, or AI context fields). If masking is enabled but no PII patterns matched, `masked=false` is returned. Use the `GetLog` RPC to retrieve the stored (masked) log content for verification.
+
 Server-side structured logs (JSON via `log/slog`) include:
 - `traceId` for correlation
 - Error details (server-side only, never sent to client)

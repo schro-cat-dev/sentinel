@@ -83,7 +83,7 @@ store:
 
 ### 発見事項
 
-- **`masked` フィールドの意味**: `masked=true` は「マスキングパイプラインが実行された」ことを示し、「コンテンツが実際に変更された」ことではない。`enable_masking=true` なら PII の有無に関わらず常に `masked=true` が返る。
+- **`masked` フィールドの意味（修正済み）**: `masked=true` は「PIIが実際に検出・除去された」ことを示す。`enable_masking=true` でもPIIが含まれていなければ `masked=false` が返る。比較対象: message, actorId, input, tags, details, AIContext.ReasoningTrace, AgentBackLog[].Result の全7フィールド。`GetLog` RPC でマスク後の保存内容を直接検証可能。
 - **Context Key 不一致（修正済み）**: `grpc/interceptors.go` の `clientIDKey = "clientID"` と `middleware/authorizer.go` の `ctxKeyClientID = "client_id"` が不一致だった。grpc interceptor が `middleware.ContextWithClientID()` を使うように修正し、client_roles による RBAC 権限切替が正しく機能するようになった。
 
 ### なぜE2Eテストが必要か
