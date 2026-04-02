@@ -342,7 +342,7 @@ describe("validateLogInput", () => {
                 agentBackLog: {
                     agentId: "agent-1",
                     taskId: "task-1",
-                    actionType: "analyze",
+                    actionType: "AI_ANALYZE",
                     model: "gpt-4o",
                     inputHash: "abc123",
                     isAsynchronous: false,
@@ -412,9 +412,15 @@ describe("validateLogInput", () => {
             }));
         });
 
-        it("accepts aiContext with large loopDepth", () => {
+        it("accepts aiContext with loopDepth at max (100)", () => {
             expectNoValidationError(validInput({
-                aiContext: { agentId: "a1", taskId: "t1", loopDepth: 9999 },
+                aiContext: { agentId: "a1", taskId: "t1", loopDepth: 100 },
+            }));
+        });
+
+        it("rejects aiContext with loopDepth exceeding max (101)", () => {
+            expectValidationError("aiContext.loopDepth", validInput({
+                aiContext: { agentId: "a1", taskId: "t1", loopDepth: 101 },
             }));
         });
 
@@ -659,7 +665,7 @@ describe("LogNormalizer", () => {
             const backlog = {
                 agentId: "agent-1",
                 taskId: "task-1",
-                actionType: "analyze",
+                actionType: "AI_ANALYZE",
                 model: "gpt-4o",
                 inputHash: "hash",
                 isAsynchronous: false,
@@ -831,7 +837,7 @@ describe("Edge cases", () => {
                 agentBackLog: {
                     agentId: "agent-1",
                     taskId: "task-1",
-                    actionType: "analyze",
+                    actionType: "AI_ANALYZE",
                     model: "gpt-4o",
                     inputHash: "hash",
                     isAsynchronous: false,

@@ -336,7 +336,7 @@ describe("Security v2: NEW-10 — agentBackLog validation alignment", () => {
             agentBackLog: {
                 agentId: "agent-1",
                 taskId: "task-1",
-                actionType: "analyze",
+                actionType: "AI_ANALYZE",
                 model: "gpt-4",
                 inputHash: "abc123",
                 isAsynchronous: false,

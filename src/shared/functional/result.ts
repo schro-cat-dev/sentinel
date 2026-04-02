@@ -38,14 +38,6 @@ export const tryCatch = <T, E = Error>(
     }
 };
 
-// Resultプロトコルを破棄して値を強制取得するための緊急脱出ハッチ的な - 信頼性を考慮した時使わない。
-// export const unwrap = <T, E>(result: Result<T, E>): T => {
-//     if (result.success) {
-//         return result.value;
-//     }
-//     throw result.error;
-// };
-
 export const map = <T, E, U>(r: Result<T, E>, fn: (v: T) => U): Result<U, E> =>
     r.success ? success(fn(r.value)) : r;
 
@@ -68,10 +60,6 @@ export const isOk = <T, E>(
 export const isErr = <T, E>(
     result: Result<T, E>,
 ): result is Extract<Result<T, E>, { success: false }> => !result.success;
-
-// Semantic aliases (WAL/infra layer conventions)
-export const issuccess = isOk;
-export const isfailure = isErr;
 
 // Resultを返す関数とのチェイン（非同期/複雑処理必須）
 export const flatMap = <T, E, U, F>(

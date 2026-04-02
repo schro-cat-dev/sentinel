@@ -1,3 +1,5 @@
+import type { TaskActionType } from "./task";
+
 export type JSONValue =
     | string
     | number
@@ -51,14 +53,14 @@ export interface Log {
     // コンテンツ（情報責務）
     message: string; // ログ主メッセージ（PIIマスキング・整合性ハッシュ対象）
     input?: JSONValue;
-    traceInfo?: string; // TODO 仮
+    traceInfo?: string; // 補足トレース情報（分散トレーシングの追加コンテキスト等）
     triggerAgent: boolean;
     agentBackLog?: AIAgentEventBacklog; // AI実行時のみ付与される詳細レコード
     details?: Record<string, string>; // Proto互換: map<string, string>
 
     // 証跡・整合性（不変性責務）
     tags: LogTag[];
-    resourceIds?: string[]; // TODO 影響がある口座などの関連情報
+    resourceIds?: string[]; // 影響対象のリソースID（口座番号、ユーザID等）
     previousHash?: string; // ハッシュチェーン（前のログのハッシュ）
     hash?: string; // このログ自体のハッシュ
     signature?: string; // デジタル署名（非改ざん証明）
@@ -67,7 +69,7 @@ export interface Log {
 export interface AIAgentEventBacklog {
     agentId: string; // "anomaly-detector-v2"
     taskId: string; // "task-uuid-123"
-    actionType: string; // TODO "analyze", "alert", "remediate"
+    actionType: TaskActionType; // AI実行アクション種別
     model: string; // "gpt-4o", "llama3-70b"
     inputHash: string; // 入力データのハッシュ
     output?: AIAgentOutput;

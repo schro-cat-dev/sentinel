@@ -300,4 +300,49 @@ describe("MaskingService", () => {
             expect(logger.warn).toHaveBeenCalledWith("Masking rule failed: REGEX");
         });
     });
+
+    describe("REGEX flag handling", () => {
+        it("strips sticky (y) flag and converts to global for replace", () => {
+            // Original pattern has sticky flag — MaskingService should convert to global
+            const rule: MaskingRule = {
+                type: "REGEX",
+                pattern: new RegExp("secret", "y"),
+                replacement: "[REDACTED]",
+            };
+            const result = MaskingService.mask(
+                "secret data with secret info",
+                [rule],
+            );
+            // If sticky was preserved, only first match would be replaced (and only if at index 0)
+            // With global conversion, all occurrences should be replaced
+            expect(result).toBe("[REDACTED] data with [REDACTED] info");
+        });
+
+        it("preserves case-insensitive (i) flag when converting sticky to global", () => {
+            const rule: MaskingRule = {
+                type: "REGEX",
+                pattern: new RegExp("secret", "iy"),
+                replacement: "[REDACTED]",
+            };
+            const result = MaskingService.mask(
+                "Secret data with SECRET info",
+                [rule],
+            );
+            expect(result).toBe("[REDACTED] data with [REDACTED] info");
+        });
+
+        it("handles pattern with global flag already set", () => {
+            // g flag is stripped and re-added — should still work correctly
+            const rule: MaskingRule = {
+                type: "REGEX",
+                pattern: new RegExp("secret", "g"),
+                replacement: "[REDACTED]",
+            };
+            const result = MaskingService.mask(
+                "secret data with secret info",
+                [rule],
+            );
+            expect(result).toBe("[REDACTED] data with [REDACTED] info");
+        });
+    });
 });

@@ -19,15 +19,10 @@ status: implemented
 
 **実装量:** ErrorRouter.execute() の3ケースに実ロジック追加
 
-### Gap 2: serializeForAudit/logFinancialError がパイプライン未接続
+### Gap 2: serializeForAudit/logFinancialError がパイプライン未接続 — ✅ 対応済み
 
 **設計:** 監査ログの構造化出力 → Datadog/Sentry連携
-**実装:** 関数は存在するが ErrorRouter からも パイプラインからも呼ばれない。
-
-**修正方針:**
-- ErrorRouter の `audit_sink` デフォルト実装として `ConsoleAuditSink` を作成
-- ConsoleAuditSink 内で `serializeForAudit()` を呼ぶ
-- これにより error-utils.ts が実際にパイプラインに接続される
+**実装:** `ConsoleAuditSink` を作成し、`maskPiiContext()` 経由で error-utils.ts をパイプラインに接続済み。`serializeForAudit` 相当の構造化JSON出力を実装。
 
 ### Gap 3: サンプルコードが古い
 

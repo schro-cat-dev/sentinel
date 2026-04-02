@@ -18,16 +18,16 @@ status: current
 | `RemoteTransport.close()` | transport.ts:40 | ✅ shutdown() で `transport?.close?.()` として呼出済み | OK |
 | `SEMI_AUTO` 実行レベル | task-executor.ts:124-132 | ✅ TaskConfirmHandler で確認フロー実装済み（API-02） | OK |
 | `guardrails.timeoutMs` | task.ts:49 | ✅ task-executor.ts:143-155 で Promise.race() により実装済み | OK |
-| `guardrails.maxRetries` | task.ts:50 | 必須フィールドだが未使用 | GAP |
+| `guardrails.maxRetries` | task.ts:50 | ✅ task-executor.ts ハンドラ単位リトライで実装済み | OK |
 
 ## ソース内 TODO 一覧
 
 | ファイル | 行 | 内容 | 優先度 |
 |---------|---|------|--------|
-| log.ts | 54 | `traceInfo?: string; // TODO 仮` | LOW |
+| log.ts | 55 | ✅ `traceInfo` コメント明確化済み（分散トレーシング追加コンテキスト） | DONE |
 | log.ts | 57 | ✅ `details?: Record<string, string>` に変更済み（Proto互換） | DONE |
-| log.ts | 61 | `resourceIds?: string[]; // TODO 影響がある口座などの関連情報` | LOW |
-| log.ts | 70 | `actionType: string; // TODO "analyze", "alert", "remediate"` | LOW |
+| log.ts | 62 | ✅ `resourceIds` コメント明確化済み（影響対象リソースID） | DONE |
+| log.ts | 71 | ✅ `actionType` を `TaskActionType` enum に変更済み | DONE |
 | log.ts | 73 | ✅ `output?: AIAgentOutput` に型定義済み | DONE |
 | error-utils.ts | 5 | `TODO 対象追加。PII検出正規表現（国際対応）` | NA (dead code) |
 | error-payload-protocol.ts | 7 | `TODO di堅牢化（ホワイトリスト管理）` | NA (dead code) |

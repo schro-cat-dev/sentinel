@@ -7,8 +7,6 @@ import {
     match,
     isOk,
     isErr,
-    issuccess,
-    isfailure,
     flatMap,
     safe,
     mapError,
@@ -44,7 +42,7 @@ describe("Result<T, E>", () => {
         });
     });
 
-    describe("type guards: isOk / isErr / issuccess / isfailure", () => {
+    describe("type guards: isOk / isErr", () => {
         it("isOk returns true for success", () => {
             expect(isOk(success(1))).toBe(true);
             expect(isOk(failure("x"))).toBe(false);
@@ -53,16 +51,6 @@ describe("Result<T, E>", () => {
         it("isErr returns true for failure", () => {
             expect(isErr(failure("x"))).toBe(true);
             expect(isErr(success(1))).toBe(false);
-        });
-
-        it("issuccess is alias for isOk", () => {
-            expect(issuccess(success(1))).toBe(true);
-            expect(issuccess(failure("x"))).toBe(false);
-        });
-
-        it("isfailure is alias for isErr", () => {
-            expect(isfailure(failure("x"))).toBe(true);
-            expect(isfailure(success(1))).toBe(false);
         });
 
         it("type narrowing works after isOk check", () => {

@@ -159,7 +159,7 @@ describe("TaskExecutor", () => {
     });
 
     describe("handler failure isolation (R-2)", () => {
-        it("executes all handlers even if first one fails", async () => {
+        it("executes all handlers even if first one fails (per-handler retry)", async () => {
             const handler1 = vi.fn(() => { throw new Error("handler1 fail"); });
             const handler2 = vi.fn();
             const handler3 = vi.fn();
@@ -167,17 +167,19 @@ describe("TaskExecutor", () => {
             executor.registerHandler("SYSTEM_NOTIFICATION", handler2);
             executor.registerHandler("SYSTEM_NOTIFICATION", handler3);
 
-            const task = createGeneratedTask();
+            const task = createGeneratedTask(); // maxRetries: 3
             const result = await executor.dispatch(task);
 
-            expect(handler1).toHaveBeenCalledTimes(1);
+            // handler1: always fails → 1 initial + 3 retries = 4 calls
+            expect(handler1).toHaveBeenCalledTimes(4);
+            // handler2, handler3: succeed on first try, not re-executed
             expect(handler2).toHaveBeenCalledTimes(1);
             expect(handler3).toHaveBeenCalledTimes(1);
             expect(result.status).toBe("failed");
             expect(result.error).toContain("handler1 fail");
         });
 
-        it("executes all handlers even if middle one fails", async () => {
+        it("executes all handlers even if middle one fails (per-handler retry)", async () => {
             const handler1 = vi.fn();
             const handler2 = vi.fn(async () => { throw new Error("handler2 fail"); });
             const handler3 = vi.fn();
@@ -185,11 +187,12 @@ describe("TaskExecutor", () => {
             executor.registerHandler("SYSTEM_NOTIFICATION", handler2);
             executor.registerHandler("SYSTEM_NOTIFICATION", handler3);
 
-            const task = createGeneratedTask();
+            const task = createGeneratedTask(); // maxRetries: 3
             const result = await executor.dispatch(task);
 
             expect(handler1).toHaveBeenCalledTimes(1);
-            expect(handler2).toHaveBeenCalledTimes(1);
+            // handler2: always fails → 4 calls
+            expect(handler2).toHaveBeenCalledTimes(4);
             expect(handler3).toHaveBeenCalledTimes(1);
             expect(result.status).toBe("failed");
         });
@@ -352,6 +355,70 @@ describe("TaskExecutor", () => {
             const result = await executor.dispatch(task);
             expect(result.status).toBe("dispatched");
             expect(handler).toHaveBeenCalled();
+        });
+    });
+
+    describe("maxRetries (per-handler)", () => {
+        it("retries individual handler on failure and succeeds on subsequent attempt", async () => {
+            let callCount = 0;
+            const handler = vi.fn(async () => {
+                callCount++;
+                if (callCount < 2) throw new Error("transient");
+            });
+            executor.registerHandler("SYSTEM_NOTIFICATION", handler);
+
+            const task = createGeneratedTask({
+                guardrails: { requireHumanApproval: false, timeoutMs: 5000, maxRetries: 2 },
+            });
+            const result = await executor.dispatch(task);
+            expect(result.status).toBe("dispatched");
+            expect(handler).toHaveBeenCalledTimes(2);
+        });
+
+        it("fails after exhausting all retries for a handler", async () => {
+            const handler = vi.fn(async () => { throw new Error("always fail"); });
+            executor.registerHandler("SYSTEM_NOTIFICATION", handler);
+
+            const task = createGeneratedTask({
+                guardrails: { requireHumanApproval: false, timeoutMs: 5000, maxRetries: 2 },
+            });
+            const result = await executor.dispatch(task);
+            expect(result.status).toBe("failed");
+            // 1 initial + 2 retries = 3 total calls
+            expect(handler).toHaveBeenCalledTimes(3);
+        });
+
+        it("does not retry when maxRetries is 0", async () => {
+            const handler = vi.fn(async () => { throw new Error("fail"); });
+            executor.registerHandler("SYSTEM_NOTIFICATION", handler);
+
+            const task = createGeneratedTask({
+                guardrails: { requireHumanApproval: false, timeoutMs: 5000, maxRetries: 0 },
+            });
+            const result = await executor.dispatch(task);
+            expect(result.status).toBe("failed");
+            expect(handler).toHaveBeenCalledTimes(1);
+        });
+
+        it("only retries the failing handler, not successful ones", async () => {
+            const successHandler = vi.fn();
+            let failCount = 0;
+            const transientHandler = vi.fn(async () => {
+                failCount++;
+                if (failCount <= 2) throw new Error("transient");
+            });
+            executor.registerHandler("SYSTEM_NOTIFICATION", successHandler);
+            executor.registerHandler("SYSTEM_NOTIFICATION", transientHandler);
+
+            const task = createGeneratedTask({
+                guardrails: { requireHumanApproval: false, timeoutMs: 5000, maxRetries: 3 },
+            });
+            const result = await executor.dispatch(task);
+            expect(result.status).toBe("dispatched");
+            // successHandler succeeds on first try — no re-execution
+            expect(successHandler).toHaveBeenCalledTimes(1);
+            // transientHandler fails twice then succeeds — 3 calls
+            expect(transientHandler).toHaveBeenCalledTimes(3);
         });
     });
 });

@@ -105,7 +105,7 @@ export class TaskExecutor {
             return { ...base, status };
         }
 
-        // API-03: guardrails.timeoutMs を適用
+        // API-03: guardrails.timeoutMs を適用、maxRetries はハンドラ単位で適用
         try {
             await this.invokeWithTimeout(task);
             return { ...base, status: "dispatched" };
@@ -142,6 +142,10 @@ export class TaskExecutor {
         }
     }
 
+    /**
+     * timeoutMs > 0: Promise.race でタイムアウト適用
+     * timeoutMs <= 0: タイムアウト無効（無制限待機）
+     */
     private async invokeWithTimeout(task: GeneratedTask): Promise<void> {
         const timeoutMs = task.guardrails.timeoutMs;
         if (timeoutMs > 0) {
@@ -165,15 +169,16 @@ export class TaskExecutor {
         const handlers = this.handlers.get(task.actionType) ?? [];
 
         if (handlers.length === 0 && this.defaultHandler) {
-            await this.defaultHandler(task);
+            await this.invokeWithRetry(this.defaultHandler, task);
             return;
         }
 
         // R-2: Execute all handlers, collect errors, don't stop on first failure
+        // maxRetries はハンドラ単位で適用 — 成功したハンドラを再実行しない
         const errors: Error[] = [];
         for (const handler of handlers) {
             try {
-                await handler(task);
+                await this.invokeWithRetry(handler, task);
             } catch (e) {
                 errors.push(e instanceof Error ? e : new Error(String(e)));
             }
@@ -185,6 +190,28 @@ export class TaskExecutor {
                 errors.map((e) => e.message).join("; "),
                 errors[0],
             );
+        }
+    }
+
+    /** ハンドラリトライの上限 */
+    private static readonly MAX_HANDLER_RETRIES = 10;
+
+    /**
+     * 個別ハンドラをmaxRetries回までリトライする。
+     * 成功したハンドラは再実行されない（二重通知・二重ブロック防止）。
+     *
+     * maxRetries は taskRules[].guardrails.max_retries で利用者が設定可能（0〜10）。
+     * 負の値は0に、上限超過はMAX_HANDLER_RETRIES(10)にクランプされる。
+     */
+    private async invokeWithRetry(handler: TaskDispatchHandler, task: GeneratedTask): Promise<void> {
+        const maxRetries = Math.min(TaskExecutor.MAX_HANDLER_RETRIES, Math.max(0, task.guardrails.maxRetries));
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                await handler(task);
+                return;
+            } catch (e) {
+                if (attempt === maxRetries) throw e;
+            }
         }
     }
 }

@@ -462,4 +462,103 @@ describe("validateLogInput", () => {
             input: { data: undefined } as unknown as Record<string, unknown>,
         })).not.toThrow();
     });
+
+    // --- agentBackLog structured validation ---
+    it("rejects agentBackLog with invalid status", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            agentBackLog: { status: "unknown" } as never,
+        })).toThrow("agentBackLog.status");
+    });
+
+    it("accepts agentBackLog with valid status values", () => {
+        for (const status of ["pending", "success", "failed"]) {
+            expect(() => validateLogInput({
+                message: "test",
+                agentBackLog: { status, agentId: "a1", taskId: "t1" } as never,
+            })).not.toThrow();
+        }
+    });
+
+    it("rejects agentBackLog.confidence outside 0-1 range", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            agentBackLog: { confidence: 1.5 } as never,
+        })).toThrow("agentBackLog.confidence");
+        expect(() => validateLogInput({
+            message: "test",
+            agentBackLog: { confidence: -0.1 } as never,
+        })).toThrow("agentBackLog.confidence");
+    });
+
+    it("accepts agentBackLog.confidence at boundaries 0.0 and 1.0", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            agentBackLog: { confidence: 0 } as never,
+        })).not.toThrow();
+        expect(() => validateLogInput({
+            message: "test",
+            agentBackLog: { confidence: 1.0 } as never,
+        })).not.toThrow();
+    });
+
+    it("rejects agentBackLog.confidence that is not a number", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            agentBackLog: { confidence: "high" } as never,
+        })).toThrow("agentBackLog.confidence");
+    });
+
+    it("validates agentBackLog string fields length", () => {
+        const longStr = "x".repeat(513);
+        expect(() => validateLogInput({
+            message: "test",
+            agentBackLog: { agentId: longStr } as never,
+        })).toThrow("agentBackLog.agentId");
+        expect(() => validateLogInput({
+            message: "test",
+            agentBackLog: { model: longStr } as never,
+        })).toThrow("agentBackLog.model");
+    });
+
+    it("rejects agentBackLog with invalid actionType", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            agentBackLog: { actionType: "INVALID_ACTION" } as never,
+        })).toThrow("agentBackLog.actionType");
+    });
+
+    it("accepts agentBackLog with valid actionType", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            agentBackLog: { actionType: "AI_ANALYZE" } as never,
+        })).not.toThrow();
+    });
+
+    // --- aiContext enhanced validation ---
+    it("rejects aiContext.loopDepth exceeding max 100", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            aiContext: { agentId: "a1", taskId: "t1", loopDepth: 101 },
+        })).toThrow("aiContext.loopDepth");
+    });
+
+    it("accepts aiContext.loopDepth at boundary 100", () => {
+        expect(() => validateLogInput({
+            message: "test",
+            aiContext: { agentId: "a1", taskId: "t1", loopDepth: 100 },
+        })).not.toThrow();
+    });
+
+    it("validates aiContext string fields length", () => {
+        const longStr = "x".repeat(513);
+        expect(() => validateLogInput({
+            message: "test",
+            aiContext: { agentId: longStr, taskId: "t1", loopDepth: 0 },
+        })).toThrow("aiContext.agentId");
+        expect(() => validateLogInput({
+            message: "test",
+            aiContext: { agentId: "a1", taskId: longStr, loopDepth: 0 },
+        })).toThrow("aiContext.taskId");
+    });
 });

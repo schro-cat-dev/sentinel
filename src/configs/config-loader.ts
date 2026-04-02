@@ -415,7 +415,7 @@ function convertTaskRule(raw: RawTaskRule): TaskRule {
         guardrails: {
             requireHumanApproval: raw.guardrails?.require_human_approval ?? false,
             timeoutMs: raw.guardrails?.timeout_ms ?? 30000,
-            maxRetries: raw.guardrails?.max_retries ?? 3,
+            maxRetries: Math.min(10, Math.max(0, raw.guardrails?.max_retries ?? 3)),
         },
     };
 }

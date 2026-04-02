@@ -10,9 +10,9 @@ scope: TS SDK + Go Server
 
 現状のSentinelは「エラーを捕捉はするが、ルーティングしない」。
 
-- `classifyError()` が定義されているがパイプライン未接続
-- `ErrorPayloadProtocol` が型定義されているが未使用
-- エラーは `emitSafe → onError → console.error` で消費されるだけ
+- ~~`classifyError()` が定義されているがパイプライン未接続~~ → ✅ ErrorRouter 経由で接続済み
+- ~~`ErrorPayloadProtocol` が型定義されているが未使用~~ → ✅ error-utils.ts + ConsoleAuditSink で使用済み
+- ~~エラーは `emitSafe → onError → console.error` で消費されるだけ~~ → ✅ ErrorRouter → AuditSink で構造化出力
 - Go側の通知ルーティングはチャネルプレフィックス（#, @, https://）ベースのみ
 - エラー種別に応じた送信先選択、タスク生成、AIエージェント委任が一切ない
 

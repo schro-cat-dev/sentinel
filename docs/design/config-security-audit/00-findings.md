@@ -17,11 +17,10 @@ findings: 11
 
 ## MEDIUM (7件)
 
-### F-01: `projectName` がdead config（必須だが未使用）
+### F-01: `projectName` がdead config（必須だが未使用） — ✅ 対応済み
 
-- **ファイル:** `src/configs/sentinel-config.ts:46`, `src/index.ts`
-- **影響:** ユーザーが必ず設定するが値は使われない
-- **対策:** LogNormalizer/IngestionResultに伝播させるか、requiredから外す。今回はLogNormalizerで使用
+- **ファイル:** `src/configs/sentinel-config.ts:46`, `src/core/engine/log-normalizer.ts:37`
+- **対策:** LogNormalizerのコンストラクタで受け取り、`normalize()` でログオブジェクトに注入済み
 
 ### F-04: Go `error_routing` がパースされるがパイプライン未接続
 

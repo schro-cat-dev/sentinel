@@ -347,7 +347,7 @@ describe("State Manipulation: Handler Manipulation", () => {
         expect(called).toBe(false);
     });
 
-    it("first handler throws, second handler IS still executed (R-2: failure isolation)", async () => {
+    it("first handler throws, second handler IS still executed (R-2: failure isolation with per-handler retry)", async () => {
         const order: string[] = [];
 
         executor.registerHandler("SYSTEM_NOTIFICATION", () => {
@@ -359,8 +359,9 @@ describe("State Manipulation: Handler Manipulation", () => {
             order.push("second");
         });
 
+        // maxRetries: 3 → first handler retried 4 times total, second handler succeeds once
         const result = await executor.dispatch(createAutoTask());
-        expect(order).toEqual(["first", "second"]);
+        expect(order).toEqual(["first", "first", "first", "first", "second"]);
         expect(result.status).toBe("failed");
     });
 });

@@ -29,8 +29,8 @@ shutdown()
 
 reset() [テスト用]
   ├→ 環境チェック → 非test/localで警告
+  ├→ taskExecutor.clearHandlers()           ← ✅ 呼出済み
   └→ Sentinel.instance = null
-     [未実装] clearHandlers() 未呼出
 ```
 
 ## 2. 可変状態マップ

@@ -1,19 +1,19 @@
 # 設定フィールドの実装反映状況
 
 ```yaml
-analyzed_at: "2026-04-01"
-based_on: "b14d263 + pending"
+analyzed_at: "2026-04-02"
+based_on: "9d6b74e"
 status: current
-last_updated: "2026-04-01T13:50:00Z"
+last_updated: "2026-04-02"
 ```
 
 ## SentinelConfig 全フィールド解析
 
 | フィールド | 定義箇所 | 消費箇所 | ステータス |
 |-----------|---------|---------|-----------|
-| `projectName` | sentinel-config.ts:10 | **なし** | **GAP** — 定義のみ。ログにも含まれない |
+| `projectName` | sentinel-config.ts:10 | LogNormalizer:37 で正規化ログに注入 | ✅ 反映済み |
 | `serviceId` | sentinel-config.ts:13 | LogNormalizer constructor | ✅ 反映済み |
-| `environment` | sentinel-config.ts:16 | **なし** | **GAP** — 条件分岐なし |
+| `environment` | sentinel-config.ts:16 | reset()で環境チェック、logger抑制 | ✅ CFG-02対応済み |
 | `masking.enabled` | sentinel-config.ts:20 | ingestion-engine.ts:82 | ✅ 反映済み |
 | `masking.rules` | sentinel-config.ts:21 | ingestion-engine.ts:84-85 | ✅ 反映済み |
 | `masking.preserveFields` | sentinel-config.ts:22 | ingestion-engine.ts:86 | ✅ 反映済み |
@@ -21,8 +21,8 @@ last_updated: "2026-04-01T13:50:00Z"
 | `security.signingKeyId` | sentinel-config.ts:28 | **なし** | **GAP** — デジタル署名未実装 |
 | `taskRules` | sentinel-config.ts:32 | TaskGenerator constructor (index.ts:46) | ✅ 反映済み |
 | `onLogProcessed` | sentinel-config.ts:35 | ingestion-engine.ts:116 | ✅ 反映済み |
-| `onTaskGenerated` | sentinel-config.ts:36 | ingestion-engine.ts:100 | ✅ 修正済 |
-| `onTaskDispatched` | sentinel-config.ts:37 | ingestion-engine.ts:102 | ✅ 修正済 |
+| `onTaskGenerated` | sentinel-config.ts:36 | ingestion-engine.ts:159 | ✅ 修正済 |
+| `onTaskDispatched` | sentinel-config.ts:37 | ingestion-engine.ts:161 | ✅ 修正済 |
 | `onError` | sentinel-config.ts:40 | ingestion-engine.ts emitSafe, index.ts dual | ✅ 新規追加 |
 
 ## createDefaultConfig deep-merge検証
@@ -36,23 +36,14 @@ last_updated: "2026-04-01T13:50:00Z"
 
 ## GAP詳細
 
-### projectName: 定義のみ
+### projectName: ✅ 対応済み
 
-`projectName` は必須フィールドだがパイプラインのどこにも注入されない。ログの `boundary` や `serviceId` には入らず、ハッシュ計算にも含まれず、タスク生成にも使われない。
+`LogNormalizer` のコンストラクタで受け取り、`normalize()` でログオブジェクトに `projectName` として注入。
 
-**推奨:** ログの `boundary` フォールバックに使用するか、将来のマルチプロジェクト対応のためにメタデータとして保持する意図を明文化する。
+### environment: ✅ 対応済み (CFG-02)
 
-### environment: 条件分岐なし
+`reset()` 内で環境チェック（production時エラーログ、非test/local時警告）。logger抑制にも使用。
 
-5つの環境値が定義されているが、パイプライン内でどの環境でも同じ動作をする。
+### onTaskGenerated / onTaskDispatched: ✅ 対応済み (BUG-03/04)
 
-**推奨:** 以下の条件分岐を追加するか、意図的に不使用であることを明文化する。
-- `production`: masking強制ON、console.warn抑制
-- `development`/`local`: 詳細エラー出力
-- `test`: 決定論的UUID
-
-### onTaskGenerated / onTaskDispatched: 未実装
-
-設定インターフェースで宣言されているが、`IngestionEngine` で呼び出されていない。利用者が設定しても何も起きない。
-
-**推奨:** `handleInternal()` 内のタスク生成・ディスパッチ後にコールバックを呼出。
+`ingestion-engine.ts:159-161` で `emitSafe` 経由でコールバック呼出実装済み。

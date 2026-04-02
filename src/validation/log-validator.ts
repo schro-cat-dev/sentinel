@@ -9,6 +9,7 @@
  */
 
 import type { Log, LogType, LogLevel } from "../types/log";
+import { TASK_ACTION_TYPES } from "../types/task";
 
 const VALID_LOG_TYPES: readonly string[] = [
     "BUSINESS-AUDIT", "SECURITY", "COMPLIANCE", "INFRA", "SYSTEM", "SLA", "DEBUG",
@@ -251,6 +252,29 @@ export function validateLogInput(
         if (backLogSize > L.maxInputSize) {
             throw new ValidationError("agentBackLog", `exceeds max size ~${L.maxInputSize} bytes (estimated ${backLogSize})`);
         }
+        // 構造バリデーション
+        const bl = input.agentBackLog;
+        if (bl.status !== undefined) {
+            const VALID_STATUSES = ["pending", "success", "failed"] as const;
+            if (!VALID_STATUSES.includes(bl.status as typeof VALID_STATUSES[number])) {
+                throw new ValidationError("agentBackLog.status", `must be one of: ${VALID_STATUSES.join(", ")}`);
+            }
+        }
+        if (bl.confidence !== undefined) {
+            if (typeof bl.confidence !== "number" || bl.confidence < 0 || bl.confidence > 1) {
+                throw new ValidationError("agentBackLog.confidence", "must be a number between 0.0 and 1.0");
+            }
+        }
+        validateStringField(bl.agentId, "agentBackLog.agentId", L.maxStringFieldLength);
+        validateStringField(bl.taskId, "agentBackLog.taskId", L.maxStringFieldLength);
+        if (bl.actionType !== undefined) {
+            if (!TASK_ACTION_TYPES.includes(bl.actionType as typeof TASK_ACTION_TYPES[number])) {
+                throw new ValidationError("agentBackLog.actionType", `must be one of: ${TASK_ACTION_TYPES.join(", ")}`);
+            }
+        }
+        validateStringField(bl.model, "agentBackLog.model", L.maxStringFieldLength);
+        validateStringField(bl.inputHash, "agentBackLog.inputHash", L.maxStringFieldLength);
+        validateStringField(bl.error, "agentBackLog.error", L.maxDetailsLength);
     }
 
     // aiContext
@@ -260,9 +284,16 @@ export function validateLogInput(
         if (Object.prototype.hasOwnProperty.call(ai, "__proto__") || Object.prototype.hasOwnProperty.call(ai, "constructor")) {
             throw new ValidationError("aiContext", "contains prohibited keys (__proto__ or constructor)");
         }
-        if (ai.loopDepth !== undefined && (typeof ai.loopDepth !== "number" || ai.loopDepth < 0)) {
-            throw new ValidationError("aiContext.loopDepth", "must be non-negative number");
+        if (ai.loopDepth !== undefined) {
+            if (typeof ai.loopDepth !== "number" || ai.loopDepth < 0) {
+                throw new ValidationError("aiContext.loopDepth", "must be non-negative number");
+            }
+            if (ai.loopDepth > 100) {
+                throw new ValidationError("aiContext.loopDepth", "exceeds max depth 100");
+            }
         }
+        validateStringField(ai.agentId, "aiContext.agentId", L.maxStringFieldLength);
+        validateStringField(ai.taskId, "aiContext.taskId", L.maxStringFieldLength);
     }
 
     // total log size estimate

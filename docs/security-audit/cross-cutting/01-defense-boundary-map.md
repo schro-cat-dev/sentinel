@@ -25,8 +25,8 @@ SDK → gRPC → Go Server の全パイプラインにおける防御境界を�
 │  ✅ フィールド長制限 / タグ数制限                                  │
 │  ✅ JSON サイズ概算 / 循環参照検出                                │
 │  ✅ 総合ログサイズ上限 (2MB)                                     │
-│  ⚠️  UTF-8 サロゲートペア検証なし                                 │
-│  ⚠️  agentBackLog 個別サイズ制限なし                              │
+│  ✅ UTF-16 lone surrogate 検証 (containsLoneSurrogate)            │
+│  ✅ agentBackLog エントリ数制限 (100) + サイズ制限 (maxInputSize)  │
 │                                                                 │
 └──────────────────────┬──────────────────────────────────────────┘
                        ▼
@@ -172,8 +172,8 @@ SDK → gRPC → Go Server の全パイプラインにおける防御境界を�
 
 | ID | 防御境界 | ギャップ | 重大度 | 影響 |
 |----|---------|---------|--------|------|
-| GAP-01 | 1: SDK入力 | UTF-8 サロゲートペア未検証 | LOW | remote時にgRPCでエラー |
-| GAP-02 | 1: SDK入力 | agentBackLog 個別サイズ制限なし | LOW | 総合サイズで間接制限 |
+| ~~GAP-01~~ | 1: SDK入力 | ✅ UTF-16 lone surrogate 検証実装済み (VULN-013) | — | 解決済み |
+| ~~GAP-02~~ | 1: SDK入力 | ✅ agentBackLog エントリ数(100)+サイズ制限実装済み | — | 解決済み |
 | GAP-03 | 2: SDKマスキング | ユーザ定義REGEX ReDoS | HIGH | CPUブロック |
 | GAP-04 | 2: SDK完全性 | HMAC未使用 | LOW | ローカルモードの設計選択 |
 | GAP-05 | 3: トランスポート | TLS/認証の非強制 | LOW | ユーザ責務 |
