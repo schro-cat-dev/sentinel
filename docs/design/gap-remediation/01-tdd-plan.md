@@ -1,8 +1,9 @@
 # ギャップ修正 TDD計画
 
 ```yaml
-status: design
+status: completed
 estimated_tests: 25
+completed_at: "2026-04-02"
 ```
 
 ## テスト一覧
@@ -41,10 +42,10 @@ estimated_tests: 25
 
 ## 実施順序
 
-1. テスト作成（全17件）
-2. ConsoleAuditSink実装
-3. ErrorRouter.execute() task/notification/ai_agent 実装
-4. updateCallbacks E2Eテスト実装
-5. サンプルコード更新（Gap 3）
-6. ドキュメント整合性修正（Gap 4, 5）
-7. 全体リグレッション
+1. ✅ テスト作成（全17件）
+2. ✅ ConsoleAuditSink実装
+3. ✅ ErrorRouter.execute() task/notification/ai_agent 実装
+4. ✅ updateCallbacks E2Eテスト実装
+5. ✅ サンプルコード更新（Gap 3）
+6. ✅ ドキュメント整合性修正（Gap 4, 5）
+7. ✅ 全体リグレッション — 2597テスト全パス

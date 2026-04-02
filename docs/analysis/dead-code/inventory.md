@@ -2,7 +2,7 @@
 
 ```yaml
 analyzed_at: "2026-04-02"
-based_on: "9d6b74e"
+based_on: "0ed9ab5"
 status: current
 ```
 
@@ -53,9 +53,9 @@ Worker Thread通信メッセージ型。Worker Thread実装は存在しない。
 
 | フィールド | 定義 | パイプラインでの消費 | ステータス |
 |-----------|------|-------------------|-----------|
-| `signature` | log.ts:63 | omitされるのみ | DEAD — 署名機能未実装 |
-| `traceInfo` | log.ts:54 | ✅ normalizeで保持済み (BUG-02対応) | OK |
-| `agentBackLog` | log.ts:56 | ✅ normalizeで保持済み (BUG-01対応) | OK |
+| `signature` | log.ts:66 | omitされるのみ | DEAD — 署名機能未実装 |
+| `traceInfo` | log.ts:56 | ✅ normalizeで保持済み (BUG-02対応) | OK |
+| `agentBackLog` | log.ts:58 | ✅ normalizeで保持済み (BUG-01対応) | OK |
 
 ## 集計
 

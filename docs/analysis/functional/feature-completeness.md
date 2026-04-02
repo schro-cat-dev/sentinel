@@ -2,7 +2,7 @@
 
 ```yaml
 analyzed_at: "2026-04-02"
-based_on: "9d6b74e"
+based_on: "0ed9ab5"
 status: current
 ```
 
@@ -10,8 +10,8 @@ status: current
 
 | 機能 | 宣言場所 | 実装状況 | カテゴリ |
 |------|---------|---------|---------|
-| デジタル署名 (`signature`) | log.ts:63 | 未実装。パススルーのみ | GAP |
-| 署名鍵選択 (`signingKeyId`) | sentinel-config.ts:28 | 未実装 | GAP |
+| デジタル署名 (`signature`) | log.ts:66 | 未実装。パススルーのみ | GAP |
+| 署名鍵選択 (`signingKeyId`) | sentinel-config.ts:66 | 未実装 | GAP |
 | Worker Thread通信 (`WorkerToMainMessage`) | — | ✅ 削除済み（DEAD-02） | DONE |
 | `AI_ACTION_REQUIRED` イベント | event.ts:37-41 | ✅ event-detector.ts:103 で検知ルール実装済み（DEAD-04） | OK |
 | `RemoteTransport.healthCheck()` | transport.ts:36 | optional インターフェース。SDK内で未呼出（利用者実装依存） | GAP |
@@ -24,11 +24,11 @@ status: current
 
 | ファイル | 行 | 内容 | 優先度 |
 |---------|---|------|--------|
-| log.ts | 55 | ✅ `traceInfo` コメント明確化済み（分散トレーシング追加コンテキスト） | DONE |
-| log.ts | 57 | ✅ `details?: Record<string, string>` に変更済み（Proto互換） | DONE |
-| log.ts | 62 | ✅ `resourceIds` コメント明確化済み（影響対象リソースID） | DONE |
-| log.ts | 71 | ✅ `actionType` を `TaskActionType` enum に変更済み | DONE |
-| log.ts | 73 | ✅ `output?: AIAgentOutput` に型定義済み | DONE |
+| log.ts | 56 | ✅ `traceInfo` コメント明確化済み（分散トレーシング追加コンテキスト） | DONE |
+| log.ts | 59 | ✅ `details?: Record<string, string>` に変更済み（Proto互換） | DONE |
+| log.ts | 63 | ✅ `resourceIds` コメント明確化済み（影響対象リソースID） | DONE |
+| log.ts | 72 | ✅ `actionType` を `TaskActionType` enum に変更済み | DONE |
+| log.ts | 75 | ✅ `output?: AIAgentOutput` に型定義済み | DONE |
 | error-utils.ts | 5 | `TODO 対象追加。PII検出正規表現（国際対応）` | NA (dead code) |
 | error-payload-protocol.ts | 7 | `TODO di堅牢化（ホワイトリスト管理）` | NA (dead code) |
 
