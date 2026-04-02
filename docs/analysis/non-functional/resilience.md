@@ -4,58 +4,27 @@
 analyzed_at: "2026-04-01"
 based_on: "b14d263"
 status: current
+last_updated: "2026-04-02"
 ```
 
 ## 所見一覧
 
-### R-1: transport.send() にタイムアウトなし [CRITICAL]
+### ~~R-1: transport.send() にタイムアウトなし~~ ✅ 対策済み (RES-01)
 
-**箇所:** `src/index.ts:108, 122`
+`sendWithTimeout()` (index.ts) で `Promise.race` + `setTimeout` による30秒デフォルトタイムアウトを実装。`TransportConfig.timeoutMs` で設定可能。タイムアウト時は `SentinelError("transport", "timeout", ...)` をスロー。
 
-remote/dualモードで `transport.send()` を await するが、タイムアウト・AbortController・デッドラインが一切ない。TCPコネクションがハングした場合、`ingest()` は永久にresolveしない。
+### ~~R-2: ハンドラ失敗で後続ハンドラが中断~~ ✅ 対策済み
 
-**影響:** remoteモードで呼び出し元のスレッドが無期限ブロック。dualモードでは未解決Promiseが蓄積。
+`invokeHandlers()` (task-executor.ts) で全ハンドラを実行し、各ハンドラの例外を個別に catch してエラーを集約。1つ目が失敗しても2つ目以降は実行される。集約エラーは `SentinelError("task", "invokeHandlers", ...)` としてスロー。
 
-**改善案:** `Promise.race` でタイムアウトを実装:
-```typescript
-const timeout = new Promise((_, reject) =>
-  setTimeout(() => reject(new Error("Transport timeout")), 30000)
-);
-await Promise.race([transport.send(log), timeout]);
-```
+### ~~R-3: dualモードで2度正規化~~ ✅ 対策済み (RES-02)
 
-### R-2: ハンドラ失敗で後続ハンドラが中断 [HIGH]
+`IngestionEngine.getLastProcessedLog()` で `handle()` の処理済みログをキャッシュ。dual モードでは `normalizeOnly()` の代わりにキャッシュされたログを送信し、traceId/timestamp の不一致を防止。
 
-**箇所:** `src/core/task/task-executor.ts:89-91`
+### ~~R-4: リモート送信のサーキットブレーカーなし~~ ✅ 対策済み
 
-`invokeHandlers()` で最初の失敗でループが停止。3つのハンドラのうち1番目が失敗すると2番目と3番目は実行されない。
+`CircuitBreaker` (transport/circuit-breaker.ts) を導入。連続失敗がしきい値（デフォルト5）に達すると open 状態に遷移し、cooldown（デフォルト30秒）中はリクエストを即座に拒否。cooldown 後に half-open で1回試行し、成功で closed に戻る。`TransportConfig.circuitBreaker` で設定可能。
 
-**改善案:** 全ハンドラを実行し、エラーを集約して返す。
+### ~~R-5: normalizeOnly() 失敗がfallbackToLocalに掛からない~~ ✅ 対策済み
 
-### R-3: dualモードで2度正規化 [MEDIUM]
-
-**箇所:** `src/index.ts:117-127`
-
-`handle(log)` 内で1度目の正規化、`normalizeOnly(log)` で2度目。`randomUUID()` や `Date.now()` の呼出で異なる `traceId` / `timestamp` が生成される。ローカルとリモートで異なるログが生まれる。
-
-**改善案:** `handle()` の処理済みログを `normalizeOnly()` の代わりに送信。
-
-### R-4: リモート送信のサーキットブレーカーなし [MEDIUM]
-
-**箇所:** `src/index.ts:105-114`
-
-リモート障害が継続しても毎回送信を試みる。ネットワーク障害時にレイテンシが積み上がる。
-
-### R-5: normalizeOnly() 失敗がfallbackToLocalに掛からない [MEDIUM]
-
-**箇所:** `src/index.ts:106-108`
-
-```typescript
-try {
-    const normalized = this.engine.normalizeOnly(log); // ← ここで例外
-    return await this.transportConfig.transport.send(normalized);
-} catch (err) {
-    if (this.transportConfig.fallbackToLocal) { // ← normalizeOnly例外もここに来る
-```
-
-`normalizeOnly()` が投げた例外もcatchに入るが、これは正規化の失敗であってtransportの失敗ではない。フォールバックすべきかは判断が分かれる。
+remote モードの `ingest()` で `normalizeOnly()` を try/catch の外に分離。正規化エラーは transport エラーとは別にそのまま伝搬する。transport エラーのみが `fallbackToLocal` の対象となり、`IngestionResult.transportError` に正しく分類される。

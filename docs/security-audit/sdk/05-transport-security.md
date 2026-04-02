@@ -12,45 +12,36 @@ SDK は `TransportConfig` により3つのモード（`local`, `remote`, `dual`�
 
 | チェック項目 | 判定 | 根拠 |
 |-------------|------|------|
-| デフォルトタイムアウト | **OK** | `index.ts:250` — `timeoutMs ?? 30_000`（30秒） |
-| タイムアウト実装 | **OK** | `index.ts:256-259` — `Promise.race([sendPromise, timeoutPromise])` |
-| タイマークリーンアップ | **OK** | `index.ts:261` — `finally { clearTimeout(timer!) }` |
+| デフォルトタイムアウト | **OK** | `index.ts:318` — `timeoutMs ?? 30_000`（30秒） |
+| タイムアウト実装 | **OK** | `index.ts:323-327` — `Promise.race([sendPromise, timeoutPromise])` |
+| タイマークリーンアップ | **OK** | `index.ts:332` — `finally { clearTimeout(timer!) }` |
+| サーキットブレーカー | **OK** | `index.ts:313-315` — `CircuitBreaker.canExecute()` で連続失敗時に即座拒否 (R-4) |
 
 ### 2. fallbackToLocal の安全性
 
 | チェック項目 | 判定 | 根拠 |
 |-------------|------|------|
-| remote 失敗時のフォールバック | **OK** | `index.ts:148-151` — `fallbackToLocal` が `true` の場合のみローカル処理にフォールバック |
+| remote 失敗時のフォールバック | **OK** | `index.ts:171` — `fallbackToLocal` が `true` の場合のみローカル処理にフォールバック |
 | エラーサイレンシング | **OK（修正済み）** | `transportError` にエラーメッセージを設定 + `onError` コールバック呼出 |
+| normalize/transport エラー分離 | **OK（R-5修正済み）** | `index.ts:167-169` — `normalizeOnly()` は try/catch の外。transport エラーのみフォールバック対象 |
 
-**リスク分析**:
+**現在の実装**:
 
 ```typescript
-// index.ts:143-152
+// index.ts:165-183 (R-5: エラー分離済み)
 if (mode === "remote" && this.transportConfig.transport) {
+    const normalized = this.engine.normalizeOnly(log); // ← normalize失敗はそのまま伝搬
     try {
-        const normalized = this.engine.normalizeOnly(log);
         return await this.sendWithTimeout(normalized);
     } catch (err) {
         if (this.transportConfig.fallbackToLocal) {
-            return this.engine.handle(log);  // ← リモートエラーがロスト
+            const result = await this.engine.handle(log);
+            result.transportError = err instanceof Error ? err.message : String(err);
+            try { this.engine.getOnError()?.(err, "transport.fallback"); } catch { /* */ }
+            return result;
         }
         throw err;
     }
-}
-```
-
-- `fallbackToLocal=true` の場合、リモート送信失敗のエラーは完全に飲み込まれる
-- ユーザはフォールバックが発生したことを知る手段がない（`IngestionResult` にフォールバック情報がない）
-- **推奨**: `IngestionResult` に `fallbackUsed: boolean` と `transportError` フィールドを追加（`dual` モードでは既に `transportError` が存在）
-
-**推奨パッチ**:
-```typescript
-if (this.transportConfig.fallbackToLocal) {
-    const result = await this.engine.handle(log);
-    result.transportError = err instanceof Error ? err.message : String(err);
-    try { this.engine.getOnError()?.(err instanceof Error ? err : new Error(String(err)), "transport.fallback"); } catch { /* */ }
-    return result;
 }
 ```
 
@@ -58,9 +49,9 @@ if (this.transportConfig.fallbackToLocal) {
 
 | チェック項目 | 判定 | 根拠 |
 |-------------|------|------|
-| ローカル処理の独立性 | **OK** | `index.ts:155-168` — ローカル処理結果は必ず返却 |
-| リモートエラーの記録 | **OK** | `index.ts:163` — `localResult.transportError = error.message` |
-| onError コールバック呼び出し | **OK** | `index.ts:164` — `try { this.engine.getOnError()?.(error, "transport.dual"); } catch { /* */ }` |
+| ローカル処理の独立性 | **OK** | `index.ts:185-198` — ローカル処理結果は必ず返却 |
+| リモートエラーの記録 | **OK** | `index.ts:193` — `localResult.transportError = error.message` |
+| onError コールバック呼び出し | **OK** | `index.ts:194` — `try { this.engine.getOnError()?.(error, "transport.dual"); } catch { /* */ }` |
 
 ### 4. トランスポートインターフェースのセキュリティ契約
 
@@ -91,16 +82,16 @@ interface RemoteTransport {
 
 | チェック項目 | 判定 | 根拠 |
 |-------------|------|------|
-| ingest() の拒否 | **OK** | `index.ts:138` — `if (this.isShutdown) throw new Error(...)` |
-| onTaskAction() の拒否 | **OK** | `index.ts:176` — `if (this.isShutdown) throw new Error(...)` |
-| updateCallbacks() の拒否 | **OK** | `index.ts:224` — `if (this.isShutdown) throw new Error(...)` |
-| shutdown の冪等性 | **OK** | `index.ts:116` — `if (this.isShutdown) return` |
+| ingest() の拒否 | **OK** | `index.ts:159` — `if (this.isShutdown) throw new Error(...)` |
+| onTaskAction() の拒否 | **OK** | `index.ts:206` — `if (this.isShutdown) throw new Error(...)` |
+| updateCallbacks() の拒否 | **OK** | `index.ts:287` — `if (this.isShutdown) throw new Error(...)` |
+| shutdown の冪等性 | **OK** | `index.ts:137` — `if (this.isShutdown) return` |
 
 ### 6. 二重初期化防止
 
 | チェック項目 | 判定 | 根拠 |
 |-------------|------|------|
-| 重複 initialize() の警告 | **OK** | `index.ts:70-73` — 既存インスタンスを返却し、警告ログ |
+| 重複 initialize() の警告 | **OK** | `index.ts:85-88` — 既存インスタンスを返却し、警告ログ |
 | 既存インスタンスの返却 | **OK** | 新規インスタンスは作成しない（設定の上書きを防止） |
 
 ---
@@ -111,10 +102,10 @@ interface RemoteTransport {
 
 ユーザが悪意ある（または脆弱な）`RemoteTransport` を実装した場合：
 
-- `send()` が永遠にハングする → **対策済み**: 30秒タイムアウト
+- `send()` が永遠にハングする → **対策済み**: 30秒タイムアウト + CircuitBreaker で連続失敗遮断
 - `send()` が巨大な `IngestionResult` を返す → **未対策**: 応答サイズ制限なし
 - `send()` がプロトタイプ汚染オブジェクトを返す → **一部対策**: 返却値はそのまま呼び出し元に渡される
-- `close()` が例外を投げる → **対策済み**: `index.ts:119-123` で `catch` して無視
+- `close()` が例外を投げる → **対策済み**: shutdown() で `catch` して無視
 
 **推奨対策**:
 - 応答サイズ制限は実装コストに対してリスクが低いため、優先度は低い
@@ -134,8 +125,9 @@ interface RemoteTransport {
 
 | 項目 | 重大度 | ステータス | 備考 |
 |------|--------|-----------|------|
-| タイムアウト制御 | — | **OK** | 30秒デフォルト + cleanup |
+| タイムアウト制御 | — | **OK** | 30秒デフォルト + cleanup + CircuitBreaker |
 | フォールバック時のエラーロスト | MEDIUM | **✅ 修正済み** | `transportError` + `onError` コールバック伝播 |
+| normalize/transport 混同 | MEDIUM | **✅ R-5修正済み** | try/catch分離で正しいエラー分類 |
 | TLS/認証の非強制 | LOW | **✅ 設計上許容** | SDKはzero-dep。ユーザ実装トランスポートは信頼境界内。ドキュメントにTLS必須を明記 |
 | shutdown後の操作防止 | — | **OK** | 全API境界で検証済み |
 | 応答サイズ制限なし | LOW | **✅ 設計上許容** | ユーザ実装のトランスポートはSDKの信頼境界内。`RemoteTransport`インターフェースの型制約で返却構造を限定 |
@@ -145,3 +137,4 @@ interface RemoteTransport {
 - 応答サイズ: `RemoteTransport.send()` の返却型 `IngestionResult` は固定スキーマであり、巨大な応答を生成する余地がない。ユーザが悪意ある実装を注入するシナリオはSDKの脅威モデル外
 
 **修正内容（2026-04-02）**: テスト `tests/security/sdk-audit-fixes.test.ts` — VULN-011
+**追加対策（2026-04-02）**: R-4 CircuitBreaker, R-5 normalizeOnly分離, O-4 SentinelError 導入

@@ -14,10 +14,11 @@ export type TaskDispatchHandler = (task: GeneratedTask) => Promise<void> | void;
 export type TaskConfirmHandler = (task: GeneratedTask) => Promise<boolean> | boolean;
 
 /**
- * タスク実行エンジン（v1: コールバックベース）
+ * タスク実行エンジン
  *
  * 生成されたタスクを実行レベルに応じてディスパッチする。
- * v1ではコールバック方式。Goサーバ移行後はgRPC経由でサーバに委譲。
+ * SDKではコールバック方式。Goサーバ連携時はgRPC経由でサーバに委譲可能。
+ * R-2: 全ハンドラを実行しエラーを集約（1つの失敗で後続を中断しない）。
  */
 export class TaskExecutor {
     private readonly handlers: Map<string, TaskDispatchHandler[]> = new Map();

@@ -1,5 +1,5 @@
 /**
- * Sentinel v1 SDK - Basic Usage
+ * Sentinel SDK - Basic Usage
  *
  * このサンプルはTypeScript Client SDKの基本的な使い方を示します。
  * Go backendサーバなしでローカルでパイプラインを実行できます。

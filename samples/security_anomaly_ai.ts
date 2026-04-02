@@ -1,9 +1,9 @@
 /**
- * Sentinel v1 SDK - Security Anomaly Detection
+ * Sentinel SDK - Security Anomaly Detection
  *
  * このサンプルはセキュリティイベントの検知とタスク自動生成を示します。
  *
- * v1ではAIエージェント実行はGoサーバ側の責務です。
+ * AIエージェント実行はGoサーバ側の責務です。
  * TS SDKはイベント検知→タスク生成→ハンドラ呼び出しまでを担当します。
  * 実際のAI分析やSIEM連携はGoサーバまたは外部サービスで実行します。
  */
