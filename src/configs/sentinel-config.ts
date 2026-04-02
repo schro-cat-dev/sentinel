@@ -134,6 +134,9 @@ export interface SentinelConfig {
     /** エラーハンドラ（パイプライン内部のswallowされるエラーを通知） */
     onError?: (error: Error, context: string) => void;
 
+    /** 脅威レスポンス受信コールバック（Phase 2-C、integration.threatResponseEnabled=true 時） */
+    onThreatResponse?: (responses: import("../core/engine/types").ThreatResponseSummary[]) => void;
+
     /** SDK内部ログ出力先（省略時は環境に応じたデフォルト） */
     logger?: SentinelLogger;
 

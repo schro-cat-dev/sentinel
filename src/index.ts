@@ -217,10 +217,10 @@ export class Sentinel {
 
         if (mode === "remote" && this.transportConfig.transport) {
             // R-5: Separate normalize errors from transport errors
-            // Normalize failure is a pipeline error — should not be classified as transportError
             const normalized = this.engine.normalizeOnly(log);
             try {
-                return await this.sendWithTimeout(normalized);
+                const result = await this.sendWithTimeout(normalized);
+                return this.applyIntegrationFilters(result);
             } catch (err) {
                 if (this.transportConfig.fallbackToLocal) {
                     const result = await this.engine.handle(log);
@@ -365,6 +365,23 @@ export class Sentinel {
     }
 
     /**
+     * Phase 2-C: 連携設定に基づいて結果をフィルタリング
+     */
+    private applyIntegrationFilters(result: IngestionResult): IngestionResult {
+        if (!result) return result;
+        // threatResponses: enabled でなければ削除
+        if (!this.config.integration?.threatResponseEnabled) {
+            delete result.threatResponses;
+        } else if (result.threatResponses?.length) {
+            // コールバック呼び出し
+            try {
+                this.config.onThreatResponse?.(result.threatResponses);
+            } catch { /* callback failure is best-effort */ }
+        }
+        return result;
+    }
+
+    /**
      * Transport送信 + タイムアウト
      */
     private async sendWithTimeout(log: Log): Promise<IngestionResult> {
@@ -402,7 +419,7 @@ export type { RawYamlConfig, ConfigLoaderOptions } from "./configs/config-loader
 export type { SentinelConfig } from "./configs/sentinel-config";
 export type { MaskingRule } from "./configs/masking-rule";
 export type { Log, LogType, LogLevel, LogTag } from "./types/log";
-export type { IngestionResult } from "./core/engine/types";
+export type { IngestionResult, ThreatResponseSummary } from "./core/engine/types";
 export type {
     TaskRule,
     GeneratedTask,

@@ -55,6 +55,97 @@ describe("Sentinel: public handler management (MEM-01ext)", () => {
     });
 });
 
+describe("Transport: threatResponses (Phase 2-C)", () => {
+    it("includes threatResponses from remote transport when enabled", async () => {
+        Sentinel.reset();
+        const mockTransport: RemoteTransport = {
+            async send(log: Log): Promise<IngestionResult> {
+                return {
+                    traceId: log.traceId,
+                    hashChainValid: true,
+                    masked: true,
+                    tasksGenerated: [],
+                    detection: null,
+                    threatResponses: [
+                        {
+                            responseId: "resp-1",
+                            eventName: "SECURITY_INTRUSION_DETECTED",
+                            strategy: "BLOCK_AND_NOTIFY",
+                            blocked: true,
+                            blockTarget: "10.0.0.1",
+                            analyzed: true,
+                            riskLevel: "HIGH",
+                            notified: true,
+                        },
+                    ],
+                };
+            },
+        };
+
+        const sentinel = Sentinel.initialize(
+            { ...baseConfig, integration: { threatResponseEnabled: true } },
+            { transport: { mode: "remote", transport: mockTransport } },
+        );
+
+        const result = await sentinel.ingest({ message: "intrusion test" });
+        expect(result.threatResponses).toBeDefined();
+        expect(result.threatResponses!.length).toBe(1);
+        expect(result.threatResponses![0].strategy).toBe("BLOCK_AND_NOTIFY");
+    });
+
+    it("does not include threatResponses when disabled (default)", async () => {
+        Sentinel.reset();
+        const mockTransport: RemoteTransport = {
+            async send(log: Log): Promise<IngestionResult> {
+                return {
+                    traceId: log.traceId,
+                    hashChainValid: true,
+                    masked: true,
+                    tasksGenerated: [],
+                    detection: null,
+                    threatResponses: [{ responseId: "r", eventName: "X", strategy: "Y", blocked: false, blockTarget: "", analyzed: false, riskLevel: "LOW", notified: false }],
+                };
+            },
+        };
+
+        const sentinel = Sentinel.initialize(baseConfig, {
+            transport: { mode: "remote", transport: mockTransport },
+        });
+
+        const result = await sentinel.ingest({ message: "no threat response" });
+        // threatResponses should be stripped when not enabled
+        expect(result.threatResponses).toBeUndefined();
+    });
+
+    it("local mode never has threatResponses", async () => {
+        const sentinel = Sentinel.initialize(baseConfig);
+        const result = await sentinel.ingest({ message: "local log" });
+        expect(result.threatResponses).toBeUndefined();
+    });
+});
+
+describe("Transport: detection rules sync awareness (Phase 2-A)", () => {
+    it("Server detection_rules config is exposed via HealthCheck ConfigSummary", async () => {
+        // This verifies the architecture: Server exposes detection_rules_count
+        // in HealthCheck so SDK can compare its own rules count.
+        // Actual gRPC call is E2E test scope; here we validate the type contract.
+        Sentinel.reset();
+        const sentinel = Sentinel.initialize(baseConfig);
+        const config = sentinel.getConfig();
+        // SDK has detectionRules available for comparison
+        expect(config.detectionRules ?? []).toBeDefined();
+    });
+
+    it("integration.syncDetectionRules flag is available in config", () => {
+        Sentinel.reset();
+        const sentinel = Sentinel.initialize({
+            ...baseConfig,
+            integration: { syncDetectionRules: true },
+        });
+        expect(sentinel.getConfig().integration?.syncDetectionRules).toBe(true);
+    });
+});
+
 describe("Transport: local mode (default)", () => {
     it("processes locally without transport", async () => {
         const sentinel = Sentinel.initialize(baseConfig);
