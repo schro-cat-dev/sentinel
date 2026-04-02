@@ -888,3 +888,94 @@ masking:
         expect(msg).toContain("[REDACTED]");
     });
 });
+
+// =========================================================================
+// Phase 1-3: integration + hmacKey config loading
+// =========================================================================
+
+describe("Config Loader: integration section (Phase 1-3)", () => {
+    it("parses security.hmac_key from YAML", () => {
+        const yaml = `
+project_name: test
+service_id: svc
+security:
+  hmac_key: "my-secret-hmac-key-32-bytes-long!"
+`;
+        const config = parseConfigYaml(yaml);
+        expect(config.security.hmacKey).toBe("my-secret-hmac-key-32-bytes-long!");
+    });
+
+    it("hmacKey defaults to undefined when not set", () => {
+        const config = parseConfigYaml(MINIMAL_YAML);
+        expect(config.security.hmacKey).toBeUndefined();
+    });
+
+    it("parses integration section from YAML", () => {
+        const yaml = `
+project_name: test
+service_id: svc
+integration:
+  config_validation: true
+  threat_response_enabled: true
+  task_approval_enabled: true
+  task_status_enabled: true
+  sync_detection_rules: false
+`;
+        const config = parseConfigYaml(yaml);
+        expect(config.integration).toBeDefined();
+        expect(config.integration!.configValidation).toBe(true);
+        expect(config.integration!.threatResponseEnabled).toBe(true);
+        expect(config.integration!.taskApprovalEnabled).toBe(true);
+        expect(config.integration!.taskStatusEnabled).toBe(true);
+        expect(config.integration!.syncDetectionRules).toBe(false);
+    });
+
+    it("integration defaults to undefined when not set", () => {
+        const config = parseConfigYaml(MINIMAL_YAML);
+        expect(config.integration).toBeUndefined();
+    });
+
+    it("hmac_key supports environment variable expansion", () => {
+        const yaml = `
+project_name: test
+service_id: svc
+security:
+  hmac_key: "\${SENTINEL_HMAC_KEY}"
+`;
+        const config = parseConfigYaml(yaml, {
+            envSource: { SENTINEL_HMAC_KEY: "env-hmac-key-32-bytes!!!!!!!!!!!!" },
+        });
+        expect(config.security.hmacKey).toBe("env-hmac-key-32-bytes!!!!!!!!!!!!");
+    });
+
+    it("partial integration section is allowed", () => {
+        const yaml = `
+project_name: test
+service_id: svc
+integration:
+  threat_response_enabled: true
+`;
+        const config = parseConfigYaml(yaml);
+        expect(config.integration!.threatResponseEnabled).toBe(true);
+        expect(config.integration!.taskApprovalEnabled).toBeUndefined();
+        expect(config.integration!.taskStatusEnabled).toBeUndefined();
+    });
+
+    it("Sentinel.initialize uses hmacKey from config for HMAC hash chain", () => {
+        Sentinel.reset();
+        const yaml = `
+project_name: test
+service_id: svc
+security:
+  enable_hash_chain: true
+  hmac_key: "test-hmac-key-32-bytes-long!!!!!"
+`;
+        const config = parseConfigYaml(yaml);
+        const sentinel = Sentinel.initialize(config);
+        // ingest should use HMAC mode
+        sentinel.ingest({ message: "hmac test" }).then(result => {
+            expect(result.hashChainValid).toBe(true);
+        });
+        Sentinel.reset();
+    });
+});

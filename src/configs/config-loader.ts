@@ -31,6 +31,14 @@ export interface RawYamlConfig {
     security?: {
         enable_hash_chain?: boolean;
         signing_key_id?: string;
+        hmac_key?: string;
+    };
+    integration?: {
+        config_validation?: boolean;
+        threat_response_enabled?: boolean;
+        task_approval_enabled?: boolean;
+        task_status_enabled?: boolean;
+        sync_detection_rules?: boolean;
     };
     task_rules?: RawTaskRule[];
     task_transports?: RawTaskTransport[];
@@ -349,7 +357,15 @@ function convertToSentinelConfig(raw: RawYamlConfig): SentinelConfig {
         security: {
             enableHashChain: raw.security?.enable_hash_chain ?? true,
             signingKeyId: raw.security?.signing_key_id,
+            hmacKey: raw.security?.hmac_key,
         },
+        integration: raw.integration ? {
+            configValidation: raw.integration.config_validation,
+            threatResponseEnabled: raw.integration.threat_response_enabled,
+            taskApprovalEnabled: raw.integration.task_approval_enabled,
+            taskStatusEnabled: raw.integration.task_status_enabled,
+            syncDetectionRules: raw.integration.sync_detection_rules,
+        } : undefined,
         taskRules,
         detectionRules,
         taskTransportConfigs,
