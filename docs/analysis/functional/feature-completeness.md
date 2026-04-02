@@ -2,7 +2,7 @@
 
 ```yaml
 analyzed_at: "2026-04-02"
-based_on: "0ed9ab5"
+based_on: "3227fe1"
 status: current
 ```
 
@@ -11,13 +11,13 @@ status: current
 | 機能 | 宣言場所 | 実装状況 | カテゴリ |
 |------|---------|---------|---------|
 | デジタル署名 (`signature`) | log.ts:66 | 未実装。パススルーのみ | GAP |
-| 署名鍵選択 (`signingKeyId`) | sentinel-config.ts:66 | 未実装 | GAP |
+| 署名鍵選択 (`signingKeyId`) | sentinel-config.ts:104 | 未実装 | GAP |
 | Worker Thread通信 (`WorkerToMainMessage`) | — | ✅ 削除済み（DEAD-02） | DONE |
 | `AI_ACTION_REQUIRED` イベント | event.ts:37-41 | ✅ event-detector.ts:103 で検知ルール実装済み（DEAD-04） | OK |
 | `RemoteTransport.healthCheck()` | transport.ts:36 | optional インターフェース。SDK内で未呼出（利用者実装依存） | GAP |
-| `RemoteTransport.close()` | transport.ts:40 | ✅ shutdown() で `transport?.close?.()` として呼出済み | OK |
-| `SEMI_AUTO` 実行レベル | task-executor.ts:124-132 | ✅ TaskConfirmHandler で確認フロー実装済み（API-02） | OK |
-| `guardrails.timeoutMs` | task.ts:49 | ✅ task-executor.ts:143-155 で Promise.race() により実装済み | OK |
+| `RemoteTransport.close()` | transport.ts:41 | ✅ shutdown() で `transport?.close?.()` として呼出済み | OK |
+| `SEMI_AUTO` 実行レベル | task-executor.ts:146-152 | ✅ TaskConfirmHandler で確認フロー実装済み（API-02） | OK |
+| `guardrails.timeoutMs` | task.ts:49 | ✅ task-executor.ts:167-184 で Promise.race() により実装済み | OK |
 | `guardrails.maxRetries` | task.ts:50 | ✅ task-executor.ts ハンドラ単位リトライで実装済み | OK |
 
 ## ソース内 TODO 一覧
@@ -36,10 +36,10 @@ status: current
 
 | エクスポート | index.ts行 | 利用者に必要か | 備考 |
 |-------------|-----------|--------------|------|
-| `SystemEventName` | 355 | ✅ | IngestionResult.detection.eventName の型として必要 |
-| `DetectionResult` | 355 | ✅ | DetectionRule 定義に必要 |
-| `TaskSeverity` | 352 | ✅ | taskRules定義に必要 |
-| `TaskExecutionLevel` | 353 | ✅ | taskRules定義に必要 |
+| `SystemEventName` | 415 | ✅ | IngestionResult.detection.eventName の型として必要 |
+| `DetectionResult` | 415 | ✅ | DetectionRule 定義に必要 |
+| `TaskSeverity` | 412 | ✅ | taskRules定義に必要 |
+| `TaskExecutionLevel` | 413 | ✅ | taskRules定義に必要 |
 | その他全て | — | ✅ | SDK利用に必要 |
 
 ## IngestionResult の情報不足

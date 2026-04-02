@@ -2,7 +2,7 @@
 
 ```yaml
 analyzed_at: "2026-04-02"
-based_on: "3820d07"
+based_on: "3227fe1"
 status: current
 last_updated: "2026-04-02"
 ```
