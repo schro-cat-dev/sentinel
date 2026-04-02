@@ -267,8 +267,25 @@ Issue 2.2（PII短文字列バイパスの根拠欠落）への対応も実施�
 | `docs/design/task-transport.md` | 新規作成 |
 | `docs/task-gen.md` | 更新済み |
 | `docs/audit/00-current-analysis.md` | Issue 2.2 RESOLVED |
-| `docs/architecture.md` | 更新対象 |
-| `docs/usage-guide.md` | 更新対象 |
-| `docs/instance-manage.md` | 更新対象 |
-| `docs/coop-siem-like-tools-agent.md` | 更新対象 |
-| `docs/architecture-diagrams.md` | 更新対象 |
+| `docs/architecture.md` | 更新済み |
+| `docs/usage-guide.md` | 更新済み |
+| `docs/instance-manage.md` | 更新済み |
+| `docs/coop-siem-like-tools-agent.md` | 更新済み |
+| `docs/architecture-diagrams.md` | 更新済み |
+| `docs/reports/2026-04-02-coverage-gap-audit.md` | 新規作成 |
+| `docs/reports/2026-04-02-cross-config-test-spec.md` | 新規作成 |
+
+---
+
+## 8. 最終テスト結果（全工程完了後）
+
+| 項目 | 値 |
+|------|------|
+| テストファイル数 | 77 (全パス) |
+| テスト総数 | 2778 passed + 23 expected fail |
+| 予期しない失敗 | 0 |
+| 型チェック (tsc --noEmit) | エラー 0 |
+| 交差テスト (yaml-transport-integration) | 105件 |
+| 組み込みトランスポート | ConsoleTaskTransport, HttpWebhookTransport |
+| SSRF 防御テスト | 16パターン |
+| config バリデーションテスト | 22件 (config-loader-transport) |
