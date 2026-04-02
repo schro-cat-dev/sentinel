@@ -31,6 +31,7 @@ type AuthorizerForApproval interface {
 type SentinelServer struct {
 	pb.UnimplementedSentinelServiceServer
 	pipeline        *engine.Pipeline
+	pipelineConfig  engine.PipelineConfig
 	store           store.Store
 	executor        *task.TaskExecutor
 	blockDispatcher *response.EnhancedBlockDispatcher
@@ -42,7 +43,7 @@ func NewSentinelServer(cfg engine.PipelineConfig, executor *task.TaskExecutor, s
 	if err != nil {
 		return nil, fmt.Errorf("pipeline init: %w", err)
 	}
-	return &SentinelServer{pipeline: p, store: st, executor: executor}, nil
+	return &SentinelServer{pipeline: p, pipelineConfig: cfg, store: st, executor: executor}, nil
 }
 
 // Pipeline はPipelineへの参照を返す（post-init設定用: SetAgentBridge, SetThreatOrchestrator）
@@ -225,14 +226,25 @@ func (s *SentinelServer) Ingest(ctx context.Context, req *pb.IngestRequest) (*pb
 
 func (s *SentinelServer) HealthCheck(ctx context.Context, req *pb.HealthCheckRequest) (*pb.HealthCheckResponse, error) {
 	// Deep health check: verify store connectivity
+	healthStatus := "SERVING"
 	if s.store != nil {
 		if _, err := s.store.GetLogByTraceID(ctx, "__health_check__"); err != nil {
-			// GetLogByTraceID returns nil,nil for not-found, but error means DB issue
 			slog.Warn("health check: store degraded", "error", err)
-			return &pb.HealthCheckResponse{Status: "DEGRADED", Version: version}, nil
+			healthStatus = "DEGRADED"
 		}
 	}
-	return &pb.HealthCheckResponse{Status: "SERVING", Version: version}, nil
+
+	// Phase 1-F: config_summary for SDK config validation
+	summary := &pb.ConfigSummary{
+		MaskingRulesCount:   int32(len(s.pipelineConfig.MaskingRules)),
+		DetectionRulesCount: int32(len(s.pipelineConfig.DetectionRules)),
+		TaskRulesCount:      int32(len(s.pipelineConfig.TaskRules)),
+		HashChainEnabled:    s.pipelineConfig.EnableHashChain,
+		MaskingEnabled:      s.pipelineConfig.EnableMasking,
+		ServiceId:           s.pipelineConfig.ServiceID,
+	}
+
+	return &pb.HealthCheckResponse{Status: healthStatus, Version: version, ConfigSummary: summary}, nil
 }
 
 // --- GetTaskStatus ---

@@ -102,6 +102,22 @@ export interface SentinelConfig {
     security: {
         enableHashChain: boolean;
         signingKeyId?: string;
+        /** HMAC-SHA256 鍵（Phase 1-E）。設定時はHMACモード、未設定時はSHA-256フォールバック。環境変数推奨。 */
+        hmacKey?: string;
+    };
+
+    /** SDK ↔ Server 連携設定（Phase 1-F〜Phase 3） */
+    integration?: {
+        /** 起動時にServer設定との整合性チェック（デフォルト: true） */
+        configValidation?: boolean;
+        /** 脅威レスポンスを IngestionResult に含める（デフォルト: false） */
+        threatResponseEnabled?: boolean;
+        /** タスク承認フロー有効化（デフォルト: false） */
+        taskApprovalEnabled?: boolean;
+        /** タスク状態クエリ有効化（デフォルト: false） */
+        taskStatusEnabled?: boolean;
+        /** 検知ルール同期（デフォルト: false） */
+        syncDetectionRules?: boolean;
     };
 
     /** カスタム検知ルール（組込みルールの後に評価される） */

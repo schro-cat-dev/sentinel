@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { Log } from "../types/log";
 
 type JsonPrimitive = string | number | boolean | null;
@@ -13,9 +13,11 @@ type JsonValue = JsonPrimitive | JsonObject | JsonArray;
 export class IntegritySigner {
     private previousHash = "";
     private readonly signingKeyId: string;
+    private readonly hmacKey: string;
 
-    constructor(signingKeyId?: string) {
+    constructor(signingKeyId?: string, hmacKey?: string) {
         this.signingKeyId = signingKeyId ?? "";
+        this.hmacKey = hmacKey ?? "";
     }
 
     /**
@@ -40,11 +42,20 @@ export class IntegritySigner {
     }
 
     /**
-     * 前のハッシュと現在のログを結合して SHA-256 ハッシュを計算
+     * 前のハッシュと現在のログを結合してハッシュを計算。
+     * hmacKey が指定されている場合は HMAC-SHA256、未指定時は SHA-256 フォールバック。
+     * HMAC モードでは Go Server (signer.go) と同一のアルゴリズム:
+     *   HMAC-SHA256(serialized + previousHash, key)
      */
-    public static calculateHash(log: Log, previousHash: string, signingKeyId = ""): string {
+    public static calculateHash(log: Log, previousHash: string, signingKeyId = "", hmacKey = ""): string {
         const immutableParts = IntegritySigner.omit(log, ["hash", "signature"]);
         const serializedData = IntegritySigner.deterministicStringify(immutableParts);
+
+        if (hmacKey) {
+            return createHmac("sha256", hmacKey)
+                .update(serializedData + previousHash)
+                .digest("hex");
+        }
 
         return createHash("sha256")
             .update(serializedData + previousHash + signingKeyId)
@@ -56,12 +67,17 @@ export class IntegritySigner {
         return this.signingKeyId;
     }
 
+    /** HMAC鍵を取得（Phase 1-E） */
+    public getHmacKey(): string {
+        return this.hmacKey;
+    }
+
     /**
      * 指定されたログのハッシュを検証
      */
-    public static verifyHash(log: Log, expectedPreviousHash: string): boolean {
+    public static verifyHash(log: Log, expectedPreviousHash: string, hmacKey = ""): boolean {
         if (!log.hash) return false;
-        const computed = IntegritySigner.calculateHash(log, expectedPreviousHash);
+        const computed = IntegritySigner.calculateHash(log, expectedPreviousHash, "", hmacKey);
         const a = Buffer.from(computed, "utf8");
         const b = Buffer.from(log.hash, "utf8");
         if (a.length !== b.length) return false;

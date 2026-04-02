@@ -84,6 +84,16 @@ message HealthCheckRequest {}
 message HealthCheckResponse {
   string status = 1;
   string version = 2;
+  ConfigSummary config_summary = 3;
+}
+
+message ConfigSummary {
+  int32 masking_rules_count = 1;
+  int32 detection_rules_count = 2;
+  int32 task_rules_count = 3;
+  bool hash_chain_enabled = 4;
+  bool masking_enabled = 5;
+  string service_id = 6;
 }
 
 // --- Task Management ---

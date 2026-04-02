@@ -59,7 +59,7 @@ export class Sentinel {
         this.transportConfig = options?.transport ?? { mode: "local" };
 
         const normalizer = new LogNormalizer(config.serviceId, config.projectName);
-        const signer = new IntegritySigner(config.security.signingKeyId);
+        const signer = new IntegritySigner(config.security.signingKeyId, config.security.hmacKey);
         const detector = new EventDetector(config.detectionRules);
         const taskGenerator = new TaskGenerator(config.taskRules);
 

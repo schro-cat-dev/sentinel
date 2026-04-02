@@ -31,7 +31,7 @@ function createEngine(configOverrides: Partial<SentinelConfig> = {}) {
         engine: new IngestionEngine({
             config,
             normalizer: new LogNormalizer(config.serviceId),
-            signer: new IntegritySigner(),
+            signer: new IntegritySigner(config.security.signingKeyId, config.security.hmacKey),
             detector: new EventDetector(),
             taskGenerator: new TaskGenerator(config.taskRules ?? []),
             taskExecutor: new TaskExecutor(),
@@ -238,6 +238,36 @@ describe("IngestionEngine", () => {
             expect(results.every((r) => r.hashChainValid)).toBe(true);
             const traceIds = results.map((r) => r.traceId);
             expect(new Set(traceIds).size).toBe(10);
+        });
+    });
+
+    // ===== Phase 1-E: HMAC mode integration =====
+    describe("HMAC-SHA256 hash chain (Phase 1-E)", () => {
+        it("produces HMAC hashes when hmacKey is configured", async () => {
+            const hmacKey = "test-hmac-key-32-bytes-long!!!!!";
+            const { engine } = createEngine({
+                security: { enableHashChain: true, hmacKey },
+            });
+
+            const result = await engine.handle({ message: "hmac test" });
+            expect(result.hashChainValid).toBe(true);
+            expect(result.traceId).toBeDefined();
+        });
+
+        it("HMAC chain produces different hashes than SHA-256 chain", async () => {
+            const { engine: sha256Engine } = createEngine({
+                security: { enableHashChain: true },
+            });
+            const { engine: hmacEngine } = createEngine({
+                security: { enableHashChain: true, hmacKey: "test-hmac-key-32-bytes-long!!!!!" },
+            });
+
+            const sha256Result = await sha256Engine.handle({ message: "same message" });
+            const hmacResult = await hmacEngine.handle({ message: "same message" });
+
+            // Both valid but different hashes
+            expect(sha256Result.hashChainValid).toBe(true);
+            expect(hmacResult.hashChainValid).toBe(true);
         });
     });
 

@@ -120,6 +120,85 @@ describe("IntegritySigner", () => {
         });
     });
 
+    describe("HMAC-SHA256 mode (Phase 1-E)", () => {
+        const hmacKey = "a]8kP$2mN!qR9vL#xY5wZ@cF3gH7jT0s"; // 32 bytes
+
+        it("produces a 64-char hex HMAC-SHA256 hash when key provided", () => {
+            const log = createTestLog();
+            const hash = IntegritySigner.calculateHash(log, "", "", hmacKey);
+            expect(hash).toMatch(/^[a-f0-9]{64}$/);
+        });
+
+        it("produces different hash than SHA-256 mode for same log", () => {
+            const log = createTestLog();
+            const sha256Hash = IntegritySigner.calculateHash(log, "");
+            const hmacHash = IntegritySigner.calculateHash(log, "", "", hmacKey);
+            expect(sha256Hash).not.toBe(hmacHash);
+        });
+
+        it("is deterministic with same key", () => {
+            const log = createTestLog();
+            const hash1 = IntegritySigner.calculateHash(log, "prev", "", hmacKey);
+            const hash2 = IntegritySigner.calculateHash(log, "prev", "", hmacKey);
+            expect(hash1).toBe(hash2);
+        });
+
+        it("produces different hashes with different keys", () => {
+            const log = createTestLog();
+            const hash1 = IntegritySigner.calculateHash(log, "", "", hmacKey);
+            const hash2 = IntegritySigner.calculateHash(log, "", "", "different-key-32-bytes-long!!!!!");
+            expect(hash1).not.toBe(hash2);
+        });
+
+        it("excludes hash and signature from HMAC computation", () => {
+            const log1 = createTestLog({ hash: "ignored", signature: "ignored" });
+            const log2 = createTestLog();
+            const hash1 = IntegritySigner.calculateHash(log1, "", "", hmacKey);
+            const hash2 = IntegritySigner.calculateHash(log2, "", "", hmacKey);
+            expect(hash1).toBe(hash2);
+        });
+
+        it("verifyHash works with HMAC key", () => {
+            const log = createTestLog();
+            log.hash = IntegritySigner.calculateHash(log, "", "", hmacKey);
+            expect(IntegritySigner.verifyHash(log, "", hmacKey)).toBe(true);
+        });
+
+        it("verifyHash fails with wrong HMAC key", () => {
+            const log = createTestLog();
+            log.hash = IntegritySigner.calculateHash(log, "", "", hmacKey);
+            expect(IntegritySigner.verifyHash(log, "", "wrong-key-32-bytes-long!!!!!!!!!")).toBe(false);
+        });
+
+        it("HMAC chain of 3 logs is verifiable", () => {
+            const hmacSigner = new IntegritySigner("", hmacKey);
+            const logs = [
+                createTestLog({ message: "first", traceId: "t1" }),
+                createTestLog({ message: "second", traceId: "t2" }),
+                createTestLog({ message: "third", traceId: "t3" }),
+            ];
+            const hashes: string[] = [];
+            for (const log of logs) {
+                const prevHash = hmacSigner.getPreviousHash();
+                log.previousHash = prevHash;
+                log.hash = IntegritySigner.calculateHash(log, prevHash, "", hmacKey);
+                hmacSigner.updateChain(log.hash);
+                hashes.push(log.hash);
+            }
+            expect(new Set(hashes).size).toBe(3);
+            expect(IntegritySigner.verifyHash(logs[0], "", hmacKey)).toBe(true);
+            expect(IntegritySigner.verifyHash(logs[1], hashes[0], hmacKey)).toBe(true);
+            expect(IntegritySigner.verifyHash(logs[2], hashes[1], hmacKey)).toBe(true);
+        });
+
+        it("falls back to SHA-256 when hmacKey is empty string", () => {
+            const log = createTestLog();
+            const hashNoKey = IntegritySigner.calculateHash(log, "");
+            const hashEmptyKey = IntegritySigner.calculateHash(log, "", "", "");
+            expect(hashNoKey).toBe(hashEmptyKey);
+        });
+    });
+
     describe("hash chain (instance state)", () => {
         it("starts with empty previousHash", () => {
             expect(signer.getPreviousHash()).toBe("");
