@@ -79,10 +79,19 @@ describe("TaskGenerator", () => {
             payload: { component: "db", errorDetails: "pool exhausted" },
         };
 
-        it("generates tasks for matching event", () => {
+        it("generates tasks for matching event with correct properties", () => {
             const log = createCriticalLog();
             const tasks = generator.generate(detection, log);
             expect(tasks.length).toBeGreaterThan(0);
+            // Verify task content matches the rule, not just that something was generated
+            const task = tasks[0];
+            expect(task.eventName).toBe("SYSTEM_CRITICAL_FAILURE");
+            expect(task.ruleId).toBeDefined();
+            expect(task.severity).toBeDefined();
+            expect(task.actionType).toBeDefined();
+            expect(task.executionLevel).toBeDefined();
+            expect(task.guardrails).toBeDefined();
+            expect(task.guardrails.timeoutMs).toBeGreaterThan(0);
         });
 
         it("includes correct sourceLog metadata", () => {

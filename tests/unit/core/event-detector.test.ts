@@ -73,8 +73,16 @@ describe("EventDetector", () => {
             expect(result!.payload).toHaveProperty("ip", "10.0.0.1");
         });
 
-        it("defaults IP to 0.0.0.0 when not in tags", () => {
+        it("defaults IP to 0.0.0.0 when not in tags (empty array)", () => {
             const log = createSecurityLog({ tags: [] });
+            const result = detector.detect(log);
+            expect(result!.payload).toHaveProperty("ip", "0.0.0.0");
+        });
+
+        it("defaults IP to 0.0.0.0 when tags have entries but no 'ip' key", () => {
+            const log = createSecurityLog({
+                tags: [{ key: "region", category: "ap-northeast-1" }, { key: "env", category: "prod" }],
+            });
             const result = detector.detect(log);
             expect(result!.payload).toHaveProperty("ip", "0.0.0.0");
         });

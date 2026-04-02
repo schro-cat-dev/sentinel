@@ -55,6 +55,24 @@ describe("OBS-03: SentinelLogger interface", () => {
         expect(logger.warn).not.toHaveBeenCalled();
     });
 
+    it("logger.warn IS called when masking rule throws", () => {
+        const logger: SentinelLogger = {
+            warn: vi.fn(),
+            error: vi.fn(),
+        };
+
+        // Create a rule whose pattern.source will cause the new RegExp construction to fail
+        const brokenRule = {
+            type: "REGEX" as const,
+            pattern: { source: "[invalid", flags: "", [Symbol.match]: null } as unknown as RegExp,
+            replacement: "x",
+        };
+
+        MaskingService.mask("test data", [brokenRule], [], { logger });
+
+        expect(logger.warn).toHaveBeenCalledWith("Masking rule failed: REGEX");
+    });
+
     it("production environment suppresses console.warn (no logger = no output)", () => {
         const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 

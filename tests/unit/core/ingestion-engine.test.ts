@@ -77,6 +77,9 @@ describe("IngestionEngine", () => {
 
             expect(result.agentBackLog).toBeDefined();
             expect(result.agentBackLog?.agentId).toBe("agent-1");
+            expect(result.agentBackLog?.taskId).toBe("task-1");
+            expect(result.agentBackLog?.status).toBe("success");
+            expect(result.agentBackLog?.model).toBe("gpt-4");
         });
 
         it("preserves traceInfo through normalize", async () => {

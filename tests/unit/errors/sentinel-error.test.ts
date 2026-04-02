@@ -31,8 +31,12 @@ describe("SentinelError (O-4)", () => {
         expect(err.cause).toBeUndefined();
     });
 
-    it("has proper stack trace", () => {
+    it("has proper stack trace with file and line info", () => {
         const err = new SentinelError("detection", "detect", "rule error");
+        expect(err.stack).toBeDefined();
+        // Stack trace must contain class name AND at least one "at" frame with file reference
         expect(err.stack).toContain("SentinelError");
+        expect(err.stack).toMatch(/at\s+/); // "at <function/location>"
+        expect(err.stack).toMatch(/\.ts:|\.js:/); // file reference with line number
     });
 });

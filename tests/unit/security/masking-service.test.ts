@@ -57,22 +57,43 @@ describe("MaskingService", () => {
             expect(result).toBe("Contact [MASKED_EMAIL] for info");
         });
 
-        it("masks credit card numbers", () => {
+        it("masks credit card numbers with replacement marker", () => {
             const rule: MaskingRule = { type: "PII_TYPE", category: "CREDIT_CARD" };
             const result = MaskingService.mask("Card: 4111 1111 1111 1111", [rule]);
             expect(result).not.toContain("4111");
+            expect(result).toContain("[MASKED_CREDIT_CARD]");
         });
 
-        it("masks phone numbers (Japan format)", () => {
+        it("does not mask non-credit-card numbers", () => {
+            const rule: MaskingRule = { type: "PII_TYPE", category: "CREDIT_CARD" };
+            const result = MaskingService.mask("Order #12345 confirmed", [rule]);
+            expect(result).toBe("Order #12345 confirmed");
+        });
+
+        it("masks phone numbers (Japan format) with replacement marker", () => {
             const rule: MaskingRule = { type: "PII_TYPE", category: "PHONE" };
             const result = MaskingService.mask("Call 090-1234-5678", [rule]);
             expect(result).not.toContain("090-1234-5678");
+            expect(result).toContain("[MASKED_PHONE]");
         });
 
-        it("masks government IDs (12-digit)", () => {
+        it("does not mask non-phone numbers", () => {
+            const rule: MaskingRule = { type: "PII_TYPE", category: "PHONE" };
+            const result = MaskingService.mask("Version 1.2.3 released", [rule]);
+            expect(result).toBe("Version 1.2.3 released");
+        });
+
+        it("masks government IDs (12-digit) with replacement marker", () => {
             const rule: MaskingRule = { type: "PII_TYPE", category: "GOVERNMENT_ID" };
             const result = MaskingService.mask("ID: 123456789012", [rule]);
             expect(result).not.toContain("123456789012");
+            expect(result).toContain("[MASKED_GOVERNMENT_ID]");
+        });
+
+        it("does not mask short numbers that are not government IDs", () => {
+            const rule: MaskingRule = { type: "PII_TYPE", category: "GOVERNMENT_ID" };
+            const result = MaskingService.mask("Error code: 12345", [rule]);
+            expect(result).toBe("Error code: 12345");
         });
     });
 
@@ -156,11 +177,14 @@ describe("MaskingService", () => {
     });
 
     describe("edge cases", () => {
-        it("handles circular reference protection", () => {
+        it("handles circular reference protection without crashing", () => {
             const data: Record<string, unknown> = { name: "test" };
             data.self = data; // circular reference
-            const result = MaskingService.mask(data, []);
-            expect(result).toBeDefined();
+            const result = MaskingService.mask(data, []) as Record<string, unknown>;
+            // Non-circular fields should be preserved
+            expect(result.name).toBe("test");
+            // Circular reference should be replaced with sentinel string
+            expect(result.self).toBe("[CIRCULAR_REFERENCE_OR_TOO_DEEP]");
         });
 
         it("respects maxDepth option", () => {

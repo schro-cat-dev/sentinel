@@ -287,13 +287,28 @@ describe("Sentinel.ingest", () => {
 // Sentinel.onTaskAction
 // =========================================================================
 describe("Sentinel.onTaskAction", () => {
-    it("registers handler and returns deregistration function", () => {
-        const sentinel = Sentinel.initialize(defaultConfig());
+    it("registers handler and deregistration function actually removes it", async () => {
+        const sentinel = Sentinel.initialize(defaultConfig({
+            taskRules: [createTestTaskRule({
+                eventName: "SYSTEM_CRITICAL_FAILURE",
+                severity: "CRITICAL",
+                actionType: "SYSTEM_NOTIFICATION",
+                executionLevel: "AUTO",
+            })],
+        }));
         const handler = vi.fn();
         const deregister = sentinel.onTaskAction("SYSTEM_NOTIFICATION", handler);
         expect(typeof deregister).toBe("function");
+
+        // Trigger task dispatch → handler should be called
+        await sentinel.ingest({ message: "fail", level: 6, isCritical: true });
+        expect(handler).toHaveBeenCalledTimes(1);
+
+        // Deregister → handler should NOT be called again
+        handler.mockClear();
         deregister();
-        // No throw after deregister
+        await sentinel.ingest({ message: "fail again", level: 6, isCritical: true });
+        expect(handler).not.toHaveBeenCalled();
     });
 
     it("throws after shutdown", async () => {
