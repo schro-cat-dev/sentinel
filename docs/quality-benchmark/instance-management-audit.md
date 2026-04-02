@@ -22,6 +22,7 @@ initialize(config)
 shutdown()
   ├→ if (isShutdown) return                  ← 冪等性ガード (3.2 対応済み)
   ├→ isShutdown = true
+  ├→ drainActiveIngests()                    ← NEW-15: in-flight 完了待機 (5秒タイムアウト)
   ├→ transport.close()                       ← try/catch でベストエフォート
   ├→ taskExecutor.clearHandlers()            ← handlers + confirmHandler クリア
   ├→ engine.resetState()                     ← signer.resetChain() + lastProcessedLog null化 + errorRouter.shutdown()

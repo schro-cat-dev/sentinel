@@ -13,8 +13,19 @@ import { EventDetector } from "../../src/core/detection/event-detector";
 import { TaskGenerator } from "../../src/core/task/task-generator";
 import { TaskExecutor } from "../../src/core/task/task-executor";
 import { isPiiSafe } from "../../src/shared/utils/error-utils";
-import { safe } from "../../src/shared/functional/result";
 import { createTestLog, createTestConfig, createSecurityLog } from "../helpers/fixtures";
+
+// Inline safe() — originally from result.ts (deleted as dead code from src/)
+type Result<T, E = Error> = { success: true; value: T } | { success: false; error: E };
+async function safe<T>(fn: () => Promise<T> | T, config: { retries?: number } = {}): Promise<Result<T, Error>> {
+    const MAX = 10;
+    const retries = Math.min(Math.max(0, config.retries ?? 0), MAX);
+    for (let i = 0; i <= retries; i++) {
+        try { return { success: true, value: await fn() }; }
+        catch (e) { if (i === retries) return { success: false, error: e instanceof Error ? e : new Error(String(e)) }; }
+    }
+    throw new Error("Unreachable");
+}
 import type { SentinelConfig } from "../../src/configs/sentinel-config";
 import type { Log } from "../../src/types/log";
 

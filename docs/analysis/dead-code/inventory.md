@@ -8,11 +8,10 @@ status: current
 
 ## パイプラインから到達不能なモジュール
 
-### shared/functional/result.ts [DEAD — 全172行]
+### ~~shared/functional/result.ts~~ — ✅ 削除済み
 
-Result monad（`success`, `failure`, `tryCatch`, `safe`, `map`, `flatMap`, `guard`, `all`, `match`, `mapError`, `isOk`, `isErr`）。テスト（result.test.ts: 33テスト）は存在するが、パイプラインのどのモジュールからもimportされていない。
-
-**判断:** v1のWAL/persistence層で使用されていた可能性。現パイプラインはtry/catchベース。将来のSDK公開APIとしてexportするか、削除するかの判断が必要。
+v1のWAL/persistence層の残骸。パイプライン未使用のため削除。テスト（result.test.ts）も削除。
+`safe()` 関数はセキュリティテスト (new-findings-v2.test.ts) で使用されていたため、テストファイル内にインライン化。
 
 ### shared/errors/ [DEAD — ディレクトリ全体]
 

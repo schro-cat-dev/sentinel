@@ -171,6 +171,59 @@ describe("C-03: onError exceptions are not silently swallowed", () => {
     });
 });
 
+// ===== NEW-15: shutdown waits for in-flight ingests =====
+describe("NEW-15: shutdown waits for in-flight ingests", () => {
+    it("shutdown does not call transport.close() until in-flight ingests complete", async () => {
+        const order: string[] = [];
+        const slowTransport = {
+            send: async () => {
+                order.push("send-start");
+                await new Promise((r) => setTimeout(r, 80));
+                order.push("send-end");
+                return { traceId: "t", hashChainValid: false, tasksGenerated: [], masked: false, detection: null };
+            },
+            close: async () => { order.push("close"); },
+        };
+
+        const sentinel = Sentinel.initialize(
+            createDefaultConfig({ projectName: "p", serviceId: "s", security: { enableHashChain: false } }),
+            { transport: { mode: "dual", transport: slowTransport } },
+        );
+
+        // Start ingest (will be in-flight due to slow transport)
+        const ingestPromise = sentinel.ingest({ message: "in-flight", level: 3 });
+
+        // Give ingest a tick to start the send
+        await new Promise((r) => setTimeout(r, 10));
+
+        // Shutdown while ingest is in-flight
+        const shutdownPromise = sentinel.shutdown();
+
+        // Wait for both to finish
+        await Promise.all([ingestPromise, shutdownPromise]);
+
+        // close must happen AFTER send-end (shutdown waited for in-flight)
+        expect(order).toContain("send-start");
+        expect(order).toContain("send-end");
+        expect(order).toContain("close");
+        const sendEndIdx = order.indexOf("send-end");
+        const closeIdx = order.indexOf("close");
+        expect(closeIdx).toBeGreaterThan(sendEndIdx);
+    });
+
+    it("ingest started after shutdown is rejected", async () => {
+        const sentinel = Sentinel.initialize(createDefaultConfig({
+            projectName: "p", serviceId: "s",
+            security: { enableHashChain: false },
+        }));
+
+        await sentinel.shutdown();
+
+        await expect(sentinel.ingest({ message: "too late", level: 3 }))
+            .rejects.toThrow("shutdown");
+    });
+});
+
 // ===== D-02: handler accumulation limit =====
 describe("D-02: handler accumulation has bounds", () => {
     it("warns when too many handlers registered for same actionType", () => {

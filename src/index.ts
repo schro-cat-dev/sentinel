@@ -9,6 +9,7 @@ import { TaskExecutor, TaskDispatchHandler, TaskConfirmHandler } from "./core/ta
 import { Log } from "./types/log";
 import { IngestionResult } from "./core/engine/types";
 import { TransportConfig, RemoteTransport } from "./transport/transport";
+import type { TaskTransport, TaskTransportResult } from "./transport/task-transport";
 import { validateLogInput, ValidationError } from "./validation/log-validator";
 import { validateConfigWhitelists } from "./validation/config-validator";
 import { WhitelistRegistry } from "./validation/whitelist-registry";
@@ -24,6 +25,13 @@ export interface SentinelOptions {
      * Transport設定（省略時はローカルパイプラインのみ）
      */
     transport?: TransportConfig;
+
+    /**
+     * タスクトランスポート（外部システムへのタスク配信アダプタ）。
+     * 省略時はコールバック方式（onTaskAction）のみでタスクをディスパッチする。
+     * @see docs/design/task-transport.md
+     */
+    taskTransports?: TaskTransport[];
 }
 
 /**
@@ -41,6 +49,7 @@ export class Sentinel {
     private readonly whitelistRegistry?: WhitelistRegistry;
     private initialized = false;
     private isShutdown = false;
+    private activeIngests = 0;
     private readonly circuitBreaker?: CircuitBreaker;
 
     private constructor(config: SentinelConfig, registry?: WhitelistRegistry, options?: SentinelOptions) {
@@ -52,7 +61,7 @@ export class Sentinel {
         const signer = new IntegritySigner(config.security.signingKeyId);
         const detector = new EventDetector(config.detectionRules);
         const taskGenerator = new TaskGenerator(config.taskRules);
-        this.taskExecutor = new TaskExecutor();
+        this.taskExecutor = new TaskExecutor(undefined, options?.taskTransports);
 
         // ErrorRouter はエンジンに注入（DI原則: IngestionEngine が直接生成しない）
         const errorRouter = config.errorRouting?.enabled
@@ -133,18 +142,45 @@ export class Sentinel {
      * グレースフルシャットダウン
      * Transport接続を閉じ、インスタンスをクリアする。
      */
+    /** グレースフルシャットダウンのドレインタイムアウト (ms) */
+    private static readonly DRAIN_TIMEOUT_MS = 5_000;
+
     public async shutdown(): Promise<void> {
         if (this.isShutdown) return;
         this.isShutdown = true;
+
+        // NEW-15: in-flight ingest の完了を待機（タイムアウト付き）
+        if (this.activeIngests > 0) {
+            await this.drainActiveIngests();
+        }
 
         try {
             await this.transportConfig.transport?.close?.();
         } catch {
             // transport close errors are best-effort
         }
+        await this.taskExecutor.closeTransports();
         this.taskExecutor.clearHandlers();
         this.engine.resetState();
         Sentinel.instance = null;
+    }
+
+    /**
+     * activeIngests が 0 になるまでポーリング待機。
+     * DRAIN_TIMEOUT_MS を超えたら強制的に進む。
+     */
+    private async drainActiveIngests(): Promise<void> {
+        const start = Date.now();
+        while (this.activeIngests > 0) {
+            if (Date.now() - start > Sentinel.DRAIN_TIMEOUT_MS) {
+                this.config.logger?.warn(
+                    `shutdown drain timeout: ${this.activeIngests} ingests still in-flight after ${Sentinel.DRAIN_TIMEOUT_MS}ms`,
+                    { source: "sentinel" },
+                );
+                break;
+            }
+            await new Promise((r) => setTimeout(r, 10));
+        }
     }
 
     /**
@@ -159,6 +195,15 @@ export class Sentinel {
         if (this.isShutdown) throw new Error("Sentinel is shutdown. Cannot ingest after shutdown.");
         validateLogInput(log, this.config.validationLimits);
 
+        this.activeIngests++;
+        try {
+            return await this.ingestInternal(log);
+        } finally {
+            this.activeIngests--;
+        }
+    }
+
+    private async ingestInternal(log: Partial<Log>): Promise<IngestionResult> {
         const mode = this.transportConfig.mode;
 
         if (mode === "remote" && this.transportConfig.transport) {
@@ -357,6 +402,8 @@ export type { SystemEventName, DetectionResult, DetectionRule, DetectionRuleCond
 export type { TaskDispatchHandler, TaskConfirmHandler } from "./core/task/task-executor";
 export type { SentinelLogger, SentinelMetrics, SentinelTracer } from "./configs/sentinel-config";
 export type { RemoteTransport, TransportMode, TransportConfig } from "./transport/transport";
+export type { TaskTransport, TaskTransportResult } from "./transport/task-transport";
+export type { TaskTransportConfig } from "./configs/sentinel-config";
 export { CircuitBreaker } from "./transport/circuit-breaker";
 export type { CircuitBreakerConfig, CircuitState } from "./transport/circuit-breaker";
 export { validateLogInput, ValidationError, DEFAULT_VALIDATION_LIMITS } from "./validation/log-validator";

@@ -6,6 +6,22 @@ import type { ErrorRoutingConfig } from "../error-routing/types";
 import type { ValidationLimits } from "../validation/log-validator";
 
 /**
+ * タスクトランスポートの設定メタデータ（YAML由来）。
+ * endpoint, headers 等の接続情報を保持し、TaskTransport 実装の初期化に使用する。
+ * 拡張フィールドは [key: string]: unknown で許容する。
+ */
+export interface TaskTransportConfig {
+    /** トランスポート識別名（TaskTransport.name に対応） */
+    name: string;
+    /** 接続先エンドポイント */
+    endpoint?: string;
+    /** HTTPヘッダー等 */
+    headers?: Record<string, string>;
+    /** 拡張フィールド（Jira project_key, Slack channel 等） */
+    [key: string]: unknown;
+}
+
+/**
  * SDKの内部ログ出力先。利用者が注入することでconsole.warn等を制御可能。
  * 未指定時はproduction環境で抑制、それ以外でconsole出力。
  */
@@ -100,6 +116,14 @@ export interface SentinelConfig {
      * OpenTelemetry等の分散トレーシングとの統合ポイント。
      */
     tracer?: SentinelTracer;
+
+    /**
+     * タスクトランスポート設定（YAML由来のメタデータ）。
+     * 実際の TaskTransport インスタンスは SentinelOptions.taskTransports で注入する。
+     * YAML の task_transports セクションからロードされ、トランスポート実装の
+     * 初期化パラメータとして参照される。
+     */
+    taskTransportConfigs?: TaskTransportConfig[];
 
     /**
      * ホワイトリスト検証設定

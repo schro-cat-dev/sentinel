@@ -107,3 +107,22 @@
 | 通知ルーティング（重大度別） | ドメインモデル定義済み (ApprovalRoutingRule) |
 | キルスイッチ | 実装済み (KILL_SWITCH action, fail-safe) |
 | AIループ防止 | 実装済み (origin=AI_AGENT + maxLoopDepth) |
+| **タスクトランスポート（アダプタパターン）** | **実装済み (TaskTransport interface)** |
+| タスクトランスポート YAML 設定 | 実装済み (task_transports セクション) |
+
+### タスクトランスポート
+
+外部システムへのタスク配信は `TaskTransport` アダプタパターンで拡張可能。
+詳細設計は [docs/design/task-transport.md](design/task-transport.md) を参照。
+
+```typescript
+// 利用者が TaskTransport を実装して注入する
+const sentinel = Sentinel.initialize(config, {
+    taskTransports: [slackAdapter, jiraAdapter],
+});
+```
+
+**拡張ポリシー**:
+- `TaskTransport` 実装は自由に差し替え可能（HTTP, gRPC, キュー, SIEM等）
+- ディスパッチステータスの解決ロジック・guardrails適用はSDK側で固定（差し替え不可）
+- SDKはリトライしない（二重配信防止のためトランスポート実装側の責務）

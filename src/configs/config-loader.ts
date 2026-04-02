@@ -9,7 +9,7 @@
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { createDefaultConfig, type SentinelConfig } from "./sentinel-config";
+import { createDefaultConfig, type SentinelConfig, type TaskTransportConfig } from "./sentinel-config";
 import { PII_CATEGORIES, type MaskingRule } from "./masking-rule";
 import type { TaskRule } from "../types/task";
 import type { DetectionRule, DetectionRuleConditions } from "../types/event";
@@ -33,6 +33,7 @@ export interface RawYamlConfig {
         signing_key_id?: string;
     };
     task_rules?: RawTaskRule[];
+    task_transports?: RawTaskTransport[];
     detection_rules?: RawDetectionRule[];
     whitelist?: {
         level?: string;
@@ -79,6 +80,13 @@ interface RawDetectionRule {
         origin?: string;
         is_critical?: boolean;
     };
+}
+
+interface RawTaskTransport {
+    name?: string;
+    endpoint?: string;
+    headers?: Record<string, string>;
+    [key: string]: unknown;
 }
 
 // =========================================================================
@@ -286,6 +294,16 @@ function validateRawConfig(raw: RawYamlConfig): void {
             if (!rule.action_type) throw new ConfigLoadError(`task_rules[${i}].action_type`, "is required");
         }
     }
+
+    // task transports
+    if (raw.task_transports) {
+        for (let i = 0; i < raw.task_transports.length; i++) {
+            const t = raw.task_transports[i];
+            if (!t.name || typeof t.name !== "string") {
+                throw new ConfigLoadError(`task_transports[${i}].name`, "is required and must be a string");
+            }
+        }
+    }
 }
 
 // =========================================================================
@@ -296,6 +314,7 @@ function convertToSentinelConfig(raw: RawYamlConfig): SentinelConfig {
     const maskingRules: MaskingRule[] = (raw.masking?.rules ?? []).map((r, i) => convertMaskingRule(r, i));
     const taskRules: TaskRule[] = (raw.task_rules ?? []).map(convertTaskRule);
     const detectionRules: DetectionRule[] | undefined = raw.detection_rules?.map(convertDetectionRule);
+    const taskTransportConfigs: TaskTransportConfig[] | undefined = raw.task_transports?.map(convertTaskTransport);
 
     return createDefaultConfig({
         projectName: raw.project_name!,
@@ -312,12 +331,23 @@ function convertToSentinelConfig(raw: RawYamlConfig): SentinelConfig {
         },
         taskRules,
         detectionRules,
+        taskTransportConfigs,
         whitelist: raw.whitelist ? {
             level: raw.whitelist.level as SentinelConfig["whitelist"] extends { level?: infer L } ? L : never,
             enabledDomains: raw.whitelist.enabled_domains as ("security" | "task" | "privacy")[],
             extensions: raw.whitelist.extensions,
         } : undefined,
     });
+}
+
+function convertTaskTransport(raw: RawTaskTransport): TaskTransportConfig {
+    const { name, endpoint, headers, ...rest } = raw;
+    return {
+        name: name!,
+        endpoint,
+        headers,
+        ...rest,
+    };
 }
 
 const MAX_REGEX_PATTERN_LENGTH = 256;

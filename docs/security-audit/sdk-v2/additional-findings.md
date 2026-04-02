@@ -73,8 +73,8 @@
 | in-flight リクエストのカウント | NG — なし | ✅ `activeIngests` カウンタ追加 |
 | shutdown 時の待機 | NG — 即座に close | ✅ カウンタ 0 まで待機（タイムアウト付き） |
 
-**ファイル**: `src/index.ts:115-127`
-**対策**: `activeIngests` カウンタを追加し、`shutdown()` でカウンタが 0 になるまで待機。
+**ファイル**: `src/index.ts` — `activeIngests` カウンタ + `drainActiveIngests()` メソッド
+**対策**: `activeIngests` カウンタを追加し、`shutdown()` でカウンタが 0 になるまで待機（DRAIN_TIMEOUT_MS=5000ms）。テスト: instance-lifecycle.test.ts で検証済み。
 
 ---
 

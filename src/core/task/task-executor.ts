@@ -1,5 +1,6 @@
 import { GeneratedTask, TaskResult, TaskDispatchStatus } from "../../types/task";
 import { SentinelError } from "../../errors/sentinel-error";
+import type { TaskTransport } from "../../transport/task-transport";
 
 /**
  * タスクディスパッチハンドラの型
@@ -23,10 +24,12 @@ export type TaskConfirmHandler = (task: GeneratedTask) => Promise<boolean> | boo
 export class TaskExecutor {
     private readonly handlers: Map<string, TaskDispatchHandler[]> = new Map();
     private readonly defaultHandler?: TaskDispatchHandler;
+    private readonly transports: readonly TaskTransport[];
     private confirmHandler?: TaskConfirmHandler;
 
-    constructor(defaultHandler?: TaskDispatchHandler) {
+    constructor(defaultHandler?: TaskDispatchHandler, transports?: readonly TaskTransport[]) {
         this.defaultHandler = defaultHandler;
+        this.transports = transports ?? [];
     }
 
     /**
@@ -91,6 +94,20 @@ export class TaskExecutor {
     }
 
     /**
+     * 全トランスポートの接続を閉じる（Sentinel.shutdown() から呼ばれる）。
+     * 個別のclose失敗は握りつぶす（best-effort）。
+     */
+    public async closeTransports(): Promise<void> {
+        for (const transport of this.transports) {
+            try {
+                await transport.close?.();
+            } catch {
+                // best-effort: close errors are silently swallowed
+            }
+        }
+    }
+
+    /**
      * タスクをディスパッチ
      */
     public async dispatch(task: GeneratedTask): Promise<TaskResult> {
@@ -143,6 +160,7 @@ export class TaskExecutor {
     }
 
     /**
+     * ハンドラ + トランスポートを実行し、エラーを集約する。
      * timeoutMs > 0: Promise.race でタイムアウト適用
      * timeoutMs <= 0: タイムアウト無効（無制限待機）
      */
@@ -151,31 +169,54 @@ export class TaskExecutor {
         if (timeoutMs > 0) {
             let timer: ReturnType<typeof setTimeout> | undefined;
             try {
-                const handlerPromise = this.invokeHandlers(task);
+                const allPromise = this.invokeAll(task);
                 const timeoutPromise = new Promise<never>((_, reject) => {
                     timer = setTimeout(() => reject(new SentinelError("task", "timeout", `Task handler timeout after ${timeoutMs}ms`)), timeoutMs);
                 });
-                await Promise.race([handlerPromise, timeoutPromise]);
+                await Promise.race([allPromise, timeoutPromise]);
             } finally {
                 // setTimeout は同期代入なので timer は必ず defined
                 clearTimeout(timer!);
             }
         } else {
-            await this.invokeHandlers(task);
+            await this.invokeAll(task);
         }
     }
 
-    private async invokeHandlers(task: GeneratedTask): Promise<void> {
+    /**
+     * ハンドラ → トランスポートを順に実行し、エラーを集約して throw。
+     * ハンドラの失敗がトランスポートをブロックしない（R-2準拠）。
+     */
+    private async invokeAll(task: GeneratedTask): Promise<void> {
+        const handlerErrors = await this.invokeHandlers(task);
+        const transportErrors = await this.invokeTransports(task);
+        const allErrors = [...handlerErrors, ...transportErrors];
+
+        if (allErrors.length > 0) {
+            throw new SentinelError(
+                "task",
+                "invokeAll",
+                allErrors.map((e) => e.message).join("; "),
+                allErrors[0],
+            );
+        }
+    }
+
+    private async invokeHandlers(task: GeneratedTask): Promise<Error[]> {
         const handlers = this.handlers.get(task.actionType) ?? [];
+        const errors: Error[] = [];
 
         if (handlers.length === 0 && this.defaultHandler) {
-            await this.invokeWithRetry(this.defaultHandler, task);
-            return;
+            try {
+                await this.invokeWithRetry(this.defaultHandler, task);
+            } catch (e) {
+                errors.push(e instanceof Error ? e : new Error(String(e)));
+            }
+            return errors;
         }
 
         // R-2: Execute all handlers, collect errors, don't stop on first failure
         // maxRetries はハンドラ単位で適用 — 成功したハンドラを再実行しない
-        const errors: Error[] = [];
         for (const handler of handlers) {
             try {
                 await this.invokeWithRetry(handler, task);
@@ -183,14 +224,28 @@ export class TaskExecutor {
                 errors.push(e instanceof Error ? e : new Error(String(e)));
             }
         }
-        if (errors.length > 0) {
-            throw new SentinelError(
-                "task",
-                "invokeHandlers",
-                errors.map((e) => e.message).join("; "),
-                errors[0],
-            );
+        return errors;
+    }
+
+    /**
+     * 登録済みトランスポートにタスクを配信する。
+     * R-2準拠: 全トランスポートを実行し、エラーを集約する。
+     * SDK側ではリトライしない（トランスポート実装の責務）。
+     */
+    private async invokeTransports(task: GeneratedTask): Promise<Error[]> {
+        const errors: Error[] = [];
+        for (const transport of this.transports) {
+            try {
+                await transport.dispatch(task);
+            } catch (e) {
+                errors.push(
+                    e instanceof Error
+                        ? new Error(`[${transport.name}] ${e.message}`)
+                        : new Error(`[${transport.name}] ${String(e)}`),
+                );
+            }
         }
+        return errors;
     }
 
     /** ハンドラリトライの上限 */
