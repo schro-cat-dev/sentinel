@@ -39,6 +39,10 @@
 │   │   └── pii-context-masker.ts                # エラーcontext用PIIマスキング（isPiiSafe, maskPiiContext）
 │   ├── transport/
 │   │   ├── transport.ts                         # RemoteTransport I/F, TransportConfig（local/remote/dual + timeoutMs + circuitBreaker）
+│   │   ├── task-transport.ts                    # TaskTransport I/F, TaskTransportResult（タスク配信先の抽象化）
+│   │   ├── task-transport-factory.ts            # YAML TaskTransportConfig → TaskTransport インスタンス生成ファクトリ
+│   │   ├── http-webhook-transport.ts            # HTTP Webhook 組み込みトランスポート（SSRF防御付き, Node.js fetch）
+│   │   ├── console-task-transport.ts            # デバッグ用 console.info 組み込みトランスポート
 │   │   └── circuit-breaker.ts                   # CircuitBreaker（閾値/cooldown/half-open）— transport連続失敗時の自動遮断 (R-4)
 │   ├── errors/
 │   │   └── sentinel-error.ts                    # SentinelError(layer, operation, message, cause) — 構造化エラー型 (O-4)
@@ -56,10 +60,8 @@
 │   │   ├── task.ts                              # TaskRule, GeneratedTask, TaskResult, 実行レベル/重大度の型定義
 │   │   └── event.ts                             # SystemEventMap, DetectionResult, DetectionRule, SafeLogSubset
 │   └── shared/
-│       ├── functional/
-│       │   └── result.ts                        # Result<T,E> monad（success/failure/map/flatMap/safe）— SDK公開ユーティリティ候補
 │       ├── errors/
-│       │   └── error-payload-protocol.ts        # ErrorPayloadProtocol 型（error-utils.ts 用）
+│       │   └── error-payload-protocol.ts        # ErrorPayloadProtocol 型（error-utils.ts → ConsoleAuditSink 用）
 │       └── utils/
 │           └── error-utils.ts                   # safeContext, serializeForAudit, classifyError（PII関数はsecurity/pii-context-maskerから再export）
 │   ├── error-routing/                           # エラールーティング層（分類→ルーティング→実行）
@@ -81,7 +83,8 @@
 │   │   │   ├── log-normalizer.test.ts           # 正規化: 全デフォルト値
 │   │   │   ├── remaining-gaps.test.ts           # projectName伝播, REGEXフラグ保持
 │   │   │   ├── sentinel.test.ts                 # Sentinelパブリック API ユニットテスト
-│   │   │   └── task-executor-extended.test.ts   # removeHandler, timeoutMs
+│   │   │   ├── task-executor-extended.test.ts   # removeHandler, timeoutMs
+│   │   │   └── task-executor-transport.test.ts  # TaskExecutor + TaskTransport 統合テスト
 │   │   ├── intelligence/
 │   │   │   ├── task-generator.test.ts           # タスク生成: ルールインデックス, 重大度フィルタ (15)
 │   │   │   ├── task-executor.test.ts            # ディスパッチ: 実行レベル4種, ガードレール (15)
@@ -110,12 +113,15 @@
 │   │   │   ├── console-audit-sink.test.ts     # ConsoleAuditSink: JSON出力, PII除去 (3)
 │   │   │   └── update-callbacks-e2e.test.ts   # 動的コールバック: 差替え, null, shutdown (5)
 │   │   ├── transport/
-│   │   │   ├── transport.test.ts                # Transport: local/remote/dual + R-4 circuit breaker + R-5 error分離 + MEM-01ext (13)
-│   │   │   └── circuit-breaker.test.ts          # CircuitBreaker: 状態遷移, cooldown, half-open, reset (9)
+│   │   │   ├── transport.test.ts                # Transport: local/remote/dual + R-4 circuit breaker + R-5 error分離 + MEM-01ext
+│   │   │   ├── circuit-breaker.test.ts          # CircuitBreaker: 状態遷移, cooldown, half-open, reset
+│   │   │   ├── task-transport.test.ts           # TaskTransport: インターフェース契約テスト
+│   │   │   ├── console-task-transport.test.ts   # ConsoleTaskTransport: JSON出力, close, name
+│   │   │   ├── http-webhook-transport.test.ts   # HttpWebhookTransport: URL検証, SSRF防御, fetch mock
+│   │   │   └── task-transport-factory.test.ts   # ファクトリ: type→インスタンス, enabled, mixed
 │   │   ├── errors/
 │   │   │   └── sentinel-error.test.ts           # SentinelError: layer/operation/cause, instanceof (6)
 │   │   ├── shared/
-│   │   │   ├── result.test.ts                   # Result monad
 │   │   │   └── error-utils.test.ts              # isPiiSafe, maskPiiContext, safeContext
 │   │   └── remaining-backlog.test.ts            # バックログ修正: Logger, SEMI_AUTO, AI_ACTION, onError (14)
 │   ├── security/                                # セキュリティテスト
@@ -149,7 +155,8 @@
 │   │   ├── size-limits.test.ts                  # サイズ制限: デフォルト, カスタム, フィールド別
 │   │   ├── transport-modes.test.ts              # Transport全モード: timeout, fallback, dual, shutdown
 │   │   ├── masking-rules-exhaustive.test.ts     # マスキング全パターン: PII/REGEX/KEY_MATCH/edge
-│   │   └── validation-normalizer-exhaustive.test.ts # 全フィールド検証+正規化
+│   │   ├── validation-normalizer-exhaustive.test.ts # 全フィールド検証+正規化
+│   │   └── config-loader-transport.test.ts      # task_transports YAMLパース + type/enabled検証
 │   ├── integration/
 │   │   └── pipeline.test.ts                     # SDKパイプラインE2E
 │   └── e2e/
@@ -190,8 +197,9 @@
 │   │   │   └── 00-all-findings.md               # テスト誤魔化し/脆弱性/ロジックバグ全件
 │   │   ├── go-test-expansion/                   # Goテスト拡張計画
 │   │   │   └── 00-gap-analysis.md
-│   │   └── mtls-and-remaining/                  # mTLS + 残タスク計画
-│   │       └── 00-plan.md
+│   │   ├── mtls-and-remaining/                  # mTLS + 残タスク計画
+│   │   │   └── 00-plan.md
+│   │   └── task-transport.md                    # TaskTransport アダプタパターン設計
 │   ├── quality-benchmark/                       # 品質ベンチマーク（Google PRR水準）
 │   │   ├── standards.md                         # 10カテゴリ49項目のMUST/SHOULD/NICE基準
 │   │   ├── checklist-results.md                 # 全項目のPASS/FAIL結果と修正記録
@@ -215,6 +223,14 @@
 │   │   ├── config-tests.md                      # 322テスト・全設定パターン検証
 │   │   ├── integration-e2e-tests.md             # 33テスト・SDK→Go通信テスト
 │   │   └── quality-checklist.md                 # 50+項目の定性的チェックリスト
+│   ├── fix-log/                                 # 修正作業ログ（日付別）
+│   │   ├── 2026-04-02-data-integrity-and-doc-sync.md    # バリデーション強化 + ドキュメント同期
+│   │   ├── 2026-04-02-final-audit-report.md             # 最終精査レポート
+│   │   └── 2026-04-02-test-quality-hardening.md         # テスト品質強化（23件監査）
+│   ├── reports/                                 # 分析レポート
+│   │   ├── 2026-04-02-coverage-gap-audit.md     # カバレッジギャップ監査
+│   │   ├── 2026-04-02-cross-config-test-spec.md # 交差設定テスト仕様
+│   │   └── 2026-04-02-task-transport-implementation.md  # TaskTransport実装レポート
 │   └── analysis/                                # 内部品質解析ログ
 │       ├── README.md                            # 解析索引・タイムスタンプ規約
 │       ├── functional/
@@ -229,7 +245,7 @@
 │       ├── dead-code/
 │       │   └── inventory.md                     # 未使用コード棚卸し
 │       └── roadmap/
-│           └── improvement-backlog.md           # 37件改善バックログ（35完了）
+│           └── improvement-backlog.md           # 43件改善バックログ（41完了, 2件意図的NA）
 │
 ├── packages/                                    # ── Go Backend Server ──
 │   └── server/

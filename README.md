@@ -105,7 +105,7 @@ go build -o sentinel-server ./cmd/server/ && ./sentinel-server
 ```bash
 # SDK tests
 npm test
-# => 2,487 tests passed
+# => 2,801 tests passed
 
 # Go server tests
 cd packages/server && go test ./... -race -count=1
@@ -251,7 +251,7 @@ implementations. Users inject their own adapters for real providers.
 | [Resilience](docs/analysis/non-functional/resilience.md) | Fault tolerance |
 | [Compatibility](docs/analysis/non-functional/compatibility.md) | ESM/CJS, Node.js compatibility |
 | [Dead Code Inventory](docs/analysis/dead-code/inventory.md) | Unused code audit |
-| [Improvement Backlog](docs/analysis/roadmap/improvement-backlog.md) | 37 items (35 completed) |
+| [Improvement Backlog](docs/analysis/roadmap/improvement-backlog.md) | 43 items (41 completed) |
 
 #### Go Server
 
@@ -270,11 +270,11 @@ implementations. Users inject their own adapters for real providers.
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
-| Client SDK | TypeScript (zero dependencies) | Implemented | 2,487 tests (Vitest) |
+| Client SDK | TypeScript (zero dependencies) | Implemented | 2,801 tests (Vitest) |
 | Backend Server | Go 1.22+ / gRPC | Implemented | 786 tests (`-race` verified, fuzz tested) |
 | gRPC Communication | Protocol Buffers v3 | Implemented | E2E verified (22 tests via real gRPC) |
 
-**Total: 3,273 tests (SDK 2,487 + Server 786), 0 FAIL**
+**Total: 3,587 tests (SDK 2,801 + Server 786), 0 FAIL**
 
 ---
 
@@ -291,10 +291,10 @@ sentinel/
 │   ├── security/                 # Hash-chain, PII masking, PII patterns
 │   ├── validation/               # Input validator, whitelist registry
 │   ├── error-routing/            # Error classification, routing, audit sinks
-│   ├── transport/                # RemoteTransport interface (local/remote/dual)
-│   ├── shared/                   # Error taxonomy, Result monad
+│   ├── transport/                # RemoteTransport, TaskTransport, HTTP webhook, circuit breaker
+│   ├── shared/                   # Error taxonomy, audit utilities
 │   └── types/                    # Domain models (Log, Task, Event)
-├── tests/                        # 2,487 tests
+├── tests/                        # 2,801 tests
 │   ├── unit/                     # Unit tests (606)
 │   ├── config/                   # Config tests (432)
 │   ├── security/                 # Security + advanced tests (992)
