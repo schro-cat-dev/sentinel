@@ -229,7 +229,7 @@ func (p *Pipeline) Process(ctx context.Context, raw domain.Log) (domain.Ingestio
 	// 2. Mask PII (with policy engine if available)
 	masked := false
 	if p.config.EnableMasking {
-		// Snapshot pre-mask content to detect actual changes
+		// Snapshot ALL fields that MaskLog touches, to detect actual changes
 		preMaskMsg := log.Message
 		preMaskActor := log.ActorID
 		preMaskInput := log.Input
@@ -240,6 +240,14 @@ func (p *Pipeline) Process(ctx context.Context, raw domain.Log) (domain.Ingestio
 		preMaskDetails := make(map[string]string, len(log.Details))
 		for k, v := range log.Details {
 			preMaskDetails[k] = v
+		}
+		var preMaskReasoning string
+		if log.AIContext != nil {
+			preMaskReasoning = log.AIContext.ReasoningTrace
+		}
+		preMaskBackLog := make([]string, len(log.AgentBackLog))
+		for i, entry := range log.AgentBackLog {
+			preMaskBackLog[i] = entry.Result
 		}
 
 		if p.maskingPolicy != nil {
@@ -262,6 +270,17 @@ func (p *Pipeline) Process(ctx context.Context, raw domain.Log) (domain.Ingestio
 		if !masked {
 			for k, v := range log.Details {
 				if preMaskDetails[k] != v {
+					masked = true
+					break
+				}
+			}
+		}
+		if !masked && log.AIContext != nil && log.AIContext.ReasoningTrace != preMaskReasoning {
+			masked = true
+		}
+		if !masked {
+			for i, entry := range log.AgentBackLog {
+				if i < len(preMaskBackLog) && entry.Result != preMaskBackLog[i] {
 					masked = true
 					break
 				}
