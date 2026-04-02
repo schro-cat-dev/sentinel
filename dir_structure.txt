@@ -92,7 +92,8 @@
 │   │   │   └── severity-classifier.test.ts      # 重大度: イベント種別×レベルのマッピング (13)
 │   │   ├── security/
 │   │   │   ├── integrity-signer.test.ts         # hash chain: 計算, 検証, チェーン状態 (15)
-│   │   │   └── masking-service.test.ts          # マスキング: 全ルールタイプ, 循環参照, depth (23)
+│   │   │   ├── masking-service.test.ts          # マスキング: 全ルールタイプ, 循環参照, depth (23)
+│   │   │   └── signing-mode-switch.test.ts     # SHA256/HMAC切替, チェーン整合性, モック証明書署名 (10)
 │   │   ├── validation/
 │   │   │   ├── log-validator.test.ts            # 入力検証: 全フィールドの正常/異常 (24)
 │   │   │   ├── whitelist-registry.test.ts       # レジストリ: 合成, 拡張, セキュリティ (20)
@@ -158,7 +159,9 @@
 │   │   ├── transport-modes.test.ts              # Transport全モード: timeout, fallback, dual, shutdown
 │   │   ├── masking-rules-exhaustive.test.ts     # マスキング全パターン: PII/REGEX/KEY_MATCH/edge
 │   │   ├── validation-normalizer-exhaustive.test.ts # 全フィールド検証+正規化
-│   │   └── config-loader-transport.test.ts      # task_transports YAMLパース + type/enabled検証
+│   │   ├── config-loader-transport.test.ts      # task_transports YAMLパース + type/enabled検証
+│   │   ├── config-edge-cases.test.ts            # 正常系/異常系/エッジケース: 設定反映動作検証 (19)
+│   │   └── integration-config-matrix.test.ts    # integration設定組み合わせマトリクス: 全パターン (17)
 │   ├── integration/
 │   │   └── pipeline.test.ts                     # SDKパイプラインE2E
 │   └── e2e/

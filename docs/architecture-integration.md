@@ -101,7 +101,13 @@ SDK: ingest → handle(local pipeline) ──→ IngestionResult (即座に返�
 |-------------------------|----------|---------|
 | `auth.enabled` | false | API key 認証、レートリミット |
 | `security.enable_hash_chain` | true | HMAC-SHA256 チェーン検証 |
+| `security.hmac_key` | (env) | SDK/Server共通HMAC鍵。未設定時SDKはSHA-256フォールバック |
 | `security.enable_masking` | true | Server 側 PII マスキング |
+| `integration.config_validation` | true | SDK起動時の設定整合性チェック |
+| `integration.threat_response_enabled` | false | IngestResponse の threatResponses を SDK に返す |
+| `integration.task_approval_enabled` | false | タスク承認フロー (ApproveTask/RejectTask) |
+| `integration.task_status_enabled` | false | タスク状態クエリ (GetTaskStatus/ListTasks) |
+| `integration.sync_detection_rules` | false | 検知ルール同期 |
 | `ensemble.enabled` | false | スコアベース動的検知 |
 | `anomaly.enabled` | false | 異常検知 |
 | `agent.enabled` | false | AI エージェント連携 |
@@ -120,12 +126,13 @@ SDK: ingest → handle(local pipeline) ──→ IngestionResult (即座に返�
 | ハッシュチェーン検証 | ✅ 接続済み | Server 側で HMAC 検証 |
 | PII マスキング | ✅ 接続済み | SDK + Server 双方で実行 |
 | ヘルスチェック | ✅ 接続済み | gRPC HealthCheck |
-| 脅威レスポンス | ⚠ Proto定義済み/SDK未消費 | Phase 2 で対応予定 |
-| 検知ルール同期 | ⚠ 独立動作 | Phase 2 で対応予定 |
-| タスク承認フロー | ⚠ Server RPC 実装済み/SDK未接続 | Phase 3 で対応予定 |
-| タスク状態管理 | ⚠ Server RPC 実装済み/SDK未接続 | Phase 3 で対応予定 |
-| ハッシュ方式統一 | ⚠ SDK=SHA-256, Server=HMAC-SHA256 | Phase 1 で対応予定 |
-| 設定整合性検証 | ❌ 未実装 | Phase 1 で対応予定 |
+| 脅威レスポンス | ✅ 接続済み | IngestionResult.threatResponses + onThreatResponse (#4) |
+| 検知ルール同期 | ✅ 接続済み | dual-mode ruleId dedup + Server task merge (#5) |
+| タスク承認フロー | ✅ 接続済み | ServerManagementTransport 7メソッド (#6) |
+| タスク状態管理 | ✅ 接続済み | getTaskStatus/listTasks (#7) |
+| ハッシュ方式統一 | ✅ 接続済み | HMAC-SHA256 モード追加、SHA-256 フォールバック (#2) |
+| 設定整合性検証 | ✅ 接続済み | HealthCheck ConfigSummary (#3) |
+| projectName 送信 | ✅ 接続済み | IngestRequest.project_name フィールド追加 |
 
 ## 参照
 
