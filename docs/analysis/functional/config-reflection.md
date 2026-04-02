@@ -11,19 +11,19 @@ last_updated: "2026-04-02"
 
 | フィールド | 定義箇所 | 消費箇所 | ステータス |
 |-----------|---------|---------|-----------|
-| `projectName` | sentinel-config.ts:10 | LogNormalizer:37 で正規化ログに注入 | ✅ 反映済み |
-| `serviceId` | sentinel-config.ts:13 | LogNormalizer constructor | ✅ 反映済み |
-| `environment` | sentinel-config.ts:16 | reset()で環境チェック、logger抑制 | ✅ CFG-02対応済み |
-| `masking.enabled` | sentinel-config.ts:20 | ingestion-engine.ts:82 | ✅ 反映済み |
-| `masking.rules` | sentinel-config.ts:21 | ingestion-engine.ts:84-85 | ✅ 反映済み |
-| `masking.preserveFields` | sentinel-config.ts:22 | ingestion-engine.ts:86 | ✅ 反映済み |
-| `security.enableHashChain` | sentinel-config.ts:27 | ingestion-engine.ts:106 | ✅ 反映済み |
-| `security.signingKeyId` | sentinel-config.ts:28 | **なし** | **GAP** — デジタル署名未実装 |
-| `taskRules` | sentinel-config.ts:32 | TaskGenerator constructor (index.ts:46) | ✅ 反映済み |
-| `onLogProcessed` | sentinel-config.ts:35 | ingestion-engine.ts:116 | ✅ 反映済み |
-| `onTaskGenerated` | sentinel-config.ts:36 | ingestion-engine.ts:159 | ✅ 修正済 |
-| `onTaskDispatched` | sentinel-config.ts:37 | ingestion-engine.ts:161 | ✅ 修正済 |
-| `onError` | sentinel-config.ts:40 | ingestion-engine.ts emitSafe, index.ts dual | ✅ 新規追加 |
+| `projectName` | sentinel-config.ts:48 | LogNormalizer:37 で正規化ログに注入 | ✅ 反映済み |
+| `serviceId` | sentinel-config.ts:51 | LogNormalizer constructor | ✅ 反映済み |
+| `environment` | sentinel-config.ts:54 | reset()で環境チェック、logger抑制 | ✅ CFG-02対応済み |
+| `masking.enabled` | sentinel-config.ts:57 | ingestion-engine.ts | ✅ 反映済み |
+| `masking.rules` | sentinel-config.ts:57 | ingestion-engine.ts | ✅ 反映済み |
+| `masking.preserveFields` | sentinel-config.ts:57 | ingestion-engine.ts | ✅ 反映済み |
+| `security.enableHashChain` | sentinel-config.ts:65 | ingestion-engine.ts | ✅ 反映済み |
+| `security.signingKeyId` | sentinel-config.ts:66 | **なし** | **GAP** — デジタル署名未実装 |
+| `taskRules` | sentinel-config.ts:73 | TaskGenerator constructor | ✅ 反映済み |
+| `onLogProcessed` | sentinel-config.ts:76 | ingestion-engine.ts | ✅ 反映済み |
+| `onTaskGenerated` | sentinel-config.ts:77 | ingestion-engine.ts:159 | ✅ 修正済 |
+| `onTaskDispatched` | sentinel-config.ts:78 | ingestion-engine.ts:161 | ✅ 修正済 |
+| `onError` | sentinel-config.ts:81 | ingestion-engine.ts emitSafe, index.ts dual | ✅ 新規追加 |
 
 ## createDefaultConfig deep-merge検証
 

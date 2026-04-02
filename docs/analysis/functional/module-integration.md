@@ -1,8 +1,8 @@
 # モジュール間連携の完全性
 
 ```yaml
-analyzed_at: "2026-04-01"
-based_on: "7bf6f11"
+analyzed_at: "2026-04-02"
+based_on: "3820d07"
 status: current
 last_updated: "2026-04-02"
 ```
@@ -77,8 +77,6 @@ Sentinel.ingest(Partial<Log>)
 | signature | ✅ | |
 | aiContext | ✅ | |
 
-### 重大: agentBackLog / traceInfo がnormalizeで欠落
+### ~~重大: agentBackLog / traceInfo がnormalizeで欠落~~ — ✅ 修正済み (BUG-01/02)
 
-`LogNormalizer.normalize()` (log-normalizer.ts:17-41) の返却オブジェクトに `agentBackLog` と `traceInfo` が含まれていない。`Log` インターフェースにはoptionalとして定義されているが、ユーザーが `ingest()` でこれらを渡しても**暗黙に破棄される**。
-
-**影響:** AI Agent連携のログで `agentBackLog` が消失し、ハッシュチェーンにも含まれない。
+`LogNormalizer.normalize()` で `agentBackLog` (line 49) と `traceInfo` (line 48) をパススルー済み。
