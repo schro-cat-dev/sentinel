@@ -16,6 +16,7 @@ import { WhitelistRegistry } from "./validation/whitelist-registry";
 import { ErrorRouter } from "./error-routing/error-router";
 import { CircuitBreaker } from "./transport/circuit-breaker";
 import { SentinelError } from "./errors/sentinel-error";
+import { createTaskTransportsFromConfig } from "./transport/task-transport-factory";
 
 /**
  * SentinelOptions はSentinel初期化時のオプション
@@ -61,7 +62,14 @@ export class Sentinel {
         const signer = new IntegritySigner(config.security.signingKeyId);
         const detector = new EventDetector(config.detectionRules);
         const taskGenerator = new TaskGenerator(config.taskRules);
-        this.taskExecutor = new TaskExecutor(undefined, options?.taskTransports);
+
+        // TaskTransport マージ: user-injected (優先) + config-based (自動生成)
+        const userTransports = options?.taskTransports ?? [];
+        const configTransports = config.taskTransportConfigs
+            ? createTaskTransportsFromConfig(config.taskTransportConfigs)
+            : [];
+        const allTransports = [...userTransports, ...configTransports];
+        this.taskExecutor = new TaskExecutor(undefined, allTransports);
 
         // ErrorRouter はエンジンに注入（DI原則: IngestionEngine が直接生成しない）
         const errorRouter = config.errorRouting?.enabled
@@ -409,7 +417,12 @@ export type { TaskDispatchHandler, TaskConfirmHandler } from "./core/task/task-e
 export type { SentinelLogger, SentinelMetrics, SentinelTracer } from "./configs/sentinel-config";
 export type { RemoteTransport, TransportMode, TransportConfig } from "./transport/transport";
 export type { TaskTransport, TaskTransportResult } from "./transport/task-transport";
-export type { TaskTransportConfig } from "./configs/sentinel-config";
+export type { TaskTransportConfig, TaskTransportType } from "./configs/sentinel-config";
+export { TASK_TRANSPORT_TYPES } from "./configs/sentinel-config";
+export { HttpWebhookTransport } from "./transport/http-webhook-transport";
+export type { HttpWebhookTransportOptions } from "./transport/http-webhook-transport";
+export { ConsoleTaskTransport } from "./transport/console-task-transport";
+export { createTaskTransportsFromConfig } from "./transport/task-transport-factory";
 export { CircuitBreaker } from "./transport/circuit-breaker";
 export type { CircuitBreakerConfig, CircuitState } from "./transport/circuit-breaker";
 export { validateLogInput, ValidationError, DEFAULT_VALIDATION_LIMITS } from "./validation/log-validator";

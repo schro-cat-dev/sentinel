@@ -63,7 +63,7 @@ async/await ベース（シングルスレッド）
 | **Ingest** | ログ受信、バリデーション | 実装済み (Normalizer) |
 | **Sanitize** | PIIマスキング、ハッシュチェーン | 実装済み (MaskingService + IntegritySigner) |
 | **Analyze** | イベント検知、AIループ防止 | 実装済み (EventDetector, origin=AI_AGENT スキップ) |
-| **Dispatch** | タスク生成、承認フロー、ハンドラ実行 | 実装済み (TaskGenerator + TaskExecutor + ApprovalWorkflow) |
+| **Dispatch** | タスク生成、承認フロー、ハンドラ実行、トランスポート配信 | 実装済み (TaskGenerator + TaskExecutor + TaskTransport + ApprovalWorkflow) |
 | **Persist** | ログ/タスク/承認の永続化 | 実装済み (SQLite Store) |
 
 ---

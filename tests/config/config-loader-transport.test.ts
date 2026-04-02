@@ -162,6 +162,93 @@ describe("config-loader task_transports: validation errors", () => {
 });
 
 // =========================================================================
+// type / enabled フィールド
+// =========================================================================
+
+describe("config-loader task_transports: type and enabled fields", () => {
+    it("parses type field for known transport types", () => {
+        const config = parse(baseRaw({
+            task_transports: [
+                { name: "webhook", type: "http_webhook", endpoint: "https://example.com/hook" },
+                { name: "debug", type: "console" },
+                { name: "user-impl", type: "custom" },
+            ],
+        }));
+
+        expect(config.taskTransportConfigs![0].type).toBe("http_webhook");
+        expect(config.taskTransportConfigs![1].type).toBe("console");
+        expect(config.taskTransportConfigs![2].type).toBe("custom");
+    });
+
+    it("defaults type to custom when omitted", () => {
+        const config = parse(baseRaw({
+            task_transports: [{ name: "no-type" }],
+        }));
+
+        expect(config.taskTransportConfigs![0].type).toBe("custom");
+    });
+
+    it("defaults enabled to true when omitted", () => {
+        const config = parse(baseRaw({
+            task_transports: [{ name: "default-enabled" }],
+        }));
+
+        expect(config.taskTransportConfigs![0].enabled).toBe(true);
+    });
+
+    it("preserves enabled: false", () => {
+        const config = parse(baseRaw({
+            task_transports: [{ name: "disabled", enabled: false }],
+        }));
+
+        expect(config.taskTransportConfigs![0].enabled).toBe(false);
+    });
+
+    it("throws on unknown type", () => {
+        expect(() => parse(baseRaw({
+            task_transports: [{ name: "bad", type: "unknown_type" }] as unknown as RawYamlConfig["task_transports"],
+        }))).toThrow("type");
+        expect(() => parse(baseRaw({
+            task_transports: [{ name: "bad", type: "unknown_type" }] as unknown as RawYamlConfig["task_transports"],
+        }))).toThrow("http_webhook");
+    });
+
+    it("throws when http_webhook has no endpoint", () => {
+        expect(() => parse(baseRaw({
+            task_transports: [{ name: "no-ep", type: "http_webhook" }],
+        }))).toThrow("endpoint");
+    });
+
+    it("throws on invalid method", () => {
+        expect(() => parse(baseRaw({
+            task_transports: [{ name: "bad-method", type: "http_webhook", endpoint: "https://example.com", method: "DELETE" }],
+        }))).toThrow("method");
+    });
+
+    it("accepts valid method POST", () => {
+        const config = parse(baseRaw({
+            task_transports: [{ name: "post", type: "http_webhook", endpoint: "https://example.com", method: "POST" }],
+        }));
+        expect((config.taskTransportConfigs![0] as Record<string, unknown>).method).toBe("POST");
+    });
+
+    it("accepts valid method PUT", () => {
+        const config = parse(baseRaw({
+            task_transports: [{ name: "put", type: "http_webhook", endpoint: "https://example.com", method: "PUT" }],
+        }));
+        expect((config.taskTransportConfigs![0] as Record<string, unknown>).method).toBe("PUT");
+    });
+
+    it("does not require endpoint for console type", () => {
+        const config = parse(baseRaw({
+            task_transports: [{ name: "console", type: "console" }],
+        }));
+
+        expect(config.taskTransportConfigs![0].endpoint).toBeUndefined();
+    });
+});
+
+// =========================================================================
 // エッジケース
 // =========================================================================
 

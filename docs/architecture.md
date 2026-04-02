@@ -80,6 +80,9 @@ TaskExecutor.dispatch()            src/core/task/task-executor.ts
   │  Guardrail check: requireHumanApproval → blocked
   │  Execution level: AUTO → dispatch, SEMI_AUTO → confirm → dispatch/block,
   │                    MANUAL → block, MONITOR → skip
+  │  1. invokeHandlers: 登録済みコールバック実行（maxRetries適用）
+  │  2. invokeTransports: TaskTransport アダプタ実行（リトライなし）
+  │  エラーはハンドラ+トランスポート合算で集約（R-2準拠）
   │  guardrails.timeoutMs enforcement (Promise.race)
   │  onTaskGenerated / onTaskDispatched callbacks
   ▼
@@ -107,7 +110,8 @@ IngestionResult { traceId, hashChainValid, tasksGenerated, masked, detection }
 | `src/core/detection/event-detector.ts` | Pattern-based event detection | `Log` | `DetectionResult` or null |
 | `src/core/task/severity-classifier.ts` | Map event + log context to severity | `DetectionResult`, `Log` | `TaskSeverity` |
 | `src/core/task/task-generator.ts` | Rule matching + task creation | `DetectionResult`, `Log` | `GeneratedTask[]` |
-| `src/core/task/task-executor.ts` | Guardrail enforcement + handler dispatch | `GeneratedTask` | `TaskResult` |
+| `src/core/task/task-executor.ts` | Guardrail enforcement + handler dispatch + transport dispatch | `GeneratedTask` | `TaskResult` |
+| `src/transport/task-transport.ts` | TaskTransport アダプタインターフェース（外部システムへのタスク配信抽象化） | — | — |
 
 ### Shared Layer (not in pipeline, available for reuse)
 
@@ -124,6 +128,7 @@ IngestionResult { traceId, hashChainValid, tasksGenerated, masked, detection }
 |------|-----------|
 | `src/types/log.ts` | `Log`, `LogType` (7 types), `LogLevel` (1-6), `LogTag`, `Origin`, `AIAgentEventBacklog` |
 | `src/types/task.ts` | `TaskRule`, `GeneratedTask`, `TaskResult`, `TaskActionType` (6 actions), `TaskSeverity` (5 levels), `TaskExecutionLevel` (4 levels) |
+| `src/transport/task-transport.ts` | `TaskTransport` (adapter interface), `TaskTransportResult` |
 | `src/types/event.ts` | `SystemEventMap` (4 events with typed payloads), `DetectionResult<K>`, `WorkerToMainMessage` |
 
 ---
@@ -239,6 +244,8 @@ index.ts (Sentinel)
   │     ├── core/task/task-generator.ts
   │     │     └── core/task/severity-classifier.ts
   │     └── core/task/task-executor.ts
+  │           └── transport/task-transport.ts (TaskTransport interface)
+  ├── transport/task-transport.ts
   └── types/ (log.ts, task.ts, event.ts)
 
 External dependencies: NONE (zero npm dependencies)

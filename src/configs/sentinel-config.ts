@@ -10,10 +10,32 @@ import type { ValidationLimits } from "../validation/log-validator";
  * endpoint, headers 等の接続情報を保持し、TaskTransport 実装の初期化に使用する。
  * 拡張フィールドは [key: string]: unknown で許容する。
  */
+/**
+ * 組み込みトランスポートの種別。
+ * - "http_webhook": HttpWebhookTransport（Node.js built-in fetch使用）
+ * - "console": ConsoleTaskTransport（console.info に構造化JSON出力）
+ * - "custom": 利用者が TaskTransport を実装して SentinelOptions.taskTransports で注入
+ */
+export type TaskTransportType = "http_webhook" | "console" | "custom";
+
+export const TASK_TRANSPORT_TYPES: readonly TaskTransportType[] = [
+    "http_webhook", "console", "custom",
+] as const;
+
 export interface TaskTransportConfig {
     /** トランスポート識別名（TaskTransport.name に対応） */
     name: string;
-    /** 接続先エンドポイント */
+    /**
+     * トランスポート種別。組み込み実装を使用する場合に指定。
+     * 省略時は "custom"（利用者がSentinelOptions.taskTransportsで注入）。
+     */
+    type?: TaskTransportType;
+    /**
+     * 有効/無効。false でこのトランスポートをスキップする。
+     * 省略時は true（有効）。
+     */
+    enabled?: boolean;
+    /** 接続先エンドポイント（type="http_webhook" の場合は必須） */
     endpoint?: string;
     /** HTTPヘッダー等 */
     headers?: Record<string, string>;

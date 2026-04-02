@@ -552,28 +552,32 @@ describe("Error escalation safety", () => {
 // taskTransports 統合
 // =========================================================================
 describe("Sentinel: taskTransports integration", () => {
-    it("passes taskTransports to TaskExecutor via options", async () => {
+    it("passes taskTransports to TaskExecutor and dispatches on event", async () => {
         const dispatchFn = vi.fn().mockResolvedValue({ transportName: "mock", success: true });
         const transport = { name: "mock", dispatch: dispatchFn };
 
+        const taskRule = createTestTaskRule();
         const config = defaultConfig({
-            taskRules: [createTestTaskRule()],
+            taskRules: [taskRule],
             detectionRules: [{
-                ruleId: "det-1",
-                eventName: "SYSTEM_CRITICAL_FAILURE",
+                ruleId: "det-transport-verify",
+                eventName: taskRule.eventName,
                 priority: "HIGH",
-                conditions: { minLevel: 1 },
+                conditions: { minLevel: 5 },
             }],
+            whitelist: { level: "off" },
         });
 
         const sentinel = Sentinel.initialize(config, { taskTransports: [transport] });
-        await sentinel.ingest({ message: "critical failure", level: 6, type: "SYSTEM" });
+        const result = await sentinel.ingest({ message: "critical failure", level: 6, type: "SYSTEM", isCritical: true });
 
-        // タスクが生成されればトランスポートに配信される
-        // 検知ルールがマッチしない場合はスキップされるが、
-        // トランスポートがTaskExecutorに渡されたことはdispatch呼出しで確認
-        // (検知は保証しないため、dispatchが呼ばれないケースも正常)
-        expect(typeof dispatchFn.mock.calls.length).toBe("number");
+        // isCritical=true + level 6 で検知ルールがマッチし、タスクが生成される
+        expect(result.tasksGenerated.length).toBeGreaterThan(0);
+        // トランスポートにdispatchが実際に呼ばれたことを検証
+        expect(dispatchFn).toHaveBeenCalledTimes(result.tasksGenerated.length);
+        // 受け取ったタスクのeventNameが正しいこと
+        const receivedTask = dispatchFn.mock.calls[0][0];
+        expect(receivedTask.eventName).toBe(taskRule.eventName);
     });
 
     it("shutdown calls closeTransports", async () => {
@@ -617,7 +621,7 @@ describe("Sentinel: taskTransports integration", () => {
         expect(result.traceId).toBeDefined();
     });
 
-    it("reset cleans up taskTransports (best-effort close)", () => {
+    it("reset cleans up taskTransports (best-effort close)", async () => {
         const closeFn = vi.fn().mockResolvedValue(undefined);
         const transport = {
             name: "resettable",
@@ -628,10 +632,98 @@ describe("Sentinel: taskTransports integration", () => {
         Sentinel.initialize(defaultConfig(), { taskTransports: [transport] });
         Sentinel.reset();
 
-        // best-effort: closeTransports が fire-and-forget で呼ばれる
-        // reset() は同期メソッドなので await できないが、close は呼ばれるべき
-        // タイミング的に即座に呼ばれるかはPromise依存だが、呼び出し自体は発生する
+        // closeTransports() は async だが reset() から fire-and-forget で呼ばれる
+        // マイクロタスクキューを flush して close の呼び出しを確認
+        await new Promise((resolve) => setTimeout(resolve, 0));
         expect(closeFn).toHaveBeenCalled();
+    });
+
+    it("auto-creates console transport from config and dispatches to it", async () => {
+        const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+
+        const taskRule = createTestTaskRule();
+        const config = defaultConfig({
+            taskRules: [taskRule],
+            taskTransportConfigs: [
+                { name: "auto-console", type: "console", enabled: true },
+            ],
+            detectionRules: [{
+                ruleId: "det-auto-console",
+                eventName: taskRule.eventName,
+                priority: "HIGH",
+                conditions: { minLevel: 5 },
+            }],
+            whitelist: { level: "off" },
+        });
+
+        const sentinel = Sentinel.initialize(config);
+        const result = await sentinel.ingest({ message: "auto console test", level: 6, type: "SYSTEM", isCritical: true });
+
+        // isCritical=true + level 6 でタスク生成を保証
+        expect(result.tasksGenerated.length).toBeGreaterThan(0);
+        // ConsoleTaskTransport の dispatch により console.info が呼ばれる
+        expect(infoSpy).toHaveBeenCalled();
+        const output = JSON.parse(infoSpy.mock.calls[0][0] as string);
+        expect(output.sentinel_task.eventName).toBe(taskRule.eventName);
+        infoSpy.mockRestore();
+    });
+
+    it("merges user-injected and config-based transports", async () => {
+        const userDispatch = vi.fn().mockResolvedValue({ transportName: "user", success: true });
+        const userTransport = { name: "user", dispatch: userDispatch };
+        const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+
+        const taskRule = createTestTaskRule();
+        const config = defaultConfig({
+            taskRules: [taskRule],
+            taskTransportConfigs: [
+                { name: "auto-console", type: "console", enabled: true },
+            ],
+            detectionRules: [{
+                ruleId: "det-merge",
+                eventName: taskRule.eventName,
+                priority: "HIGH",
+                conditions: { minLevel: 5 },
+            }],
+            whitelist: { level: "off" },
+        });
+
+        const sentinel = Sentinel.initialize(config, { taskTransports: [userTransport] });
+        const result = await sentinel.ingest({ message: "merge test", level: 6, type: "SYSTEM", isCritical: true });
+
+        // タスク生成を保証
+        expect(result.tasksGenerated.length).toBeGreaterThan(0);
+        // user-injected と config-based の両方が実行される（条件なし）
+        expect(userDispatch).toHaveBeenCalled();
+        expect(infoSpy).toHaveBeenCalled();
+        infoSpy.mockRestore();
+    });
+
+    it("config-based disabled transport does not dispatch", async () => {
+        const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+
+        const taskRule = createTestTaskRule();
+        const config = defaultConfig({
+            taskRules: [taskRule],
+            taskTransportConfigs: [
+                { name: "disabled-console", type: "console", enabled: false },
+            ],
+            detectionRules: [{
+                ruleId: "det-disabled",
+                eventName: taskRule.eventName,
+                priority: "HIGH",
+                conditions: { minLevel: 5 },
+            }],
+            whitelist: { level: "off" },
+        });
+
+        const sentinel = Sentinel.initialize(config);
+        const result = await sentinel.ingest({ message: "disabled test", level: 6, type: "SYSTEM", isCritical: true });
+
+        // タスクは生成されるが、disabled console transport には dispatch されない
+        expect(result.tasksGenerated.length).toBeGreaterThan(0);
+        expect(infoSpy).not.toHaveBeenCalled();
+        infoSpy.mockRestore();
     });
 
     it("E2E: ingest → event detection → task generation → transport dispatch", async () => {
@@ -656,18 +748,78 @@ describe("Sentinel: taskTransports integration", () => {
 
         const sentinel = Sentinel.initialize(config, { taskTransports: [transport] });
 
-        // level 6 で ingest → 検知 → タスク生成 → トランスポート配信
-        const result = await sentinel.ingest({ message: "E2E critical event", level: 6, type: "SYSTEM" });
+        // isCritical=true + level 6 で確実に検知→タスク生成→トランスポート配信
+        const result = await sentinel.ingest({ message: "E2E critical event", level: 6, type: "SYSTEM", isCritical: true });
 
         expect(result.traceId).toBeDefined();
+        // 条件分岐なし — タスク生成を保証
+        expect(result.tasksGenerated.length).toBeGreaterThan(0);
+        expect(dispatchFn).toHaveBeenCalled();
+        const receivedTask = dispatchFn.mock.calls[0][0];
+        expect(receivedTask.eventName).toBe(taskRule.eventName);
+        expect(receivedTask.actionType).toBe(taskRule.actionType);
+        expect(receivedTask.sourceLog.message).toBe("E2E critical event");
+    });
 
-        if (result.tasksGenerated.length > 0) {
-            // タスクが生成された場合、トランスポートが呼ばれていること
-            expect(dispatchFn).toHaveBeenCalled();
-            const receivedTask = dispatchFn.mock.calls[0][0];
-            expect(receivedTask.eventName).toBe(taskRule.eventName);
-            expect(receivedTask.actionType).toBe(taskRule.actionType);
-            expect(receivedTask.sourceLog.message).toBe("E2E critical event");
-        }
+    it("double shutdown with transports is idempotent", async () => {
+        const closeFn = vi.fn().mockResolvedValue(undefined);
+        const transport = {
+            name: "double-close",
+            dispatch: vi.fn().mockResolvedValue({ transportName: "double-close", success: true }),
+            close: closeFn,
+        };
+
+        const sentinel = Sentinel.initialize(defaultConfig(), { taskTransports: [transport] });
+        await sentinel.shutdown();
+        await sentinel.shutdown(); // 2回目 — isShutdown ガードで何もしない
+
+        expect(closeFn).toHaveBeenCalledTimes(1);
+    });
+
+    it("initialize with invalid http_webhook endpoint in config throws", () => {
+        expect(() => Sentinel.initialize(defaultConfig({
+            taskTransportConfigs: [
+                { name: "bad", type: "http_webhook", enabled: true, endpoint: "https://192.168.1.1/hook" },
+            ],
+        }))).toThrow();
+    });
+
+    it("shutdown closes both user-injected and config-created transports", async () => {
+        const userClose = vi.fn().mockResolvedValue(undefined);
+        const userTransport = {
+            name: "user",
+            dispatch: vi.fn().mockResolvedValue({ transportName: "user", success: true }),
+            close: userClose,
+        };
+
+        const config = defaultConfig({
+            taskTransportConfigs: [
+                { name: "auto-console", type: "console", enabled: true },
+            ],
+        });
+
+        const sentinel = Sentinel.initialize(config, { taskTransports: [userTransport] });
+        await sentinel.shutdown();
+
+        // user-injected transport の close が呼ばれること
+        expect(userClose).toHaveBeenCalledTimes(1);
+        // config-based console transport の close も呼ばれる（ConsoleTaskTransport.close は no-op だがエラーなし）
+    });
+
+    it("config-based http_webhook with disabled flag is not instantiated (SSRF endpoint allowed)", () => {
+        // 同じ endpoint を enabled: true で渡すと SSRF で throw する
+        expect(() => Sentinel.initialize(defaultConfig({
+            taskTransportConfigs: [
+                { name: "bad-enabled", type: "http_webhook", enabled: true, endpoint: "https://192.168.1.1/hook" },
+            ],
+        }))).toThrow();
+        Sentinel.reset();
+
+        // enabled: false → factory がスキップするのでインスタンス化されず、SSRF チェックも走らない
+        expect(() => Sentinel.initialize(defaultConfig({
+            taskTransportConfigs: [
+                { name: "bad-but-disabled", type: "http_webhook", enabled: false, endpoint: "https://192.168.1.1/hook" },
+            ],
+        }))).not.toThrow();
     });
 });

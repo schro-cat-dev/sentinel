@@ -70,7 +70,36 @@ Task.executionLevel に応じた分岐:
 |-------|------|-----------|
 | Phase 1 | Task Layer MVP（SIEMなし） | **完成** |
 | Phase 2 | Severity Filter + 承認ワークフロー | **完成** |
-| Phase 3 | Action Layer → SIEM/XDRコネクタ実装 | 未着手 |
+| Phase 2.5 | **TaskTransport アダプタパターン** | **完成** |
+| Phase 3 | Action Layer → SIEM/XDRコネクタ実装（TaskTransport経由） | 未着手 |
+
+---
+
+## TaskTransport によるSIEM連携
+
+Phase 2.5 で実装された `TaskTransport` アダプタパターンにより、
+SIEM/XDRコネクタは `TaskTransport` インターフェースを実装する形で構築する。
+
+```typescript
+// 例: Splunk HEC コネクタ（利用者が実装）
+const splunkTransport: TaskTransport = {
+    name: "splunk-hec",
+    async dispatch(task) {
+        const res = await fetch("https://splunk.example.com/services/collector", {
+            method: "POST",
+            headers: { Authorization: `Splunk ${hecToken}` },
+            body: JSON.stringify({ event: task }),
+        });
+        return { transportName: "splunk-hec", success: res.ok };
+    },
+};
+
+const sentinel = Sentinel.initialize(config, {
+    taskTransports: [splunkTransport],
+});
+```
+
+詳細設計: [docs/design/task-transport.md](design/task-transport.md)
 
 ---
 

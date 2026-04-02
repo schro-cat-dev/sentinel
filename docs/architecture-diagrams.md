@@ -310,11 +310,12 @@ flowchart TD
 
     BLOCKED["blocked_approval"]
     SKIPPED["skipped"]
-    DISPATCH["Invoke handler(s)"]
+    HANDLERS["1. Invoke handler(s)<br/>(maxRetries適用)"]
+    TRANSPORTS["2. Invoke transport(s)<br/>(リトライなし)"]
     NOOP["dispatched (noop)"]
     FAIL["failed<br/>(CRITICAL: no handler)"]
     OK["dispatched"]
-    ERR["failed<br/>(handler error)"]
+    ERR["failed<br/>(aggregated errors)"]
 
     TASK --> CHK1
     CHK1 -->|Yes| BLOCKED
@@ -323,13 +324,14 @@ flowchart TD
     CHK2 -->|SEMI_AUTO| CHK3
     CHK2 -->|MANUAL| BLOCKED
     CHK2 -->|MONITOR| SKIPPED
-    CHK3 -->|Yes| DISPATCH
-    CHK3 -->|No + defaultHandler| DISPATCH
+    CHK3 -->|Yes| HANDLERS
+    CHK3 -->|No + defaultHandler| HANDLERS
     CHK3 -->|No handler| CHK4
     CHK4 -->|Yes| FAIL
     CHK4 -->|No| NOOP
-    DISPATCH -->|success| OK
-    DISPATCH -->|error| ERR
+    HANDLERS --> TRANSPORTS
+    TRANSPORTS -->|all success| OK
+    TRANSPORTS -->|any error| ERR
 ```
 
 ---

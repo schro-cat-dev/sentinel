@@ -9,7 +9,7 @@
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { createDefaultConfig, type SentinelConfig, type TaskTransportConfig } from "./sentinel-config";
+import { createDefaultConfig, type SentinelConfig, type TaskTransportConfig, TASK_TRANSPORT_TYPES } from "./sentinel-config";
 import { PII_CATEGORIES, type MaskingRule } from "./masking-rule";
 import type { TaskRule } from "../types/task";
 import type { DetectionRule, DetectionRuleConditions } from "../types/event";
@@ -84,6 +84,8 @@ interface RawDetectionRule {
 
 interface RawTaskTransport {
     name?: string;
+    type?: string;
+    enabled?: boolean;
     endpoint?: string;
     headers?: Record<string, string>;
     [key: string]: unknown;
@@ -297,10 +299,29 @@ function validateRawConfig(raw: RawYamlConfig): void {
 
     // task transports
     if (raw.task_transports) {
+        const validTypes = new Set<string>(TASK_TRANSPORT_TYPES);
         for (let i = 0; i < raw.task_transports.length; i++) {
             const t = raw.task_transports[i];
             if (!t.name || typeof t.name !== "string") {
                 throw new ConfigLoadError(`task_transports[${i}].name`, "is required and must be a string");
+            }
+            if (t.type !== undefined && !validTypes.has(t.type)) {
+                throw new ConfigLoadError(
+                    `task_transports[${i}].type`,
+                    `must be one of: ${TASK_TRANSPORT_TYPES.join(", ")} (got "${t.type}")`,
+                );
+            }
+            if (t.type === "http_webhook" && (!t.endpoint || typeof t.endpoint !== "string")) {
+                throw new ConfigLoadError(
+                    `task_transports[${i}].endpoint`,
+                    `is required for type "http_webhook"`,
+                );
+            }
+            if (t.method !== undefined && t.method !== "POST" && t.method !== "PUT") {
+                throw new ConfigLoadError(
+                    `task_transports[${i}].method`,
+                    `must be "POST" or "PUT" (got "${String(t.method)}")`,
+                );
             }
         }
     }
@@ -341,9 +362,11 @@ function convertToSentinelConfig(raw: RawYamlConfig): SentinelConfig {
 }
 
 function convertTaskTransport(raw: RawTaskTransport): TaskTransportConfig {
-    const { name, endpoint, headers, ...rest } = raw;
+    const { name, type, enabled, endpoint, headers, ...rest } = raw;
     return {
         name: name!,
+        type: (type as TaskTransportConfig["type"]) ?? "custom",
+        enabled: enabled ?? true,
         endpoint,
         headers,
         ...rest,
