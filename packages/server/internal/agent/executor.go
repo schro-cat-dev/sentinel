@@ -51,6 +51,13 @@ func NewAgentExecutor(provider Provider, st store.Store, cfg AgentExecutorConfig
 	}
 }
 
+// SetReIngest はログ再投入コールバックを設定する（post-init wiring用）
+func (e *AgentExecutor) SetReIngest(fn func(context.Context, domain.Log) error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.reIngest = fn
+}
+
 // ExecuteTask はAIエージェントタスクを実行する
 // ループ深度チェック→タイムアウト付き実行→結果永続化→ログ再投入
 func (e *AgentExecutor) ExecuteTask(ctx context.Context, task domain.GeneratedTask, sourceLog domain.Log) (*ExecutionRecord, error) {

@@ -25,6 +25,12 @@ type Config struct {
 	RoutingRules    []ApprovalRoutingRuleConfig `yaml:"routing_rules"`
 	ErrorRouting    ErrorRoutingConfig          `yaml:"error_routing"`
 	DetectionRules  []DetectionRuleConfig       `yaml:"detection_rules"`
+	KillSwitch      KillSwitchConfig            `yaml:"kill_switch"`
+}
+
+// KillSwitchConfig はKILL_SWITCHアクションの設定
+type KillSwitchConfig struct {
+	AutoRecoveryTimeoutSec int `yaml:"auto_recovery_timeout_sec"` // 0=手動回復のみ
 }
 
 // DetectionRuleConfig はカスタム検知ルール（TS SDK互換）

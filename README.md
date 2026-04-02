@@ -118,7 +118,7 @@ go build -o sentinel-server ./cmd/server/ && ./sentinel-server
 ```bash
 # SDK tests
 npm test
-# => 3,038+ tests passed
+# => 3,041+ tests passed
 
 # Go server tests
 cd packages/server && go test ./... -race -count=1
@@ -305,12 +305,18 @@ implementations. Users inject their own adapters for real providers.
 |---|---|---|
 | AI_ANALYZE action | Mock provider | Replace `MockProvider` with real LLM provider (OpenAI, Anthropic, etc.) |
 | AI threat analysis | Mock agent | Replace `MockAnalysisAgent` with real analysis backend |
-| Agent reIngest loop | Registered but no-op | Wire `Pipeline.Process()` callback with loop detection |
 | AUTOMATED_REMEDIATE | Constant defined only | Implement remediation handlers per use case |
-| KILL_SWITCH | Constant defined only | Implement emergency stop handlers per use case |
-| ESCALATE | Constant defined only | Implement escalation chain handlers |
-| EXTERNAL_WEBHOOK | Constant defined only | Implement webhook dispatch for task actions |
 | Cloud block providers | Interface defined | Implement AWS/GCP/Azure IP blocking via `execFn` callback |
+
+### What was recently implemented (previously mock/placeholder)
+
+| Capability | Status | Details |
+|---|---|---|
+| ESCALATE action | Implemented | Sends elevated-severity notification via MultiNotifier |
+| SYSTEM_NOTIFICATION action | Implemented | Sends notification via MultiNotifier |
+| EXTERNAL_WEBHOOK action | Implemented | POSTs JSON payload to `exec_params.target_endpoint` (SSRF-protected) |
+| KILL_SWITCH action | Implemented | Kills pipeline (rejects new Ingest), auto-recovery via `kill_switch.auto_recovery_timeout_sec` |
+| Agent reIngest loop | Implemented | Wired to `Pipeline.Process()` with loop protection (MaxLoopDepth) |
 
 ### Extensibility
 
@@ -329,11 +335,11 @@ See [Extensibility Guide](packages/server/docs/extensibility-guide.md) for detai
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
-| Client SDK | TypeScript (zero dependencies) | Implemented | 3,038+ tests (Vitest) |
+| Client SDK | TypeScript (zero dependencies) | Implemented | 3,041+ tests (Vitest) |
 | Backend Server | Go 1.22+ / gRPC | Implemented | 786 tests (`-race` verified, fuzz tested) |
-| gRPC Communication | Protocol Buffers v3 | Implemented | E2E verified (47 tests via real gRPC) |
+| gRPC Communication | Protocol Buffers v3 | Implemented | E2E verified (50 tests via real gRPC) |
 
-**Total: 3,824+ tests (SDK 3,038+ + Server 786), 0 FAIL**
+**Total: 3,827+ tests (SDK 3,041+ + Server 786), 0 FAIL**
 
 ---
 
@@ -353,7 +359,7 @@ sentinel/
 │   ├── transport/                # RemoteTransport, TaskTransport, HTTP webhook, circuit breaker
 │   ├── shared/                   # Error taxonomy, audit utilities
 │   └── types/                    # Domain models (Log, Task, Event)
-├── tests/                        # 3,038+ tests
+├── tests/                        # 3,041+ tests
 │   ├── unit/                     # Unit tests (606)
 │   ├── config/                   # Config tests (432)
 │   ├── security/                 # Security + advanced tests (992)

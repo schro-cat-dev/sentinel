@@ -192,16 +192,68 @@ func main() {
 		os.Exit(1)
 	}
 
+	// --- Post-init: MultiNotifier (used by action handlers and threat response) ---
+	multiNotifier := notify.NewMultiNotifier()
+	multiNotifier.Register(notify.NewLogNotifier()) // fallback: 常にログ出力
+	// Slack provider
+	if cfg.Notify.Slack.Enabled && cfg.Notify.Slack.WebhookURL != "" {
+		if sn, err := notify.NewSlackNotifierValidated(notify.SlackConfig{
+			WebhookURL: cfg.Notify.Slack.WebhookURL,
+		}); err == nil {
+			multiNotifier.Register(sn)
+			slog.Info("slack notifier registered (action handlers)")
+		}
+	}
+	// Discord provider
+	if cfg.Notify.Discord.Enabled && cfg.Notify.Discord.WebhookURL != "" {
+		if dn, err := notify.NewDiscordNotifierValidated(notify.DiscordConfig{
+			WebhookURL: cfg.Notify.Discord.WebhookURL,
+			Username:   cfg.Notify.Discord.Username,
+		}); err == nil {
+			multiNotifier.Register(dn)
+			slog.Info("discord notifier registered (action handlers)")
+		}
+	}
+	// Gmail provider
+	if cfg.Notify.Gmail.Enabled && cfg.Notify.Gmail.From != "" {
+		multiNotifier.Register(notify.NewGmailNotifier(notify.GmailConfig{
+			From: cfg.Notify.Gmail.From, Password: cfg.Notify.Gmail.Password,
+			SMTPHost: cfg.Notify.Gmail.SMTPHost, SMTPPort: cfg.Notify.Gmail.SMTPPort,
+			To: cfg.Notify.Gmail.To,
+		}))
+		slog.Info("gmail notifier registered (action handlers)")
+	}
+	// Webhook provider (legacy)
+	if cfg.Webhook.Enabled && cfg.Webhook.URL != "" {
+		if wh, err := notify.NewWebhookNotifierValidated(notify.WebhookConfig{
+			URL: cfg.Webhook.URL, TimeoutSec: cfg.Webhook.TimeoutSec, Secret: cfg.Webhook.Secret,
+		}); err == nil {
+			multiNotifier.Register(wh)
+		}
+	}
+	for _, rule := range cfg.Notify.Routing {
+		multiNotifier.SetRouting(rule.Prefix, []string{rule.Provider})
+	}
+
+	// --- Post-init: Register action handlers ---
+	executor.RegisterHandler(string(domain.ActionEscalate), task.NewEscalateHandler(multiNotifier))
+	executor.RegisterHandler(string(domain.ActionSystemNotification), task.NewSystemNotificationHandler(multiNotifier))
+	executor.RegisterHandler(string(domain.ActionExternalWebhook), task.NewExternalWebhookHandler(nil))
+	executor.RegisterHandler(string(domain.ActionKillSwitch), task.NewKillSwitchHandler(sentinel.Pipeline(), cfg.KillSwitch.AutoRecoveryTimeoutSec))
+	slog.Info("action handlers registered", "types", "ESCALATE,SYSTEM_NOTIFICATION,EXTERNAL_WEBHOOK,KILL_SWITCH")
+
 	// --- Post-init: Agent Bridge ---
 	if cfg.Agent.Enabled {
 		provider := agent.NewMockProvider(cfg.Agent.Provider) // 実環境では実プロバイダに差し替え
 		agentExec := agent.NewAgentExecutor(provider, st, agent.AgentExecutorConfig{
 			MaxLoopDepth: cfg.Agent.MaxLoopDepth,
 			TimeoutSec:   cfg.Agent.TimeoutSec,
-		}, func(ctx context.Context, log domain.Log) error {
-			// AI実行結果のログ再投入（Pipeline.Processを直接呼ぶとループ検知に引っかかる設計）
-			slog.Info("agent log re-ingested", "traceId", log.TraceID, "origin", log.Origin)
-			return nil
+		}, nil) // reIngest は後で設定
+
+		// reIngest: AI実行結果をパイプラインに再投入（ループ防止は AgentBridge.MaxLoopDepth で保証）
+		agentExec.SetReIngest(func(ctx context.Context, log domain.Log) error {
+			_, err := sentinel.Pipeline().Process(ctx, log)
+			return err
 		})
 
 		bridge := engine.NewAgentBridge(agentExec, nil, engine.AgentBridgeConfig{
@@ -212,7 +264,7 @@ func main() {
 			MinSeverity:    domain.TaskSeverity(cfg.Agent.MinSeverity),
 		})
 		sentinel.Pipeline().SetAgentBridge(bridge)
-		slog.Info("agent bridge enabled", "provider", cfg.Agent.Provider)
+		slog.Info("agent bridge enabled", "provider", cfg.Agent.Provider, "reIngest", "wired")
 	}
 
 	// --- Post-init: Threat Response Orchestrator ---
@@ -265,63 +317,7 @@ func main() {
 			return st.InsertThreatResponse(ctx, storeRecord)
 		}))
 
-		// 通知: MultiNotifier を構築して接続
-		multiNotifier := notify.NewMultiNotifier()
-		multiNotifier.Register(notify.NewLogNotifier()) // fallback: 常にログ出力
-
-		// Webhook provider (legacy config path) — F-05: URL validation
-		if cfg.Webhook.Enabled && cfg.Webhook.URL != "" {
-			wh, err := notify.NewWebhookNotifierValidated(notify.WebhookConfig{
-				URL: cfg.Webhook.URL, TimeoutSec: cfg.Webhook.TimeoutSec, Secret: cfg.Webhook.Secret,
-			})
-			if err != nil {
-				slog.Error("webhook notifier rejected", "error", err)
-			} else {
-				multiNotifier.Register(wh)
-				slog.Info("webhook notifier registered", "url", cfg.Webhook.URL)
-			}
-		}
-		// Slack provider (config.notify.slack or SENTINEL_SLACK_WEBHOOK_URL) — F-05: URL validation
-		if cfg.Notify.Slack.Enabled && cfg.Notify.Slack.WebhookURL != "" {
-			sn, err := notify.NewSlackNotifierValidated(notify.SlackConfig{
-				WebhookURL: cfg.Notify.Slack.WebhookURL,
-			})
-			if err != nil {
-				slog.Error("slack notifier rejected", "error", err)
-			} else {
-				multiNotifier.Register(sn)
-				slog.Info("slack notifier registered")
-			}
-		}
-		// Discord provider (config.notify.discord or SENTINEL_DISCORD_WEBHOOK_URL) — F-05: URL validation
-		if cfg.Notify.Discord.Enabled && cfg.Notify.Discord.WebhookURL != "" {
-			dn, err := notify.NewDiscordNotifierValidated(notify.DiscordConfig{
-				WebhookURL: cfg.Notify.Discord.WebhookURL,
-				Username:   cfg.Notify.Discord.Username,
-			})
-			if err != nil {
-				slog.Error("discord notifier rejected", "error", err)
-			} else {
-				multiNotifier.Register(dn)
-				slog.Info("discord notifier registered")
-			}
-		}
-		// Gmail/SMTP provider (config.notify.gmail or SENTINEL_GMAIL_FROM)
-		if cfg.Notify.Gmail.Enabled && cfg.Notify.Gmail.From != "" {
-			multiNotifier.Register(notify.NewGmailNotifier(notify.GmailConfig{
-				From:     cfg.Notify.Gmail.From,
-				Password: cfg.Notify.Gmail.Password,
-				SMTPHost: cfg.Notify.Gmail.SMTPHost,
-				SMTPPort: cfg.Notify.Gmail.SMTPPort,
-				To:       cfg.Notify.Gmail.To,
-			}))
-			slog.Info("gmail notifier registered", "from", cfg.Notify.Gmail.From)
-		}
-		// Apply routing rules from config
-		for _, rule := range cfg.Notify.Routing {
-			multiNotifier.SetRouting(rule.Prefix, []string{rule.Provider})
-		}
-
+		// 通知: 共有の multiNotifier を threat response にも接続
 		orchOpts = append(orchOpts, response.WithNotifyFunc(func(ctx context.Context, record response.ThreatResponseRecord) error {
 			n := notify.Notification{
 				Channel:   record.NotifyTarget,

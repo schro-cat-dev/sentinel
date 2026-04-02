@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -89,7 +90,17 @@ type Pipeline struct {
 	authorizer   *middleware.Authorizer
 	agentBridge  *AgentBridge
 	threatOrch   *response.ThreatResponseOrchestrator
+	killed       atomic.Bool
 }
+
+// Kill はパイプラインを停止し、新規 Ingest を拒否する
+func (p *Pipeline) Kill() { p.killed.Store(true) }
+
+// Unkill はパイプラインを再開する
+func (p *Pipeline) Unkill() { p.killed.Store(false) }
+
+// IsKilled はパイプラインが停止中かを返す
+func (p *Pipeline) IsKilled() bool { return p.killed.Load() }
 
 // NewPipeline はPipelineを生成する
 func NewPipeline(cfg PipelineConfig, executor *task.TaskExecutor, st store.Store, notifier *webhook.Notifier) (*Pipeline, error) {
@@ -209,7 +220,12 @@ func (p *Pipeline) Process(ctx context.Context, raw domain.Log) (domain.Ingestio
 	default:
 	}
 
-	// 0. Authorization (if enabled)
+	// 0a. Kill switch check
+	if p.killed.Load() {
+		return domain.IngestionResult{}, fmt.Errorf("pipeline killed by KILL_SWITCH")
+	}
+
+	// 0b. Authorization (if enabled)
 	if p.authorizer != nil {
 		clientID := middleware.ClientIDFromContext(ctx)
 		if clientID == "" {

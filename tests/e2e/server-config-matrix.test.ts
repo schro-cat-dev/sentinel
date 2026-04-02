@@ -1730,4 +1730,256 @@ routing_rules: []
             }
         }, 30_000);
     });
+    // ==================================================================
+    // 16. ESCALATE アクションハンドラ
+    // ==================================================================
+    describe("ESCALATE action handler", () => {
+        it("dispatches escalation task for security intrusion", async () => {
+            const escalateConfig = `
+server:
+  addr: ":0"
+  graceful_timeout_sec: 5
+security:
+  enable_masking: false
+  enable_hash_chain: false
+pipeline:
+  service_id: escalate-server
+  rules:
+    - rule_id: sec-escalate
+      event_name: SECURITY_INTRUSION_DETECTED
+      severity: HIGH
+      action_type: ESCALATE
+      execution_level: AUTO
+      priority: 1
+      description: "Escalate security intrusion"
+      exec_params:
+        notification_channel: "#security-critical"
+      guardrails:
+        require_human_approval: false
+        timeout_ms: 30000
+        max_retries: 3
+store:
+  driver: sqlite
+  dsn: "file::memory:?cache=shared"
+auth:
+  enabled: false
+webhook:
+  enabled: false
+ensemble:
+  enabled: false
+anomaly:
+  enabled: false
+agent:
+  enabled: false
+response:
+  enabled: false
+authorization:
+  enabled: false
+masking_policies: []
+routing_rules: []
+`;
+            const server = await launchServer(escalateConfig);
+            try {
+                const res = await grpcCall<IngestResponse>(server.client, "Ingest", {
+                    traceId: "",
+                    type: "SECURITY",
+                    level: 5,
+                    serviceId: "e2e-sdk",
+                    isCritical: false,
+                    message: "Security intrusion requiring escalation",
+                    origin: "SYSTEM",
+                    tags: [],
+                    resourceIds: [],
+                    input: "",
+                });
+
+                expect(res.traceId).toBeTruthy();
+                expect(res.tasksGenerated.length).toBeGreaterThan(0);
+                expect(res.tasksGenerated.some((t) => t.ruleId === "sec-escalate")).toBe(true);
+                expect(res.tasksGenerated.find((t) => t.ruleId === "sec-escalate")?.status).toBe("dispatched");
+            } finally {
+                await server.cleanup();
+            }
+        }, 30_000);
+    });
+
+    // ==================================================================
+    // 17. SYSTEM_NOTIFICATION アクションハンドラ
+    // ==================================================================
+    describe("SYSTEM_NOTIFICATION action handler", () => {
+        it("dispatches notification task for critical failure", async () => {
+            const notifyConfig = `
+server:
+  addr: ":0"
+  graceful_timeout_sec: 5
+security:
+  enable_masking: false
+  enable_hash_chain: false
+pipeline:
+  service_id: notify-server
+  rules:
+    - rule_id: crit-notify
+      event_name: SYSTEM_CRITICAL_FAILURE
+      severity: HIGH
+      action_type: SYSTEM_NOTIFICATION
+      execution_level: AUTO
+      priority: 1
+      description: "Notify on critical failure"
+      exec_params:
+        notification_channel: "#ops"
+      guardrails:
+        require_human_approval: false
+        timeout_ms: 30000
+        max_retries: 3
+store:
+  driver: sqlite
+  dsn: "file::memory:?cache=shared"
+auth:
+  enabled: false
+webhook:
+  enabled: false
+ensemble:
+  enabled: false
+anomaly:
+  enabled: false
+agent:
+  enabled: false
+response:
+  enabled: false
+authorization:
+  enabled: false
+masking_policies: []
+routing_rules: []
+`;
+            const server = await launchServer(notifyConfig);
+            try {
+                const res = await grpcCall<IngestResponse>(server.client, "Ingest", {
+                    traceId: "",
+                    type: "SYSTEM",
+                    level: 6,
+                    serviceId: "e2e-sdk",
+                    isCritical: true,
+                    message: "Critical system failure",
+                    origin: "SYSTEM",
+                    tags: [],
+                    resourceIds: [],
+                    input: "",
+                });
+
+                expect(res.traceId).toBeTruthy();
+                expect(res.tasksGenerated.length).toBeGreaterThan(0);
+                expect(res.tasksGenerated[0].ruleId).toBe("crit-notify");
+                expect(res.tasksGenerated[0].status).toBe("dispatched");
+            } finally {
+                await server.cleanup();
+            }
+        }, 30_000);
+    });
+
+    // ==================================================================
+    // 18. KILL_SWITCH アクションハンドラ
+    // ==================================================================
+    describe("KILL_SWITCH action handler", () => {
+        it("kills pipeline after critical event, rejects subsequent ingest", async () => {
+            const killConfig = `
+server:
+  addr: ":0"
+  graceful_timeout_sec: 5
+security:
+  enable_masking: false
+  enable_hash_chain: false
+pipeline:
+  service_id: kill-switch-server
+  rules:
+    - rule_id: emergency-stop
+      event_name: SYSTEM_CRITICAL_FAILURE
+      severity: CRITICAL
+      action_type: KILL_SWITCH
+      execution_level: AUTO
+      priority: 1
+      description: "Emergency kill switch"
+      guardrails:
+        require_human_approval: false
+        timeout_ms: 30000
+        max_retries: 0
+store:
+  driver: sqlite
+  dsn: "file::memory:?cache=shared"
+auth:
+  enabled: false
+webhook:
+  enabled: false
+ensemble:
+  enabled: false
+anomaly:
+  enabled: false
+agent:
+  enabled: false
+response:
+  enabled: false
+authorization:
+  enabled: false
+masking_policies: []
+routing_rules: []
+kill_switch:
+  auto_recovery_timeout_sec: 3
+`;
+            const server = await launchServer(killConfig);
+            try {
+                // First ingest triggers KILL_SWITCH
+                const res = await grpcCall<IngestResponse>(server.client, "Ingest", {
+                    traceId: "",
+                    type: "SYSTEM",
+                    level: 6,
+                    serviceId: "e2e-sdk",
+                    isCritical: true,
+                    message: "Critical failure triggering kill switch",
+                    origin: "SYSTEM",
+                    tags: [],
+                    resourceIds: [],
+                    input: "",
+                });
+                expect(res.tasksGenerated.length).toBeGreaterThan(0);
+                expect(res.tasksGenerated[0].ruleId).toBe("emergency-stop");
+
+                // Subsequent ingest should be rejected (pipeline killed)
+                await expect(
+                    grpcCall<IngestResponse>(server.client, "Ingest", {
+                        traceId: "",
+                        type: "SYSTEM",
+                        level: 3,
+                        serviceId: "e2e-sdk",
+                        message: "This should be rejected",
+                        origin: "SYSTEM",
+                        tags: [],
+                        resourceIds: [],
+                        input: "",
+                    }),
+                ).rejects.toThrow();
+
+                // HealthCheck should still work even when pipeline is killed
+                const health = await grpcCall<HealthCheckResponse>(server.client, "HealthCheck", {});
+                expect(health.status).toBe("SERVING");
+
+                // Wait for auto-recovery (3 seconds)
+                await new Promise((r) => setTimeout(r, 3500));
+
+                // After recovery, ingest should work again
+                const recovered = await grpcCall<IngestResponse>(server.client, "Ingest", {
+                    traceId: "",
+                    type: "SYSTEM",
+                    level: 3,
+                    serviceId: "e2e-sdk",
+                    message: "Pipeline recovered",
+                    origin: "SYSTEM",
+                    tags: [],
+                    resourceIds: [],
+                    input: "",
+                });
+                expect(recovered.traceId).toBeTruthy();
+            } finally {
+                await server.cleanup();
+            }
+        }, 30_000);
+    });
 }, 600_000); // 10 minute total timeout for the entire suite
