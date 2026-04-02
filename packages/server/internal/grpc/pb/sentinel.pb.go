@@ -253,6 +253,7 @@ type IngestRequest struct {
 	Input         string                 `protobuf:"bytes,16,opt,name=input,proto3" json:"input,omitempty"`
 	TriggerAgent  bool                   `protobuf:"varint,17,opt,name=trigger_agent,json=triggerAgent,proto3" json:"trigger_agent,omitempty"`
 	Details       map[string]string      `protobuf:"bytes,18,rep,name=details,proto3" json:"details,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	ProjectName   string                 `protobuf:"bytes,19,opt,name=project_name,json=projectName,proto3" json:"project_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -411,6 +412,13 @@ func (x *IngestRequest) GetDetails() map[string]string {
 		return x.Details
 	}
 	return nil
+}
+
+func (x *IngestRequest) GetProjectName() string {
+	if x != nil {
+		return x.ProjectName
+	}
+	return ""
 }
 
 type ThreatResponseSummary struct {
@@ -2076,7 +2084,7 @@ const file_sentinel_proto_rawDesc = "" +
 	"\x06action\x18\x02 \x01(\tR\x06action\x12\x1c\n" +
 	"\ttimestamp\x18\x03 \x01(\tR\ttimestamp\x12\x16\n" +
 	"\x06result\x18\x04 \x01(\tR\x06result\x12\x16\n" +
-	"\x06status\x18\x05 \x01(\tR\x06status\"\xbf\x05\n" +
+	"\x06status\x18\x05 \x01(\tR\x06status\"\xe2\x05\n" +
 	"\rIngestRequest\x12\x19\n" +
 	"\btrace_id\x18\x01 \x01(\tR\atraceId\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x14\n" +
@@ -2099,7 +2107,8 @@ const file_sentinel_proto_rawDesc = "" +
 	"\x0eagent_back_log\x18\x0f \x03(\v2\x1e.sentinel.v1.AgentBackLogEntryR\fagentBackLog\x12\x14\n" +
 	"\x05input\x18\x10 \x01(\tR\x05input\x12#\n" +
 	"\rtrigger_agent\x18\x11 \x01(\bR\ftriggerAgent\x12A\n" +
-	"\adetails\x18\x12 \x03(\v2'.sentinel.v1.IngestRequest.DetailsEntryR\adetails\x1a:\n" +
+	"\adetails\x18\x12 \x03(\v2'.sentinel.v1.IngestRequest.DetailsEntryR\adetails\x12!\n" +
+	"\fproject_name\x18\x13 \x01(\tR\vprojectName\x1a:\n" +
 	"\fDetailsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x87\x02\n" +

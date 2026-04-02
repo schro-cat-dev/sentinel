@@ -525,7 +525,7 @@ func StartServerWithSentinel(addr string, cfg engine.PipelineConfig, executor *t
 func protoToLog(req *pb.IngestRequest) domain.Log {
 	logEntry := domain.Log{
 		TraceID: req.TraceId, Type: domain.LogType(req.Type), Level: domain.LogLevel(req.Level),
-		Boundary: req.Boundary, ServiceID: req.ServiceId, IsCritical: req.IsCritical,
+		Boundary: req.Boundary, ServiceID: req.ServiceId, ProjectName: req.ProjectName, IsCritical: req.IsCritical,
 		Message: req.Message, Origin: domain.Origin(req.Origin),
 		ActorID: req.ActorId, SpanID: req.SpanId, ParentSpanID: req.ParentSpanId,
 		ResourceIDs: req.ResourceIds, Input: req.Input, TriggerAgent: req.TriggerAgent,

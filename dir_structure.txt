@@ -43,7 +43,8 @@
 │   │   ├── task-transport-factory.ts            # YAML TaskTransportConfig → TaskTransport インスタンス生成ファクトリ
 │   │   ├── http-webhook-transport.ts            # HTTP Webhook 組み込みトランスポート（SSRF防御付き, Node.js fetch）
 │   │   ├── console-task-transport.ts            # デバッグ用 console.info 組み込みトランスポート
-│   │   └── circuit-breaker.ts                   # CircuitBreaker（閾値/cooldown/half-open）— transport連続失敗時の自動遮断 (R-4)
+│   │   ├── circuit-breaker.ts                   # CircuitBreaker（閾値/cooldown/half-open）— transport連続失敗時の自動遮断 (R-4)
+│   │   └── server-management-transport.ts       # ServerManagementTransport I/F — タスク承認/状態/ブロック管理 (Phase 3)
 │   ├── errors/
 │   │   └── sentinel-error.ts                    # SentinelError(layer, operation, message, cause) — 構造化エラー型 (O-4)
 │   ├── validation/
@@ -118,7 +119,8 @@
 │   │   │   ├── task-transport.test.ts           # TaskTransport: インターフェース契約テスト
 │   │   │   ├── console-task-transport.test.ts   # ConsoleTaskTransport: JSON出力, close, name
 │   │   │   ├── http-webhook-transport.test.ts   # HttpWebhookTransport: URL検証, SSRF防御, fetch mock
-│   │   │   └── task-transport-factory.test.ts   # ファクトリ: type→インスタンス, enabled, mixed
+│   │   │   ├── task-transport-factory.test.ts   # ファクトリ: type→インスタンス, enabled, mixed
+│   │   │   └── server-management.test.ts       # Phase 3: 承認/拒否/状態/ブロック管理 (11)
 │   │   ├── errors/
 │   │   │   └── sentinel-error.test.ts           # SentinelError: layer/operation/cause, instanceof (6)
 │   │   ├── shared/

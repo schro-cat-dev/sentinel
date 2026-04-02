@@ -63,7 +63,7 @@ export interface Log {
     resourceIds?: string[]; // 影響対象のリソースID（口座番号、ユーザID等）
     previousHash?: string; // ハッシュチェーン（前のログのハッシュ）
     hash?: string; // このログ自体のハッシュ
-    signature?: string; // デジタル署名（非改ざん証明）
+    signature?: string; // デジタル署名（将来の公開鍵署名用。現在はHMACハッシュチェーンで改竄検知）
 }
 
 export interface AIAgentEventBacklog {

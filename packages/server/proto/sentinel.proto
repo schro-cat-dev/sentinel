@@ -49,6 +49,7 @@ message IngestRequest {
   string input = 16;
   bool trigger_agent = 17;
   map<string, string> details = 18;
+  string project_name = 19;
 }
 
 message ThreatResponseSummary {

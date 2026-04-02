@@ -72,6 +72,7 @@ type Log struct {
 	LogicalClock int64
 	Boundary     string
 	ServiceID    string
+	ProjectName  string
 	Origin       Origin
 	IsCritical   bool
 	Message      string

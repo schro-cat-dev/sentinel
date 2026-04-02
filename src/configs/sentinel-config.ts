@@ -101,8 +101,13 @@ export interface SentinelConfig {
     /** セキュリティ設定 */
     security: {
         enableHashChain: boolean;
+        /**
+         * 鍵バージョン識別子。HMAC鍵ローテーション時に旧鍵と新鍵を区別するために使用。
+         * HMACモードでは鍵選択には使われない（hmacKeyが鍵本体）。
+         * SHA-256フォールバック時はハッシュ計算に結合される（後方互換）。
+         */
         signingKeyId?: string;
-        /** HMAC-SHA256 鍵（Phase 1-E）。設定時はHMACモード、未設定時はSHA-256フォールバック。環境変数推奨。 */
+        /** HMAC-SHA256 鍵。設定時はHMACモード、未設定時はSHA-256フォールバック。環境変数推奨。 */
         hmacKey?: string;
     };
 

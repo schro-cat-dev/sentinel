@@ -105,7 +105,7 @@ go build -o sentinel-server ./cmd/server/ && ./sentinel-server
 ```bash
 # SDK tests
 npm test
-# => 2,933 tests passed
+# => 2,961+ tests passed
 
 # Go server tests
 cd packages/server && go test ./... -race -count=1
@@ -270,11 +270,11 @@ implementations. Users inject their own adapters for real providers.
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
-| Client SDK | TypeScript (zero dependencies) | Implemented | 2,933 tests (Vitest) |
+| Client SDK | TypeScript (zero dependencies) | Implemented | 2,961+ tests (Vitest) |
 | Backend Server | Go 1.22+ / gRPC | Implemented | 786 tests (`-race` verified, fuzz tested) |
 | gRPC Communication | Protocol Buffers v3 | Implemented | E2E verified (22 tests via real gRPC) |
 
-**Total: 3,719 tests (SDK 2,933 + Server 786), 0 FAIL**
+**Total: 3,747+ tests (SDK 2,961+ + Server 786), 0 FAIL**
 
 ---
 
@@ -294,7 +294,7 @@ sentinel/
 │   ├── transport/                # RemoteTransport, TaskTransport, HTTP webhook, circuit breaker
 │   ├── shared/                   # Error taxonomy, audit utilities
 │   └── types/                    # Domain models (Log, Task, Event)
-├── tests/                        # 2,933 tests
+├── tests/                        # 2,961+ tests
 │   ├── unit/                     # Unit tests (606)
 │   ├── config/                   # Config tests (432)
 │   ├── security/                 # Security + advanced tests (992)
