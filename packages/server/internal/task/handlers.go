@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"time"
@@ -12,6 +13,9 @@ import (
 	"github.com/schro-cat-dev/sentinel-server/internal/domain"
 	"github.com/schro-cat-dev/sentinel-server/internal/notify"
 )
+
+// maxWebhookResponseBytes はwebhookレスポンスの読み取り上限（DoS防止）
+const maxWebhookResponseBytes = 1024 * 1024 // 1MB
 
 // PipelineKiller はKILL_SWITCHハンドラが使うインターフェース
 type PipelineKiller interface {
@@ -105,7 +109,19 @@ type WebhookPayload struct {
 // タスクの targetEndpoint に JSON ペイロードを POST する。
 func NewExternalWebhookHandler(client *http.Client) TaskHandler {
 	if client == nil {
-		client = &http.Client{Timeout: 10 * time.Second}
+		client = &http.Client{
+			Timeout: 10 * time.Second,
+			// Prevent SSRF via redirect: validate each redirect target
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if len(via) >= 5 {
+					return fmt.Errorf("too many redirects")
+				}
+				if err := notify.ValidateWebhookURL(req.URL.String()); err != nil {
+					return fmt.Errorf("redirect blocked (SSRF prevention): %w", err)
+				}
+				return nil
+			},
+		}
 	}
 
 	return func(t domain.GeneratedTask) error {
@@ -155,6 +171,8 @@ func NewExternalWebhookHandler(client *http.Client) TaskHandler {
 			return fmt.Errorf("EXTERNAL_WEBHOOK: request failed: %w", err)
 		}
 		defer resp.Body.Close()
+		// Drain response body with size limit to prevent DoS and allow connection reuse
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxWebhookResponseBytes))
 
 		if resp.StatusCode >= 400 {
 			slog.Error("EXTERNAL_WEBHOOK bad response", "taskId", t.TaskID, "status", resp.StatusCode)
