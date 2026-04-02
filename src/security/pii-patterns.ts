@@ -7,6 +7,11 @@
  * パターンはフラグなしで定義し、利用側で用途に応じたフラグを付与する:
  * - マスキング: global (/g) フラグ付きで replace() に使用
  * - 検出: フラグなしで test() に使用
+ *
+ * **不変条件**: 全パターンの最短マッチ長は3文字以上であること。
+ * isPiiSafe() は length < 3 の入力をパターンマッチせずスキップするため、
+ * 2文字以下でマッチするパターンを追加すると偽陰性が発生する。
+ * @see src/security/pii-context-masker.ts — isPiiSafe()
  */
 
 import type { PiiCategory } from "../configs/masking-rule";

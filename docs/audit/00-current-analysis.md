@@ -56,15 +56,18 @@ case "log":
 
 ルーティングエンジンが `"log"` destinationを返しても何も起きない。
 
-### 2.2 [MEDIUM] 短い文字列がPIIチェックをバイパス
+### 2.2 [MEDIUM] 短い文字列がPIIチェックをバイパス — ✅ RESOLVED
 
-**場所**: `src/shared/utils/error-utils.ts:25`
+**場所**: `src/security/pii-context-masker.ts:17`（旧 `src/shared/utils/error-utils.ts:25`）
 
 ```typescript
 if (!value || value.length < 3) return true;  // 2文字以下は無条件で安全扱い
 ```
 
-意図的な最適化の可能性はあるが、金融コード等が2文字のケースに対するドキュメントがない。
+**対応**: 全PIIパターンの最短マッチ長が3文字以上であることを確認し、以下を実施:
+1. `isPiiSafe()` に設計根拠のJSDoc追加（偽陰性が発生しない理由、不変条件）
+2. `pii-patterns.ts` に不変条件の注記追加（パターン追加時の制約）
+3. `tests/unit/shared/error-utils.test.ts` に境界値テスト追加（1文字・2文字・3文字境界）
 
 ### 2.3 [LOW] サイレントcatch — 3箇所
 

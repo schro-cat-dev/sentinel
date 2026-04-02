@@ -1,7 +1,7 @@
 # インスタンス管理 詳細監査報告
 
 ```yaml
-audited_at: "2026-04-01"
+audited_at: "2026-04-02"
 scope: Sentinel singleton lifecycle, mutable state, concurrency, GC
 ```
 
@@ -20,11 +20,12 @@ initialize(config)
   └→ Sentinel.instance = new instance
 
 shutdown()
-  ├→ transport.close()                       ← 非冪等の可能性
+  ├→ if (isShutdown) return                  ← 冪等性ガード (3.2 対応済み)
+  ├→ isShutdown = true
+  ├→ transport.close()                       ← try/catch でベストエフォート
   ├→ taskExecutor.clearHandlers()            ← handlers + confirmHandler クリア
-  ├→ Sentinel.instance = null
-  └→ [未実装] signer.resetChain()
-      [未実装] config参照の明示的解放
+  ├→ engine.resetState()                     ← signer.resetChain() + lastProcessedLog null化 + errorRouter.shutdown()
+  └→ Sentinel.instance = null
 
 reset() [テスト用]
   ├→ 環境チェック → 非test/localで警告
@@ -37,9 +38,9 @@ reset() [テスト用]
 | コンポーネント | 可変状態 | 保護 | GC | shutdown時 |
 |---------------|---------|------|-----|-----------|
 | Sentinel | instance (static) | — | null代入 | null化 |
-| IngestionEngine | chainLock | Promise mutex | GC | 未対応 |
-| IngestionEngine | lastProcessedLog | — | 上書き | 未対応 |
-| IntegritySigner | previousHash | chainLock内 | GC | resetChain()未呼出 |
+| IngestionEngine | chainLock | Promise mutex | GC | resetState()でリセット |
+| IngestionEngine | lastProcessedLog | — | 上書き | resetState()でnull化 |
+| IntegritySigner | previousHash | chainLock内 | GC | resetState()→resetChain()で解放 |
 | TaskExecutor | handlers Map | — | clear() | clearHandlers()で解放 |
 | TaskExecutor | confirmHandler | — | undefined | clearHandlers()で解放 |
 | TaskGenerator | ruleIndex Map | 構築後不変 | GC | 未対応（不要） |
@@ -49,27 +50,22 @@ reset() [テスト用]
 
 ## 3. 問題と修正方針
 
-### 3.1 shutdown()の完全性
+### 3.1 shutdown()の完全性 — ✅ 対応済み
 
-**現状**: handlers/confirmHandlerクリア、instance null化。signerリセット漏れ。
-**修正**: shutdown()にsigner.resetChain()追加。engineへのresetメソッド公開。
+`engine.resetState()` により `signer.resetChain()` + `lastProcessedLog` null化 + `errorRouter.shutdown()` を実行。
 
-### 3.2 shutdown()の冪等性
+### 3.2 shutdown()の冪等性 — ✅ 対応済み
 
-**現状**: 二重呼出しでtransport.close()が2回実行される。
-**修正**: `private shuttingDown = false` フラグで二重呼出し防止。
+`private isShutdown = false` フラグで二重呼出し防止。`if (this.isShutdown) return;` ガード。
 
-### 3.3 config凍結
+### 3.3 config凍結 — ✅ 対応済み
 
-**現状**: configオブジェクトは参照渡し。外部からの変更が内部に影響。
-**修正**: initialize()でconfig, taskRules[], detectionRules[], masking.rules[]をdeep freeze。
+`Sentinel.deepFreeze(config)` でコンストラクタ内でdeep freeze。classインスタンス（Sink等）はfreeze対象外。
 
-### 3.4 ハンドラ蓄積上限
+### 3.4 ハンドラ蓄積上限 — ✅ 対応済み
 
-**現状**: registerHandler()がpush()のみ。同一actionTypeに無制限追加。
-**修正**: actionType当たりの上限（デフォルト10）を設け、超過時に警告。
+`warnIfTooManyHandlers()` で actionType あたり `MAX_HANDLERS_PER_ACTION = 10` 超過時に警告。
 
-### 3.5 onError例外の記録
+### 3.5 onError例外の記録 — ✅ 対応済み
 
-**現状**: `catch { /* */ }` で完全無視。
-**修正**: console.errorへのフォールバック出力。
+`emitSafe()` + `errorRouter` のダブルフェイル保護で `console.error` フォールバック。

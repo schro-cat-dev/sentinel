@@ -1,8 +1,8 @@
 # 機能の実装状況・TODO追跡
 
 ```yaml
-analyzed_at: "2026-04-01"
-based_on: "b14d263"
+analyzed_at: "2026-04-02"
+based_on: "9d6b74e"
 status: current
 ```
 
@@ -12,23 +12,23 @@ status: current
 |------|---------|---------|---------|
 | デジタル署名 (`signature`) | log.ts:63 | 未実装。パススルーのみ | GAP |
 | 署名鍵選択 (`signingKeyId`) | sentinel-config.ts:28 | 未実装 | GAP |
-| Worker Thread通信 (`WorkerToMainMessage`) | event.ts:59-71 | 未実装。型定義のみ | DEAD |
-| `AI_ACTION_REQUIRED` イベント | event.ts:37-41 | 型は存在するが検知ルールなし | GAP |
-| `RemoteTransport.healthCheck()` | transport.ts:36 | 宣言のみ。SDK内で未呼出 | GAP |
-| `RemoteTransport.close()` | transport.ts:40 | 宣言のみ。SDK内で未呼出 | GAP |
-| `SEMI_AUTO` 実行レベル | task-executor.ts:70-71 | `AUTO` と同じ動作。区別なし | GAP |
-| `guardrails.timeoutMs` | task.ts:49 | 必須フィールドだが未使用 | GAP |
+| Worker Thread通信 (`WorkerToMainMessage`) | — | ✅ 削除済み（DEAD-02） | DONE |
+| `AI_ACTION_REQUIRED` イベント | event.ts:37-41 | ✅ event-detector.ts:103 で検知ルール実装済み（DEAD-04） | OK |
+| `RemoteTransport.healthCheck()` | transport.ts:36 | optional インターフェース。SDK内で未呼出（利用者実装依存） | GAP |
+| `RemoteTransport.close()` | transport.ts:40 | ✅ shutdown() で `transport?.close?.()` として呼出済み | OK |
+| `SEMI_AUTO` 実行レベル | task-executor.ts:124-132 | ✅ TaskConfirmHandler で確認フロー実装済み（API-02） | OK |
+| `guardrails.timeoutMs` | task.ts:49 | ✅ task-executor.ts:143-155 で Promise.race() により実装済み | OK |
 | `guardrails.maxRetries` | task.ts:50 | 必須フィールドだが未使用 | GAP |
 
 ## ソース内 TODO 一覧
 
 | ファイル | 行 | 内容 | 優先度 |
 |---------|---|------|--------|
-| log.ts | 53 | `traceInfo?: string; // TODO 仮` | LOW |
-| log.ts | 56 | `details?: string; // TODO cooperate AI agent` | MEDIUM |
-| log.ts | 60 | `resourceIds?: string[]; // TODO 影響がある口座などの関連情報` | LOW |
-| log.ts | 69 | `actionType: string; // TODO "analyze", "alert", "remediate"` | LOW |
-| log.ts | 72 | `output?: unknown; // TODO AI出力` | LOW |
+| log.ts | 54 | `traceInfo?: string; // TODO 仮` | LOW |
+| log.ts | 57 | ✅ `details?: Record<string, string>` に変更済み（Proto互換） | DONE |
+| log.ts | 61 | `resourceIds?: string[]; // TODO 影響がある口座などの関連情報` | LOW |
+| log.ts | 70 | `actionType: string; // TODO "analyze", "alert", "remediate"` | LOW |
+| log.ts | 73 | ✅ `output?: AIAgentOutput` に型定義済み | DONE |
 | error-utils.ts | 5 | `TODO 対象追加。PII検出正規表現（国際対応）` | NA (dead code) |
 | error-payload-protocol.ts | 7 | `TODO di堅牢化（ホワイトリスト管理）` | NA (dead code) |
 
@@ -36,15 +36,16 @@ status: current
 
 | エクスポート | index.ts行 | 利用者に必要か | 備考 |
 |-------------|-----------|--------------|------|
-| `SystemEventName` | 161 | ⚠ | 利用者は検知結果にアクセスできない（IngestionResultに含まれない） |
-| `DetectionResult` | 161 | ⚠ | 同上 |
-| `TaskSeverity` | 158 | ✅ | taskRules定義に必要 |
-| `TaskExecutionLevel` | 165 | ✅ | taskRules定義に必要 |
+| `SystemEventName` | 355 | ✅ | IngestionResult.detection.eventName の型として必要 |
+| `DetectionResult` | 355 | ✅ | DetectionRule 定義に必要 |
+| `TaskSeverity` | 352 | ✅ | taskRules定義に必要 |
+| `TaskExecutionLevel` | 353 | ✅ | taskRules定義に必要 |
 | その他全て | — | ✅ | SDK利用に必要 |
 
 ## IngestionResult の情報不足
 
-`IngestionResult` は `{ traceId, hashChainValid, tasksGenerated, masked }` を返すが:
-- 処理済みログオブジェクト自体は返されない（`onLogProcessed` callback経由のみ）
-- どのイベントが検知されたかは返されない
+`IngestionResult` は `{ traceId, hashChainValid, tasksGenerated, masked, detection, transportError? }` を返す。
+
+- ✅ `detection` フィールド追加済み（eventName + priority）（OBS-02）
+- 処理済みログオブジェクト自体は返されない（`onLogProcessed` callback経由のみ — 設計上の意図）
 - マスキングで何が除去されたかは返されない
