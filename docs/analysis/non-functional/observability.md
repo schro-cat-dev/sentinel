@@ -1,61 +1,38 @@
 # 可観測性・ログ・メトリクス
 
 ```yaml
-analyzed_at: "2026-04-01"
-based_on: "b14d263"
+analyzed_at: "2026-04-02"
+based_on: "7bf6f11"
 status: current
 ```
 
 ## 所見一覧
 
-### O-1: ログ・メトリクス基盤が存在しない [HIGH]
+### O-1: ログ・メトリクス基盤が存在しない — ✅ 対応済み (OBS-03)
 
-SDK全体で構造化ログ出力がゼロ。唯一のログは:
-- `masking-service.ts:183` — `console.warn` でマスキングルール失敗
-- `error-utils.ts:134` — `console.error` で監査ログ（dead code）
+`SentinelLogger` インターフェースを導入済み（`sentinel-config.ts:12-15`）。`config.logger` でDI可能。
+`SentinelMetrics` / `SentinelTracer` インターフェースも追加済み。パイプラインの各ステージでメトリクス・トレーシング出力が可能。
 
-利用者が観測できない項目:
-- パイプラインの各ステージのレイテンシ
-- ルールマッチ率
-- ハッシュチェーン長・整合性
-- エラー率（カテゴリ別）
-- マスキングされたフィールド数
+### O-2: エラーの無言swallow — ✅ 対応済み (OBS-01)
 
-**改善案:** SDKレベルのロガーインターフェースを導入し、利用者が注入可能にする:
-```typescript
-interface SentinelLogger {
-  debug(msg: string, ctx?: Record<string, unknown>): void;
-  warn(msg: string, ctx?: Record<string, unknown>): void;
-  error(msg: string, ctx?: Record<string, unknown>): void;
-}
-```
+`onError` コールバック + `ErrorRouter` + `ConsoleAuditSink` により構造化出力。`emitSafe` でのswallowも `errorRouter` 経由で記録される。
 
-### O-2: エラーの無言swallow [HIGH]
+### O-3: onTaskGenerated / onTaskDispatched が未接続 — ✅ 対応済み (BUG-03/04)
 
-| 箇所 | コード | 影響 |
-|------|--------|------|
-| index.ts:123 | `catch { }` (dualモードremote失敗) | 利用者はリモート障害を知る手段がない |
-| ingestion-engine.ts:117 | `catch { }` (onLogProcessed例外) | コールバックの不具合が検出不能 |
+`ingestion-engine.ts:159-161` で `emitSafe` 経由でコールバック呼出実装済み。
 
-**改善案:** swallow時にオプショナルなエラーコールバック (`onError?`) を呼ぶ。
+### O-4: エラーが構造化されていない — ✅ 対応済み (O-4)
 
-### O-3: onTaskGenerated / onTaskDispatched が未接続 [MEDIUM]
-
-`SentinelConfig` に宣言されたコールバックが呼ばれないため、利用者はタスク生成・ディスパッチのイベントを観測できない。`IngestionResult.tasksGenerated` からディスパッチ結果は取れるが、生成時のフックがない。
-
-### O-4: エラーが構造化されていない [MEDIUM]
-
-`ValidationError` は `field` プロパティを持つが、パイプライン内部のエラー（`LogNormalizer` の `new Error(...)` など）はプレーンな `Error` オブジェクト。`ErrorPayloadProtocol` が `shared/errors/` に定義されているが未使用。
+`SentinelError(layer, operation, cause)` を導入。パイプライン内部エラーは構造化済み。`ErrorPayloadProtocol` は `ConsoleAuditSink` 経由でパイプラインに接続済み。
 
 ## IngestionResult の情報量
 
 現在の返却値:
 ```typescript
-{ traceId, hashChainValid, tasksGenerated, masked }
+{ traceId, hashChainValid, tasksGenerated, masked, detection, transportError? }
 ```
 
-不足している情報:
-- 処理済みログオブジェクト
-- 検知されたイベント（eventName, priority）
-- マスキング適用レポート
-- パイプライン処理時間
+- ✅ `detection` フィールド追加済み（eventName + priority）（OBS-02）
+- 処理済みログオブジェクトは `onLogProcessed` callback 経由（設計上の意図）
+- マスキング適用レポート — 未実装
+- パイプライン処理時間 — `tracer.onPipelineEnd` で提供

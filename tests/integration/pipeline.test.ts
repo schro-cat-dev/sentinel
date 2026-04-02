@@ -6,10 +6,10 @@ import { Log } from "../../src/types/log";
 import { createTestTaskRule } from "../helpers/fixtures";
 
 /**
- * End-to-end integration tests for the v1 pipeline:
+ * End-to-end integration tests for the pipeline:
  * ingest → normalize → mask → hash-chain → detect → generate task → dispatch
  */
-describe("Sentinel v1 Pipeline Integration", () => {
+describe("Sentinel Pipeline Integration", () => {
     let config: SentinelConfig;
 
     const taskRules: TaskRule[] = [
