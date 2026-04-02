@@ -42,7 +42,7 @@ last_updated: "2026-04-02T14:30:00Z"
 | API-02 | SEMI_AUTO=AUTO | ✅ TaskConfirmHandler |
 | API-03 | timeoutMs未実装 | ✅ TaskExecutor実装 |
 | API-04 | shutdown()なし | ✅ Sentinel.shutdown() |
-| CFG-01 | projectName未消費 | ⚠ NA — メタデータ保持（intentional） |
+| CFG-01 | projectName未消費 | ✅ Proto project_name でサーバ送信+永続化 |
 | CFG-02 | environment条件分岐 | ✅ logger抑制 |
 | INT-01 | MaskingServiceインスタンス | ✅ 除去 |
 | INT-02 | ILogNormalizer未活用 | ✅ constructorで使用 |
@@ -101,15 +101,14 @@ last_updated: "2026-04-02T14:30:00Z"
 |--------|------|--------|---------|----------|------|
 | P0 | 4 | 4 | 0 | 0 | |
 | P1 | 6 | 6 | 0 | 0 | |
-| P2 | 14 | 13 | 0 | 1 | CFG-01: 意図的NA |
+| P2 | 14 | 14 | 0 | 0 | |
 | P3 | 9 | 7 | 0 | 2 | DEAD-03: 鍵管理, MT-02: I-prefix(NA) |
 | 耐障害性/可観測性 | 5 | 5 | 0 | 0 | |
 | SDK↔Server連携 | 6 | 6 | 0 | 0 | |
 | Go | 5 | 5 | 0 | 0 | |
-| **合計** | **49** | **46** | **0** | **3** | |
+| **合計** | **49** | **47** | **0** | **2** | |
 
-**残り3件の保留理由:**
-- CFG-01: 意図的NA — projectNameはメタデータ保持（ルーティング利用は将来拡張）
+**残り2件の保留理由:**
 - DEAD-03: signature/signingKeyId — 公開鍵署名は将来実装（HMACチェーンで改竄検知は対応済み）
 - MT-02: I-prefix不統一 — `IIngestionCoordinator` / `ILogNormalizer` の2件のみ。実害なし（NA）
 
