@@ -108,11 +108,18 @@ AgentBridge に既にループ検知がある（MaxLoopDepth=5）。安全な理
 
 ### E2E テスト（server-config-matrix.test.ts に追加）
 
-- ESCALATE: タスクルール設定 → ログ投入 → dispatched 確認
-- SYSTEM_NOTIFICATION: 同上
-- EXTERNAL_WEBHOOK: httptest サーバ → ログ投入 → webhook 受信確認
-- KILL_SWITCH: ログ投入 → kill_switch 発火 → 次の Ingest が拒否される → 自動回復後に再び受付
-- reIngest: AI_ANALYZE 設定 → ログ投入 → エージェント実行 → reIngest されたログが永続化されている
+- [x] ESCALATE: タスクルール設定 → ログ投入 → dispatched 確認
+- [x] SYSTEM_NOTIFICATION: 同上
+- [x] KILL_SWITCH: ログ投入 → kill_switch 発火 → 次の Ingest が拒否される → 3秒後自動回復 → 再び受付確認
+
+### テストカバレッジの限界（本番投入前に要実環境テスト）
+
+| 項目 | 理由 | 本番での確認方法 |
+|---|---|---|
+| EXTERNAL_WEBHOOK の実 HTTP 送信 | ValidateWebhookURL が loopback/プライベートIP を拒否するため、E2E テスト環境（localhost）では実リクエストが送れない。Go ユニットテストでもhttptest.TLSServer は 127.0.0.1 なので同様 | 実際の外部 webhook エンドポイント（HTTPS, パブリックIP）でテスト |
+| Slack/Discord/Gmail の実送信 | テスト環境にクレデンシャルがない。LogNotifier（ログ出力）がフォールバックとして動作している | 実 webhook URL / SMTP 設定を入れて通知到達を確認 |
+| reIngest の AI 分析→再投入フロー | AI プロバイダが MockProvider（固定レスポンス）のため、実際の分析内容に基づく再投入は模擬的 | 実 LLM プロバイダ（OpenAI/Anthropic）を接続してフロー全体を確認 |
+| EXTERNAL_WEBHOOK リダイレクト防止 | CheckRedirect のコードは実装済みだが、実際にリダイレクトするサーバでの E2E テストは未実施 | ステージング環境でリダイレクト→ブロック動作を確認 |
 
 ## 拡張の可能性
 
