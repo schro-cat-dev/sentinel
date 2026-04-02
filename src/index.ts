@@ -16,6 +16,12 @@ import { WhitelistRegistry } from "./validation/whitelist-registry";
 import { ErrorRouter } from "./error-routing/error-router";
 import { CircuitBreaker } from "./transport/circuit-breaker";
 import { SentinelError } from "./errors/sentinel-error";
+import type {
+    ServerManagementTransport,
+    ApproveTaskResult, RejectTaskResult,
+    TaskStatusResult, TaskListFilter, TaskListResult,
+    PendingBlockInfo, ApproveBlockResult, RejectBlockResult,
+} from "./transport/server-management-transport";
 import { createTaskTransportsFromConfig } from "./transport/task-transport-factory";
 
 /**
@@ -33,6 +39,13 @@ export interface SentinelOptions {
      * @see docs/design/task-transport.md
      */
     taskTransports?: TaskTransport[];
+
+    /**
+     * Server管理トランスポート（Phase 3）。
+     * タスク承認/拒否、タスク状態クエリ、ブロック管理を Server 経由で実行する。
+     * integration.taskApprovalEnabled / taskStatusEnabled で有効化。
+     */
+    management?: ServerManagementTransport;
 }
 
 /**
@@ -52,6 +65,7 @@ export class Sentinel {
     private isShutdown = false;
     private activeIngests = 0;
     private readonly circuitBreaker?: CircuitBreaker;
+    private readonly management?: ServerManagementTransport;
 
     private constructor(config: SentinelConfig, registry?: WhitelistRegistry, options?: SentinelOptions) {
         this.config = Sentinel.deepFreeze(config);
@@ -90,6 +104,9 @@ export class Sentinel {
         if (this.transportConfig.transport && this.transportConfig.circuitBreaker !== undefined) {
             this.circuitBreaker = new CircuitBreaker(this.transportConfig.circuitBreaker);
         }
+
+        // Phase 3: Server管理トランスポート
+        this.management = options?.management;
 
         this.initialized = true;
     }
@@ -315,6 +332,56 @@ export class Sentinel {
         this.taskExecutor.clearHandlers();
     }
 
+    // ========== Phase 3: Server Management API ==========
+
+    private ensureManagement(feature: string): ServerManagementTransport {
+        if (this.isShutdown) throw new Error("Sentinel is shutdown. Cannot use management API after shutdown.");
+        if (!this.management) throw new Error("ServerManagementTransport is not configured. Provide it via SentinelOptions.management.");
+        return this.management;
+    }
+
+    /** タスクを承認 (Phase 3-B) */
+    public async approveTask(taskId: string, approverId: string, reason: string): Promise<ApproveTaskResult> {
+        if (!this.config.integration?.taskApprovalEnabled) throw new Error("Task approval is not enabled. Set integration.taskApprovalEnabled: true.");
+        return this.ensureManagement("approveTask").approveTask(taskId, approverId, reason);
+    }
+
+    /** タスクを拒否 (Phase 3-B) */
+    public async rejectTask(taskId: string, rejectorId: string, reason: string): Promise<RejectTaskResult> {
+        if (!this.config.integration?.taskApprovalEnabled) throw new Error("Task approval is not enabled. Set integration.taskApprovalEnabled: true.");
+        return this.ensureManagement("rejectTask").rejectTask(taskId, rejectorId, reason);
+    }
+
+    /** タスク状態取得 (Phase 3-D) */
+    public async getTaskStatus(taskId: string): Promise<TaskStatusResult> {
+        if (!this.config.integration?.taskStatusEnabled) throw new Error("Task status query is not enabled. Set integration.taskStatusEnabled: true.");
+        return this.ensureManagement("getTaskStatus").getTaskStatus(taskId);
+    }
+
+    /** タスクリスト取得 (Phase 3-D) */
+    public async listTasks(filter: TaskListFilter): Promise<TaskListResult> {
+        if (!this.config.integration?.taskStatusEnabled) throw new Error("Task status query is not enabled. Set integration.taskStatusEnabled: true.");
+        return this.ensureManagement("listTasks").listTasks(filter);
+    }
+
+    /** 保留中ブロック一覧 (Phase 3-B) */
+    public async listPendingBlocks(): Promise<PendingBlockInfo[]> {
+        if (!this.config.integration?.taskApprovalEnabled) throw new Error("Task approval is not enabled. Set integration.taskApprovalEnabled: true.");
+        return this.ensureManagement("listPendingBlocks").listPendingBlocks();
+    }
+
+    /** ブロック承認 (Phase 3-B) */
+    public async approveBlock(blockId: string, approverId: string): Promise<ApproveBlockResult> {
+        if (!this.config.integration?.taskApprovalEnabled) throw new Error("Task approval is not enabled. Set integration.taskApprovalEnabled: true.");
+        return this.ensureManagement("approveBlock").approveBlock(blockId, approverId);
+    }
+
+    /** ブロック拒否 (Phase 3-B) */
+    public async rejectBlock(blockId: string, rejectorId: string): Promise<RejectBlockResult> {
+        if (!this.config.integration?.taskApprovalEnabled) throw new Error("Task approval is not enabled. Set integration.taskApprovalEnabled: true.");
+        return this.ensureManagement("rejectBlock").rejectBlock(blockId, rejectorId);
+    }
+
     /**
      * SEMI_AUTO タスクの確認ハンドラを設定
      * handler が false を返すと blocked_approval になる
@@ -460,6 +527,12 @@ export type { SystemEventName, DetectionResult, DetectionRule, DetectionRuleCond
 export type { TaskDispatchHandler, TaskConfirmHandler } from "./core/task/task-executor";
 export type { SentinelLogger, SentinelMetrics, SentinelTracer } from "./configs/sentinel-config";
 export type { RemoteTransport, TransportMode, TransportConfig } from "./transport/transport";
+export type {
+    ServerManagementTransport,
+    ApproveTaskResult, RejectTaskResult,
+    TaskStatusResult, TaskListFilter, TaskListResult,
+    PendingBlockInfo, ApproveBlockResult, RejectBlockResult,
+} from "./transport/server-management-transport";
 export type { TaskTransport, TaskTransportResult } from "./transport/task-transport";
 export type { TaskTransportConfig, TaskTransportType } from "./configs/sentinel-config";
 export { TASK_TRANSPORT_TYPES } from "./configs/sentinel-config";
