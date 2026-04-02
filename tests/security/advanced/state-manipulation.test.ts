@@ -347,7 +347,7 @@ describe("State Manipulation: Handler Manipulation", () => {
         expect(called).toBe(false);
     });
 
-    it("first handler throws, second handler is NOT executed (sequential execution)", async () => {
+    it("first handler throws, second handler IS still executed (R-2: failure isolation)", async () => {
         const order: string[] = [];
 
         executor.registerHandler("SYSTEM_NOTIFICATION", () => {
@@ -359,8 +359,9 @@ describe("State Manipulation: Handler Manipulation", () => {
             order.push("second");
         });
 
-        await executor.dispatch(createAutoTask());
-        expect(order).toEqual(["first"]);
+        const result = await executor.dispatch(createAutoTask());
+        expect(order).toEqual(["first", "second"]);
+        expect(result.status).toBe("failed");
     });
 });
 

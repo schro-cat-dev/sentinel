@@ -4,7 +4,7 @@
 analyzed_at: "2026-04-01"
 based_on: "pending commit"
 status: current
-last_updated: "2026-04-02T13:30:00Z"
+last_updated: "2026-04-02T14:30:00Z"
 ```
 
 ## 全項目ステータス
@@ -62,6 +62,16 @@ last_updated: "2026-04-02T13:30:00Z"
 | TEST-02 | normalizeOnly()テスト | ✅ |
 | TEST-03 | mutex検証 | ✅ |
 
+### 耐障害性・可観測性 — 全5件完了
+
+| ID | 問題 | ステータス |
+|----|------|-----------|
+| R-2 | ハンドラ失敗で後続中断 | ✅ 全ハンドラ実行+エラー集約 |
+| R-4 | サーキットブレーカーなし | ✅ CircuitBreaker（閾値+cooldown+half-open） |
+| R-5 | normalizeOnly/transport混同 | ✅ try分離 |
+| MEM-01ext | removeHandlers未公開 | ✅ Sentinel.removeHandlers/clearHandlers |
+| O-4 | 内部エラー非構造化 | ✅ SentinelError(layer, operation, cause) |
+
 ### Go Server — 全5件完了
 
 | ID | 問題 | ステータス |
@@ -82,14 +92,13 @@ last_updated: "2026-04-02T13:30:00Z"
 | P1 | 6 | 6 | 0 | |
 | P2 | 14 | 13 | 1 | CFG-01: 意図的NA |
 | P3 | 9 | 8 | 1 | DEAD-03: 鍵管理設計必要 |
+| 耐障害性/可観測性 | 5 | 5 | 0 | |
 | Go | 5 | 5 | 0 | |
-| **合計** | **38** | **36** | **2** | |
+| **合計** | **43** | **41** | **2** | |
 
-**残り6件の保留理由:**
-- OBS-03: ロガーI/Fは利用者のログ基盤との統合設計が必要
-- API-02: SEMI_AUTOはServer側の承認フロー実装待ち
-- CFG-01/02: 設計上の意図的NA（projectNameはメタデータ、environmentは利用者判断）
-- DEAD-03/04: ロードマップ項目として保持（型定義はAPIの将来拡張ポイント）
+**残り2件の保留理由:**
+- CFG-01: 意図的NA — projectNameはメタデータ保持（消費ロジック不要）
+- DEAD-03: signature/signingKeyId — 鍵管理の設計が必要（ロードマップ）
 
 ---
 

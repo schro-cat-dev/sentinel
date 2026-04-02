@@ -74,6 +74,17 @@ export interface TransportConfig {
     timeoutMs?: number;
 
     /**
+     * サーキットブレーカー設定（R-4）
+     * 連続失敗時にtransport送信を一時停止し、cooldown後に再試行する。
+     */
+    circuitBreaker?: {
+        /** open に遷移するまでの連続失敗数（デフォルト: 5） */
+        failureThreshold?: number;
+        /** open 状態の冷却期間（ミリ秒、デフォルト: 30000） */
+        cooldownMs?: number;
+    };
+
+    /**
      * TLS/mTLS設定（gRPC transport実装に渡す）
      * SDKはzero-depのため証明書の読み込み・接続はtransport実装側の責務。
      */

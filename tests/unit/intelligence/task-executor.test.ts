@@ -142,7 +142,7 @@ describe("TaskExecutor", () => {
             const result = await executor.dispatch(task);
 
             expect(result.status).toBe("failed");
-            expect(result.error).toBe("handler failed");
+            expect(result.error).toContain("handler failed");
         });
 
         it("returns failed status when async handler rejects", async () => {
@@ -154,7 +154,66 @@ describe("TaskExecutor", () => {
             const result = await executor.dispatch(task);
 
             expect(result.status).toBe("failed");
-            expect(result.error).toBe("async failure");
+            expect(result.error).toContain("async failure");
+        });
+    });
+
+    describe("handler failure isolation (R-2)", () => {
+        it("executes all handlers even if first one fails", async () => {
+            const handler1 = vi.fn(() => { throw new Error("handler1 fail"); });
+            const handler2 = vi.fn();
+            const handler3 = vi.fn();
+            executor.registerHandler("SYSTEM_NOTIFICATION", handler1);
+            executor.registerHandler("SYSTEM_NOTIFICATION", handler2);
+            executor.registerHandler("SYSTEM_NOTIFICATION", handler3);
+
+            const task = createGeneratedTask();
+            const result = await executor.dispatch(task);
+
+            expect(handler1).toHaveBeenCalledTimes(1);
+            expect(handler2).toHaveBeenCalledTimes(1);
+            expect(handler3).toHaveBeenCalledTimes(1);
+            expect(result.status).toBe("failed");
+            expect(result.error).toContain("handler1 fail");
+        });
+
+        it("executes all handlers even if middle one fails", async () => {
+            const handler1 = vi.fn();
+            const handler2 = vi.fn(async () => { throw new Error("handler2 fail"); });
+            const handler3 = vi.fn();
+            executor.registerHandler("SYSTEM_NOTIFICATION", handler1);
+            executor.registerHandler("SYSTEM_NOTIFICATION", handler2);
+            executor.registerHandler("SYSTEM_NOTIFICATION", handler3);
+
+            const task = createGeneratedTask();
+            const result = await executor.dispatch(task);
+
+            expect(handler1).toHaveBeenCalledTimes(1);
+            expect(handler2).toHaveBeenCalledTimes(1);
+            expect(handler3).toHaveBeenCalledTimes(1);
+            expect(result.status).toBe("failed");
+        });
+
+        it("aggregates multiple handler errors", async () => {
+            executor.registerHandler("SYSTEM_NOTIFICATION", () => { throw new Error("err1"); });
+            executor.registerHandler("SYSTEM_NOTIFICATION", () => { throw new Error("err2"); });
+            executor.registerHandler("SYSTEM_NOTIFICATION", vi.fn());
+
+            const task = createGeneratedTask();
+            const result = await executor.dispatch(task);
+
+            expect(result.status).toBe("failed");
+            expect(result.error).toContain("err1");
+            expect(result.error).toContain("err2");
+        });
+
+        it("returns dispatched when all handlers succeed", async () => {
+            executor.registerHandler("SYSTEM_NOTIFICATION", vi.fn());
+            executor.registerHandler("SYSTEM_NOTIFICATION", vi.fn());
+
+            const task = createGeneratedTask();
+            const result = await executor.dispatch(task);
+            expect(result.status).toBe("dispatched");
         });
     });
 

@@ -1,4 +1,5 @@
 import { GeneratedTask, TaskResult, TaskDispatchStatus } from "../../types/task";
+import { SentinelError } from "../../errors/sentinel-error";
 
 /**
  * タスクディスパッチハンドラの型
@@ -147,7 +148,7 @@ export class TaskExecutor {
             try {
                 const handlerPromise = this.invokeHandlers(task);
                 const timeoutPromise = new Promise<never>((_, reject) => {
-                    timer = setTimeout(() => reject(new Error(`Task handler timeout after ${timeoutMs}ms`)), timeoutMs);
+                    timer = setTimeout(() => reject(new SentinelError("task", "timeout", `Task handler timeout after ${timeoutMs}ms`)), timeoutMs);
                 });
                 await Promise.race([handlerPromise, timeoutPromise]);
             } finally {
@@ -167,8 +168,22 @@ export class TaskExecutor {
             return;
         }
 
+        // R-2: Execute all handlers, collect errors, don't stop on first failure
+        const errors: Error[] = [];
         for (const handler of handlers) {
-            await handler(task);
+            try {
+                await handler(task);
+            } catch (e) {
+                errors.push(e instanceof Error ? e : new Error(String(e)));
+            }
+        }
+        if (errors.length > 0) {
+            throw new SentinelError(
+                "task",
+                "invokeHandlers",
+                errors.map((e) => e.message).join("; "),
+                errors[0],
+            );
         }
     }
 }

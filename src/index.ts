@@ -13,6 +13,8 @@ import { validateLogInput, ValidationError } from "./validation/log-validator";
 import { validateConfigWhitelists } from "./validation/config-validator";
 import { WhitelistRegistry } from "./validation/whitelist-registry";
 import { ErrorRouter } from "./error-routing/error-router";
+import { CircuitBreaker } from "./transport/circuit-breaker";
+import { SentinelError } from "./errors/sentinel-error";
 
 /**
  * SentinelOptions はSentinel初期化時のオプション
@@ -39,6 +41,7 @@ export class Sentinel {
     private readonly whitelistRegistry?: WhitelistRegistry;
     private initialized = false;
     private isShutdown = false;
+    private readonly circuitBreaker?: CircuitBreaker;
 
     private constructor(config: SentinelConfig, registry?: WhitelistRegistry, options?: SentinelOptions) {
         this.config = Sentinel.deepFreeze(config);
@@ -65,6 +68,11 @@ export class Sentinel {
             taskExecutor: this.taskExecutor,
             errorRouter,
         });
+
+        // R-4: サーキットブレーカー初期化（remote/dual transport使用時のみ）
+        if (this.transportConfig.transport && this.transportConfig.circuitBreaker !== undefined) {
+            this.circuitBreaker = new CircuitBreaker(this.transportConfig.circuitBreaker);
+        }
 
         this.initialized = true;
     }
@@ -154,8 +162,10 @@ export class Sentinel {
         const mode = this.transportConfig.mode;
 
         if (mode === "remote" && this.transportConfig.transport) {
+            // R-5: Separate normalize errors from transport errors
+            // Normalize failure is a pipeline error — should not be classified as transportError
+            const normalized = this.engine.normalizeOnly(log);
             try {
-                const normalized = this.engine.normalizeOnly(log);
                 return await this.sendWithTimeout(normalized);
             } catch (err) {
                 if (this.transportConfig.fallbackToLocal) {
@@ -231,6 +241,20 @@ export class Sentinel {
     }
 
     /**
+     * 指定アクションタイプのハンドラを全て解除 (MEM-01ext)
+     */
+    public removeHandlers(actionType: string): void {
+        this.taskExecutor.removeHandlers(actionType);
+    }
+
+    /**
+     * 全ハンドラを解除 (MEM-01ext)
+     */
+    public clearHandlers(): void {
+        this.taskExecutor.clearHandlers();
+    }
+
+    /**
      * SEMI_AUTO タスクの確認ハンドラを設定
      * handler が false を返すと blocked_approval になる
      */
@@ -285,6 +309,11 @@ export class Sentinel {
      * Transport送信 + タイムアウト
      */
     private async sendWithTimeout(log: Log): Promise<IngestionResult> {
+        // R-4: サーキットブレーカーがopen中は即座にエラー
+        if (this.circuitBreaker && !this.circuitBreaker.canExecute()) {
+            throw new SentinelError("transport", "circuitBreaker", "Circuit breaker is open — transport requests are temporarily suspended");
+        }
+
         const transport = this.transportConfig.transport!;
         const timeoutMs = this.transportConfig.timeoutMs ?? 30_000;
 
@@ -293,9 +322,14 @@ export class Sentinel {
         try {
             const sendPromise = transport.send(log);
             const timeoutPromise = new Promise<never>((_, reject) => {
-                timer = setTimeout(() => reject(new Error(`Transport timeout after ${timeoutMs}ms`)), timeoutMs);
+                timer = setTimeout(() => reject(new SentinelError("transport", "timeout", `Transport timeout after ${timeoutMs}ms`)), timeoutMs);
             });
-            return await Promise.race([sendPromise, timeoutPromise]);
+            const result = await Promise.race([sendPromise, timeoutPromise]);
+            this.circuitBreaker?.onSuccess();
+            return result;
+        } catch (err) {
+            this.circuitBreaker?.onFailure();
+            throw err;
         } finally {
             clearTimeout(timer!);
         }
@@ -323,7 +357,10 @@ export type { SystemEventName, DetectionResult, DetectionRule, DetectionRuleCond
 export type { TaskDispatchHandler, TaskConfirmHandler } from "./core/task/task-executor";
 export type { SentinelLogger, SentinelMetrics, SentinelTracer } from "./configs/sentinel-config";
 export type { RemoteTransport, TransportMode, TransportConfig } from "./transport/transport";
+export { CircuitBreaker } from "./transport/circuit-breaker";
+export type { CircuitBreakerConfig, CircuitState } from "./transport/circuit-breaker";
 export { validateLogInput, ValidationError, DEFAULT_VALIDATION_LIMITS } from "./validation/log-validator";
+export { SentinelError } from "./errors/sentinel-error";
 export type { ValidationLimits } from "./validation/log-validator";
 export { WhitelistRegistry } from "./validation/whitelist-registry";
 export { validateConfigWhitelists } from "./validation/config-validator";
