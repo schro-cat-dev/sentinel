@@ -126,7 +126,7 @@ Phase 3: 人的最終精査（全14ソースファイル通し読み）
 | Unit | integrity-signer.test.ts | 15 | ハッシュチェーン |
 | Unit | masking-service.test.ts | 23 | PIIマスキング |
 | Unit | transport.test.ts | 7 | Transport |
-| Unit | result.test.ts | 33 | Result型 |
+| Unit | ~~result.test.ts~~ | — | ✅ 削除済み（dead code） |
 | Integration | pipeline.test.ts | 18 | E2Eパイプライン |
 | **Security** | **redos.test.ts** | **11** | **ReDoS耐性** |
 | **Security** | **prototype-pollution.test.ts** | **5** | **Prototype Pollution** |

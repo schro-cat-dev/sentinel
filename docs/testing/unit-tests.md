@@ -1,6 +1,6 @@
 # ユニットテスト一覧・設計根拠
 
-**テスト数:** 220
+**テスト数:** 739（`npx vitest run tests/unit/` で最新数を確認）
 **対象:** `tests/unit/`
 
 ## テストファイル一覧
@@ -99,12 +99,6 @@ SDK公開API境界のランタイム検証。message必須、type/level/origin �
 #### transport.test.ts (7テスト)
 
 local/remote/dual モードの基本動作。
-
-### shared/
-
-#### result.test.ts (33テスト)
-
-Result monad (success/failure/map/flatMap/guard/all/safe)。パイプライン未使用だがSDK公開ユーティリティ候補。
 
 ### remaining-backlog.test.ts (14テスト)
 

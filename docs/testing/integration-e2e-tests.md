@@ -1,6 +1,6 @@
 # 統合・E2Eテスト一覧
 
-**テスト数:** 33 (Integration 18 + E2E 15)
+**テスト数:** 40 (Integration 18 + E2E 22)（`npx vitest run tests/integration/ tests/e2e/` で最新数を確認）
 
 ## tests/integration/pipeline.test.ts (18テスト)
 
