@@ -55,6 +55,15 @@ git log --show-signature -5
 - `npm audit` で HIGH/CRITICAL が報告された場合は、devDependencies を最新化してから利用してください
 - 信頼できないフォークからの clone は避け、公式リポジトリを使用してください
 
+**より深いチェックが必要な場合の推奨ツール:**
+
+| ツール | 用途 |
+|--------|------|
+| [Snyk](https://snyk.io) | 依存関係の脆弱性スキャン、コードのセキュリティ分析 |
+| [Socket](https://socket.dev) | npm パッケージのサプライチェーン攻撃検出（悪意あるコード・typosquatting） |
+| [lockfile-lint](https://github.com/lirantal/lockfile-lint) | lockfile の改竄検出（不正なレジストリURL・パッケージ差し替えの検知） |
+| [VirusTotal](https://www.virustotal.com) | ファイル・URLのマルウェアスキャン（複数エンジンで一括検査） |
+
 Requirements: Node.js >= 20.0.0
 
 Dependencies: **none** (zero npm dependencies, uses only `node:crypto`)
