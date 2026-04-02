@@ -18,9 +18,20 @@
 
 ### Install
 
+本パッケージは npm registry には未公開です。リポジトリを clone してローカル参照で利用してください。
+
 ```bash
-npm install @schro-cat-dev/sentinel
+# リポジトリを clone
+git clone https://github.com/schro-cat-dev/sentinel.git
+
+# ビルド
+cd sentinel && npm install && npm run build
+
+# 別プロジェクトからローカルパスで参照
+npm install ../path/to/sentinel
 ```
+
+> **Note:** 将来的に npm registry に公開された場合は `npm install @schro-cat-dev/sentinel` で利用可能になります。
 
 Requirements: Node.js >= 20.0.0
 
@@ -101,6 +112,51 @@ sentinel.onTaskAction("ESCALATE", async (task) => {
 });
 ```
 
+### Task Transport Adapters
+
+外部システム（Slack, Jira, SIEM等）へのタスク配信は `TaskTransport` アダプタで拡張可能。
+既存の `onTaskAction` コールバック方式と **共存** する。
+
+```typescript
+import type { TaskTransport } from "@schro-cat-dev/sentinel";
+
+// 利用者がアダプタを実装
+const slackTransport: TaskTransport = {
+    name: "slack-webhook",
+    async dispatch(task) {
+        const res = await fetch("https://hooks.slack.com/services/xxx", {
+            method: "POST",
+            body: JSON.stringify({
+                text: `[${task.severity}] ${task.description}\nTrace: ${task.sourceLog.traceId}`,
+            }),
+        });
+        return {
+            transportName: "slack-webhook",
+            success: res.ok,
+            externalId: res.ok ? await res.text() : undefined,
+            error: res.ok ? undefined : `HTTP ${res.status}`,
+        };
+    },
+    async close() {
+        // 必要に応じて接続クリーンアップ
+    },
+};
+
+// 初期化時に注入
+const sentinel = Sentinel.initialize(config, {
+    taskTransports: [slackTransport],
+});
+```
+
+**コールバック vs トランスポートの使い分け:**
+
+| 方式 | 用途 | 特徴 |
+|------|------|------|
+| `onTaskAction` (コールバック) | インプロセスの処理、軽量な通知 | actionType単位で登録、maxRetries適用 |
+| `taskTransports` (アダプタ) | 外部システム連携、構造化された結果返却 | 全タスクを受取、`TaskTransportResult` で成否を返す |
+
+両方を同時に使用可能。ハンドラ→トランスポートの順に実行され、片方の失敗がもう片方をブロックしない。
+
 ### SEMI_AUTO Confirmation Handler
 
 ```typescript
@@ -158,7 +214,7 @@ const sentinel = Sentinel.initialize(createDefaultConfig({
 ### Shutdown
 
 ```typescript
-// グレースフルシャットダウン: Transport接続を閉じ、ハンドラをクリア
+// グレースフルシャットダウン: Transport接続を閉じ、TaskTransport.close()を呼び、ハンドラをクリア
 await sentinel.shutdown();
 
 // shutdown後は再initializeが必要
@@ -346,6 +402,7 @@ go test ./internal/security/ -race -v -count=1
 | `masking.preserveFields` | string[] | No | `["traceId","spanId"]` | Fields exempt from masking |
 | `security.enableHashChain` | boolean | No | `true` | Enable HMAC-SHA256 hash chain |
 | `taskRules` | TaskRule[] | No | `[]` | Task auto-generation rules |
+| `taskTransportConfigs` | TaskTransportConfig[] | No | `undefined` | YAML由来のトランスポート設定メタデータ |
 | `onLogProcessed` | function | No | - | Callback: fired after each log is processed |
 | `onTaskGenerated` | function | No | - | Callback: fired when a task is generated |
 | `onTaskDispatched` | function | No | - | Callback: fired when a task is dispatched |
