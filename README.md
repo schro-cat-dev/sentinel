@@ -10,21 +10,32 @@
 
 ## What It Does
 
-Sentinel watches your application logs, detects security threats and system failures, and automatically triggers actions — blocking malicious IPs, notifying your team, or escalating to an AI analyst.
+Sentinel watches your application logs, detects security threats and system failures, and automatically triggers response actions — from simple notifications to AI-driven analysis and automated remediation.
 
 ```
-Your app logs: "Failed login from 203.0.113.45 (attempt #50 in 5 min)"
-    |
-    v
-Sentinel detects: Brute force attack
-    |
-    v
-Automatically: Block IP + Notify #security on Slack + Log for audit
+Your app logs → Sentinel detects → Automatically responds
+
+Example 1: Brute force attack
+  Log: "Failed login from 203.0.113.45 (50 attempts in 5 min)"
+  → Detect: SECURITY_INTRUSION_DETECTED
+  → Respond: Block IP + Notify #security on Slack + Log for audit
+
+Example 2: System critical failure
+  Log: "Database connection pool exhausted, all queries failing"
+  → Detect: SYSTEM_CRITICAL_FAILURE
+  → Respond: AI agent analyzes root cause + Auto-remediate + Escalate to on-call
+
+Example 3: Compliance violation
+  Log: "Bulk export of 10,000 customer records initiated"
+  → Detect: COMPLIANCE_VIOLATION
+  → Respond: Require human approval → Notify compliance team → Audit trail
 ```
+
+**Response actions:** AI analysis, automated remediation, IP blocking, account locking, kill switch, webhook integration, Slack/Discord/Gmail notification, multi-step approval workflows, and escalation chains.
 
 The system has two components:
 - **TypeScript SDK** — Zero-dependency client library. PII masking, hash-chain integrity, detection rules, and task generation. Works standalone (local mode) or with the server (remote/dual mode).
-- **Go Server** — gRPC backend with SQLite persistence, RBAC authorization, ensemble detection, anomaly detection, threat response orchestration (block/analyze/notify), and approval workflows.
+- **Go Server** — gRPC backend with SQLite persistence, RBAC authorization, ensemble detection, anomaly detection, threat response orchestration (block/analyze/notify), AI agent integration, and approval workflows.
 
 ---
 
@@ -268,7 +279,53 @@ implementations. Users inject their own adapters for real providers.
 
 ---
 
-## Project Status
+## Implementation Status
+
+### What's fully working
+
+| Capability | Status | Details |
+|---|---|---|
+| Log ingestion pipeline | Production-ready | Normalize → Mask PII → Hash chain → Persist → Detect → Generate tasks |
+| PII masking | Production-ready | 8 categories (EMAIL, PHONE, CREDIT_CARD, etc.) + REGEX + KEY_MATCH, verification pass |
+| Hash chain integrity | Production-ready | HMAC-SHA256 with per-log chaining |
+| Detection (single rule) | Production-ready | Built-in rules for critical/security/compliance events |
+| Ensemble detection | Production-ready | Multi-rule scoring with configurable aggregation + dedup |
+| Anomaly detection | Production-ready | Statistical anomaly detection with baseline windows |
+| IP blocking | Production-ready | In-memory block with TTL, IMMEDIATE or REQUIRE_APPROVAL modes |
+| Account locking | Production-ready | In-memory lock registry |
+| Notifications | Production-ready | Slack, Discord, Gmail, Webhook with HMAC signing and routing |
+| RBAC authorization | Production-ready | Role-based access control with per-client permissions |
+| Approval workflows | Production-ready | Multi-step approval chains with content hash verification |
+| Task persistence | Production-ready | SQLite/SQLCipher with audit trail |
+| mTLS | Production-ready | Client cert verification + SIGHUP cert hot-reload |
+
+### What uses mock/placeholder implementations
+
+| Capability | Status | What's needed for production |
+|---|---|---|
+| AI_ANALYZE action | Mock provider | Replace `MockProvider` with real LLM provider (OpenAI, Anthropic, etc.) |
+| AI threat analysis | Mock agent | Replace `MockAnalysisAgent` with real analysis backend |
+| Agent reIngest loop | Registered but no-op | Wire `Pipeline.Process()` callback with loop detection |
+| AUTOMATED_REMEDIATE | Constant defined only | Implement remediation handlers per use case |
+| KILL_SWITCH | Constant defined only | Implement emergency stop handlers per use case |
+| ESCALATE | Constant defined only | Implement escalation chain handlers |
+| EXTERNAL_WEBHOOK | Constant defined only | Implement webhook dispatch for task actions |
+| Cloud block providers | Interface defined | Implement AWS/GCP/Azure IP blocking via `execFn` callback |
+
+### Extensibility
+
+The architecture is designed for extension. To add custom behavior:
+
+- **Custom action types**: Register handlers via `TaskExecutor.RegisterHandler(actionType, handler)`
+- **Custom detection rules**: Add YAML `detection_rules` or `ensemble.dynamic_rules` entries
+- **Custom notification channels**: Implement `Notifier` interface and register with `MultiNotifier`
+- **Custom block actions**: Implement `BlockAction` interface and register with `EnhancedBlockDispatcher`
+- **Real AI provider**: Implement `agent.Provider` interface (Execute method)
+- **Custom masking**: Add `masking_policies` entries for context-dependent masking per log type/origin
+
+See [Extensibility Guide](packages/server/docs/extensibility-guide.md) for details.
+
+## Test Status
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|

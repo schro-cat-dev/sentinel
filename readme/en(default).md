@@ -4,17 +4,22 @@
 
 > **Important:** This project is a reference implementation for log-based threat detection and automated response. Before using in production, thoroughly review the implementation details, adapt configuration to your specific use case, and conduct your own security audit. The default settings, detection rules, and response strategies are starting points — not production-ready defaults. Always test with your own workloads and verify that masking, authorization, and response behaviors meet your requirements.
 
-Sentinel watches your application logs, detects security threats and system failures, and automatically triggers actions — blocking malicious IPs, notifying your team, or escalating to an AI analyst.
+Sentinel watches your application logs, detects security threats and system failures, and automatically triggers response actions — from simple notifications to AI-driven analysis and automated remediation.
 
 ```
-Your app logs: "Failed login from 203.0.113.45 (attempt #50 in 5 min)"
-    |
-    v
-Sentinel detects: Brute force attack
-    |
-    v
-Automatically: Block IP + Notify #security on Slack + Log for audit
+Your app logs → Sentinel detects → Automatically responds
+
+Example 1: Brute force attack
+  → Block IP + Notify #security on Slack + Log for audit
+
+Example 2: System critical failure
+  → AI agent analyzes root cause + Auto-remediate + Escalate to on-call
+
+Example 3: Compliance violation
+  → Require human approval → Notify compliance team → Audit trail
 ```
+
+**Response actions:** AI analysis, automated remediation, IP blocking, account locking, kill switch, webhook integration, Slack/Discord/Gmail notification, multi-step approval workflows, and escalation chains.
 
 [Architecture](../docs/architecture.md) | [Security](../docs/security.md) | [Usage Guide](../docs/usage-guide.md) | [日本語](ja.md)
 
@@ -23,7 +28,7 @@ Automatically: Block IP + Notify #security on Slack + Log for audit
 ## Components
 
 - **TypeScript SDK** — Zero-dependency client library. PII masking, hash-chain integrity, detection rules, and task generation. Works standalone (Local Mode) or with the Go server (Remote/Dual Mode).
-- **Go Server** — gRPC backend with SQLite/SQLCipher persistence, RBAC authorization, ensemble detection, anomaly detection, threat response orchestration (block/analyze/notify), and approval workflows with multi-channel notifications (Slack/Discord/Gmail/Webhook).
+- **Go Server** — gRPC backend with SQLite/SQLCipher persistence, RBAC authorization, ensemble detection, anomaly detection, threat response orchestration (block/analyze/notify), AI agent integration, and approval workflows with multi-channel notifications (Slack/Discord/Gmail/Webhook).
 
 ## Key Features
 
@@ -87,7 +92,15 @@ await sentinel.ingest({
 await sentinel.shutdown();
 ```
 
-## Project Status
+## Implementation Status
+
+**Fully working:** Log pipeline, PII masking, hash chain, detection (single/ensemble/anomaly), IP blocking, account locking, notifications (Slack/Discord/Gmail/Webhook), RBAC, approval workflows, mTLS, task persistence.
+
+**Mock/placeholder:** AI_ANALYZE (MockProvider), threat analysis (MockAnalysisAgent), AUTOMATED_REMEDIATE, KILL_SWITCH, ESCALATE, EXTERNAL_WEBHOOK (constants defined, handlers not yet wired).
+
+**Extensible by design:** Custom action handlers, detection rules, notification channels, block actions, and AI providers can be plugged in via interfaces. See [Extensibility Guide](../packages/server/docs/extensibility-guide.md).
+
+## Test Status
 
 | Component | Technology | Status | Tests |
 |-----------|-----------|--------|-------|
@@ -98,7 +111,7 @@ await sentinel.shutdown();
 
 ## Documentation
 
-See the [main README](../README.md) for full documentation links.
+See the [main README](../README.md) for full documentation links and detailed implementation status.
 
 ## License
 
