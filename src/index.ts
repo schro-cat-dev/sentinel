@@ -273,7 +273,7 @@ export class Sentinel {
             }
         }
 
-        return localResult;
+        return this.applyIntegrationFilters(localResult);
     }
 
     /**
@@ -439,17 +439,20 @@ export class Sentinel {
      * Server のみが生成したタスク（SDK にないruleId）は追加する。
      */
     private mergeServerTasks(localResult: IngestionResult, serverResult: IngestionResult): void {
-        if (!serverResult?.tasksGenerated?.length) return;
+        if (!serverResult) return;
 
-        const localRuleIds = new Set(localResult.tasksGenerated.map((t) => t.ruleId));
-        for (const serverTask of serverResult.tasksGenerated) {
-            if (!localRuleIds.has(serverTask.ruleId)) {
-                localResult.tasksGenerated.push(serverTask);
-                localRuleIds.add(serverTask.ruleId);
+        // タスク dedup (ruleId ベース)
+        if (serverResult.tasksGenerated?.length) {
+            const localRuleIds = new Set(localResult.tasksGenerated.map((t) => t.ruleId));
+            for (const serverTask of serverResult.tasksGenerated) {
+                if (!localRuleIds.has(serverTask.ruleId)) {
+                    localResult.tasksGenerated.push(serverTask);
+                    localRuleIds.add(serverTask.ruleId);
+                }
             }
         }
 
-        // threatResponses もマージ
+        // threatResponses マージ（タスクの有無に関係なく）
         if (serverResult.threatResponses?.length) {
             localResult.threatResponses = [
                 ...(localResult.threatResponses ?? []),

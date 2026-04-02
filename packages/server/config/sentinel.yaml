@@ -79,6 +79,16 @@ pipeline:
 # ensemble.dynamic_rules はスコアベースの高度な検知用（別機能）。
 detection_rules: []
 
+# --- SDK ↔ Server Integration (Phase 1-3) ---
+# SDK側のintegrationセクションに対応するサーバ設定。
+# config_validation: true の場合、SDK初期化時に HealthCheck ConfigSummary で整合性チェック。
+integration:
+  config_validation: true            # SDK起動時の設定整合性チェック
+  threat_response_enabled: false     # IngestResponse に threat_responses を含めるか
+  task_approval_enabled: false       # タスク承認フロー (ApproveTask/RejectTask RPC)
+  task_status_enabled: false         # タスク状態クエリ (GetTaskStatus/ListTasks RPC)
+  sync_detection_rules: false        # 検知ルール同期
+
 # --- Error Routing ---
 # エラー分類→ルーティング→外部サービス連携。TS SDK ErrorRouter と同等の概念。
 # Go Server側の実装は将来タスク。設定スキーマのみ先行定義。

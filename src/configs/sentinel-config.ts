@@ -215,6 +215,12 @@ export const createDefaultConfig = (
             ...defaults.security,
             ...overrides.security,
         },
+        // Deep-merge integration to prevent silent feature override
+        ...(overrides.integration ? {
+            integration: {
+                ...overrides.integration,
+            },
+        } : {}),
         // Deep-merge whitelist to prevent silent level/extensions override
         ...(overrides.whitelist ? {
             whitelist: {

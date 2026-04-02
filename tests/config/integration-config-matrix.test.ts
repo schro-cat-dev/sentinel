@@ -188,6 +188,29 @@ describe("Integration config: all enabled", () => {
 // =========================================================================
 // Matrix: HMAC + hash chain
 // =========================================================================
+describe("Integration config: dual-mode threat response filtering", () => {
+    it("strips threatResponses in dual mode when disabled", async () => {
+        Sentinel.reset();
+        const sentinel = Sentinel.initialize(
+            baseConfig, // no integration.threatResponseEnabled
+            { transport: { mode: "dual", transport: mockTransport() } },
+        );
+        const result = await sentinel.ingest({ message: "dual no threat" });
+        expect(result.threatResponses).toBeUndefined();
+    });
+
+    it("includes threatResponses in dual mode when enabled", async () => {
+        Sentinel.reset();
+        const sentinel = Sentinel.initialize(
+            { ...baseConfig, integration: { threatResponseEnabled: true } },
+            { transport: { mode: "dual", transport: mockTransport() } },
+        );
+        const result = await sentinel.ingest({ message: "dual with threat" });
+        expect(result.threatResponses).toBeDefined();
+        expect(result.threatResponses!.length).toBeGreaterThan(0);
+    });
+});
+
 describe("Integration config: HMAC hash chain", () => {
     it("SHA-256 mode when hmacKey not set", async () => {
         const sentinel = Sentinel.initialize({
