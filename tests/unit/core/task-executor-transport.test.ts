@@ -260,3 +260,233 @@ describe("TaskExecutor: transport close", () => {
         expect(ok.close).toHaveBeenCalledTimes(1);
     });
 });
+
+// =========================================================================
+// テスト: SEMI_AUTO + トランスポート
+// =========================================================================
+
+describe("TaskExecutor: SEMI_AUTO + transports", () => {
+    it("dispatches to transports when confirmHandler approves", async () => {
+        const transport = createMockTransport("slack");
+        const executor = new TaskExecutor(undefined, [transport]);
+        executor.setConfirmHandler(() => true);
+
+        const task = createTask({ executionLevel: "SEMI_AUTO" });
+        const result = await executor.dispatch(task);
+
+        expect(result.status).toBe("dispatched");
+        expect(transport.dispatch).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not dispatch to transports when confirmHandler rejects", async () => {
+        const transport = createMockTransport("slack");
+        const executor = new TaskExecutor(undefined, [transport]);
+        executor.setConfirmHandler(() => false);
+
+        const task = createTask({ executionLevel: "SEMI_AUTO" });
+        const result = await executor.dispatch(task);
+
+        expect(result.status).toBe("blocked_approval");
+        expect(transport.dispatch).not.toHaveBeenCalled();
+    });
+
+    it("dispatches to transports when SEMI_AUTO and no confirmHandler (AUTO fallback)", async () => {
+        const transport = createMockTransport("slack");
+        const executor = new TaskExecutor(undefined, [transport]);
+        // confirmHandler 未設定 → AUTO と同じ動作
+
+        const task = createTask({ executionLevel: "SEMI_AUTO" });
+        const result = await executor.dispatch(task);
+
+        expect(result.status).toBe("dispatched");
+        expect(transport.dispatch).toHaveBeenCalledTimes(1);
+    });
+});
+
+// =========================================================================
+// テスト: requireHumanApproval + トランスポート
+// =========================================================================
+
+describe("TaskExecutor: requireHumanApproval + transports", () => {
+    it("blocks transports when requireHumanApproval is true (AUTO)", async () => {
+        const transport = createMockTransport("slack");
+        const executor = new TaskExecutor(undefined, [transport]);
+
+        const task = createTask({
+            executionLevel: "AUTO",
+            guardrails: { requireHumanApproval: true, timeoutMs: 30000, maxRetries: 0 },
+        });
+        const result = await executor.dispatch(task);
+
+        expect(result.status).toBe("blocked_approval");
+        expect(transport.dispatch).not.toHaveBeenCalled();
+    });
+
+    it("blocks transports when requireHumanApproval is true (SEMI_AUTO)", async () => {
+        const transport = createMockTransport("slack");
+        const executor = new TaskExecutor(undefined, [transport]);
+        executor.setConfirmHandler(() => true);
+
+        const task = createTask({
+            executionLevel: "SEMI_AUTO",
+            guardrails: { requireHumanApproval: true, timeoutMs: 30000, maxRetries: 0 },
+        });
+        const result = await executor.dispatch(task);
+
+        expect(result.status).toBe("blocked_approval");
+        expect(transport.dispatch).not.toHaveBeenCalled();
+    });
+});
+
+// =========================================================================
+// テスト: defaultHandler + トランスポート
+// =========================================================================
+
+describe("TaskExecutor: defaultHandler + transports", () => {
+    it("executes defaultHandler AND transports when no actionType handler", async () => {
+        const defaultHandler = vi.fn();
+        const transport = createMockTransport("webhook");
+        const executor = new TaskExecutor(defaultHandler, [transport]);
+
+        const task = createTask();
+        const result = await executor.dispatch(task);
+
+        expect(result.status).toBe("dispatched");
+        expect(defaultHandler).toHaveBeenCalledTimes(1);
+        expect(transport.dispatch).toHaveBeenCalledTimes(1);
+    });
+
+    it("executes actionType handler (not default) AND transports", async () => {
+        const defaultHandler = vi.fn();
+        const specificHandler = vi.fn();
+        const transport = createMockTransport("webhook");
+        const executor = new TaskExecutor(defaultHandler, [transport]);
+        executor.registerHandler("SYSTEM_NOTIFICATION", specificHandler);
+
+        const task = createTask();
+        await executor.dispatch(task);
+
+        expect(defaultHandler).not.toHaveBeenCalled();
+        expect(specificHandler).toHaveBeenCalledTimes(1);
+        expect(transport.dispatch).toHaveBeenCalledTimes(1);
+    });
+});
+
+// =========================================================================
+// テスト: success=false ハンドリング
+// =========================================================================
+
+describe("TaskExecutor: transport success=false handling", () => {
+    it("treats success=false as error", async () => {
+        const transport = createMockTransport("failing", {
+            dispatch: vi.fn().mockResolvedValue({
+                transportName: "failing",
+                success: false,
+                error: "Rate limited",
+            } satisfies TaskTransportResult),
+        });
+        const executor = new TaskExecutor(undefined, [transport]);
+
+        const result = await executor.dispatch(createTask());
+
+        expect(result.status).toBe("failed");
+        expect(result.error).toContain("Rate limited");
+        expect(result.error).toContain("failing");
+    });
+
+    it("treats success=false without error message as error", async () => {
+        const transport = createMockTransport("failing", {
+            dispatch: vi.fn().mockResolvedValue({
+                transportName: "failing",
+                success: false,
+            } satisfies TaskTransportResult),
+        });
+        const executor = new TaskExecutor(undefined, [transport]);
+
+        const result = await executor.dispatch(createTask());
+
+        expect(result.status).toBe("failed");
+        expect(result.error).toContain("success=false");
+    });
+
+    it("success=true transport does not cause error", async () => {
+        const transport = createMockTransport("ok", {
+            dispatch: vi.fn().mockResolvedValue({
+                transportName: "ok",
+                success: true,
+                externalId: "ext-123",
+            } satisfies TaskTransportResult),
+        });
+        const executor = new TaskExecutor(undefined, [transport]);
+
+        const result = await executor.dispatch(createTask());
+
+        expect(result.status).toBe("dispatched");
+        expect(result.error).toBeUndefined();
+    });
+
+    it("mixed success/failure across transports aggregates errors", async () => {
+        const ok = createMockTransport("ok");
+        const failing = createMockTransport("failing", {
+            dispatch: vi.fn().mockResolvedValue({
+                transportName: "failing",
+                success: false,
+                error: "503 Service Unavailable",
+            } satisfies TaskTransportResult),
+        });
+        const executor = new TaskExecutor(undefined, [ok, failing]);
+
+        const result = await executor.dispatch(createTask());
+
+        expect(result.status).toBe("failed");
+        expect(result.error).toContain("503 Service Unavailable");
+        // ok transport は呼ばれている
+        expect(ok.dispatch).toHaveBeenCalledTimes(1);
+    });
+});
+
+// =========================================================================
+// テスト: エッジケース
+// =========================================================================
+
+describe("TaskExecutor: transport edge cases", () => {
+    it("no handlers and no transports — dispatched but nothing happens", async () => {
+        const executor = new TaskExecutor(undefined, []);
+
+        const result = await executor.dispatch(createTask());
+
+        expect(result.status).toBe("dispatched");
+        expect(result.error).toBeUndefined();
+    });
+
+    it("transport receives exact same task object (deep equality)", async () => {
+        const dispatchFn = vi.fn().mockResolvedValue({
+            transportName: "inspector",
+            success: true,
+        } satisfies TaskTransportResult);
+        const transport = createMockTransport("inspector", { dispatch: dispatchFn });
+        const executor = new TaskExecutor(undefined, [transport]);
+
+        const task = createTask({
+            taskId: "deep-eq-001",
+            severity: "HIGH",
+            executionParams: { targetEndpoint: "https://api.example.com" },
+            sourceLog: {
+                traceId: "trace-deep",
+                message: "deep equality test",
+                boundary: "test",
+                level: 5,
+                timestamp: "2026-04-02T00:00:00.000Z",
+            },
+        });
+
+        await executor.dispatch(task);
+
+        const received = dispatchFn.mock.calls[0][0] as GeneratedTask;
+        expect(received).toBe(task); // 同一参照
+        expect(received.taskId).toBe("deep-eq-001");
+        expect(received.severity).toBe("HIGH");
+        expect(received.executionParams.targetEndpoint).toBe("https://api.example.com");
+        expect(received.sourceLog.traceId).toBe("trace-deep");
+    });
+});

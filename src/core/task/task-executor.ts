@@ -236,7 +236,12 @@ export class TaskExecutor {
         const errors: Error[] = [];
         for (const transport of this.transports) {
             try {
-                await transport.dispatch(task);
+                const result = await transport.dispatch(task);
+                if (!result.success) {
+                    errors.push(
+                        new Error(`[${transport.name}] ${result.error ?? "dispatch returned success=false"}`),
+                    );
+                }
             } catch (e) {
                 errors.push(
                     e instanceof Error

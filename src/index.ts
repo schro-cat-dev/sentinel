@@ -132,6 +132,7 @@ export class Sentinel {
             }
             // リソースクリーンアップ（非同期closeはbest-effort、unhandled rejection防止）
             try { Promise.resolve(Sentinel.instance.transportConfig.transport?.close?.()).catch(() => {}); } catch { /* */ }
+            try { Sentinel.instance.taskExecutor.closeTransports().catch(() => {}); } catch { /* */ }
             Sentinel.instance.taskExecutor.clearHandlers();
             Sentinel.instance.engine.resetState();
         }
@@ -231,8 +232,13 @@ export class Sentinel {
 
         if (mode === "dual" && this.transportConfig.transport) {
             // RES-02: ローカル処理済みログを再利用し、2度目の正規化を回避
+            const lastLog = this.engine.getLastProcessedLog();
+            if (!lastLog) {
+                localResult.transportError = "dual-mode: lastProcessedLog is null after handle()";
+                return localResult;
+            }
             try {
-                await this.sendWithTimeout(this.engine.getLastProcessedLog()!);
+                await this.sendWithTimeout(lastLog);
             } catch (e) {
                 const error = e instanceof Error ? e : new Error(String(e));
                 localResult.transportError = error.message;

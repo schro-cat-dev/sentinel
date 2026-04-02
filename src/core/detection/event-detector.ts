@@ -9,8 +9,22 @@ export class EventDetector {
     private readonly customRules: DetectionRule[];
 
     constructor(customRules?: DetectionRule[]) {
-        this.customRules = customRules ?? [];
+        this.customRules = (customRules ?? []).map(EventDetector.sanitizeRule);
         this.validateCustomRules();
+    }
+
+    /**
+     * プロトタイプ汚染防止: __proto__ / constructor キーを除外する。
+     */
+    private static sanitizeRule(rule: DetectionRule): DetectionRule {
+        const sanitize = <T extends object>(obj: T): T =>
+            Object.fromEntries(
+                Object.entries(obj).filter(([k]) => k !== "__proto__" && k !== "constructor"),
+            ) as T;
+        return {
+            ...sanitize(rule),
+            conditions: sanitize(rule.conditions),
+        };
     }
 
     /**

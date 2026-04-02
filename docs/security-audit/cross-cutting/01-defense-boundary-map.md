@@ -41,7 +41,7 @@ SDK → gRPC → Go Server の全パイプラインにおける防御境界を�
 │  ✅ REGEX / KEY_MATCH マスキング                                 │
 │  ✅ 再帰深度制限 (10) / 循環参照検出                              │
 │  ✅ hasOwnProperty ガード                                        │
-│  ⚠️  ユーザ定義REGEX の ReDoS未対策                               │
+│  ✅ ユーザ定義REGEX: 入力長ガード(65536) + detectReDoSRisk()       │
 │                                                                  │
 │  [integrity-signer.ts]                                           │
 │  ✅ SHA-256 ハッシュチェーン                                      │
@@ -174,7 +174,7 @@ SDK → gRPC → Go Server の全パイプラインにおける防御境界を�
 |----|---------|---------|--------|------|
 | ~~GAP-01~~ | 1: SDK入力 | ✅ UTF-16 lone surrogate 検証実装済み (VULN-013) | — | 解決済み |
 | ~~GAP-02~~ | 1: SDK入力 | ✅ agentBackLog エントリ数(100)+サイズ制限実装済み | — | 解決済み |
-| GAP-03 | 2: SDKマスキング | ユーザ定義REGEX ReDoS | HIGH | CPUブロック |
+| ~~GAP-03~~ | 2: SDKマスキング | ✅ 入力長65536 + detectReDoSRisk() + g/yフラグ拒否 | — | 緩和済み |
 | GAP-04 | 2: SDK完全性 | HMAC未使用 | LOW | ローカルモードの設計選択 |
 | GAP-05 | 3: トランスポート | TLS/認証の非強制 | LOW | ユーザ責務 |
 | GAP-06 | 3: トランスポート | fallback時エラーロスト | MEDIUM | 運用上の可視性 |
