@@ -1079,7 +1079,7 @@ routing_rules: []
                 );
                 expect(storedPhone.message).not.toContain("090-1234-5678");
 
-                // Message without PII → masking pipeline still runs
+                // Message without PII → masking pipeline runs but no content changed
                 const resClean = await grpcCall<IngestResponse>(server.client, "Ingest", {
                     traceId: "",
                     type: "SYSTEM",
@@ -1091,7 +1091,8 @@ routing_rules: []
                     resourceIds: [],
                     input: "",
                 });
-                expect(resClean.masked).toBe(true);
+                // No PII present → masked=false (content was not altered)
+                expect(resClean.masked).toBe(false);
 
                 // Verify clean message is stored unchanged
                 const storedClean = await grpcCall<GetLogResponse>(

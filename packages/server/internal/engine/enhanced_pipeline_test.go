@@ -771,8 +771,12 @@ func TestEnhancedPipeline_BackwardCompatibility(t *testing.T) {
 		if result.TraceID == "" {
 			t.Error("expected traceID")
 		}
-		if !result.Masked || !result.HashChainValid {
-			t.Error("expected masked and hash chain valid")
+		// No PII in "Hello" → masked=false; hash chain should still be valid
+		if result.Masked {
+			t.Error("expected masked=false for log without PII")
+		}
+		if !result.HashChainValid {
+			t.Error("expected hash chain valid")
 		}
 	})
 

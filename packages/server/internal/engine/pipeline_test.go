@@ -56,8 +56,9 @@ func TestPipeline_BasicIngestion(t *testing.T) {
 		if !result.HashChainValid {
 			t.Error("expected hash chain valid")
 		}
-		if !result.Masked {
-			t.Error("expected masked")
+		// No PII in "Hello world" → masked should be false
+		if result.Masked {
+			t.Error("expected masked=false for log without PII")
 		}
 	})
 

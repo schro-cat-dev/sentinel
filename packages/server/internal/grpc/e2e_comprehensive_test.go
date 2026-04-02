@@ -32,7 +32,7 @@ func TestE2E_FullServerLifecycle(t *testing.T) {
 		normalTraceID = resp.TraceId
 		if normalTraceID == "" { t.Error("missing traceId") }
 		if !resp.HashChainValid { t.Error("hash chain should be valid") }
-		if !resp.Masked { t.Error("should be masked") }
+		if resp.Masked { t.Error("should not be masked (no PII present)") }
 		if len(resp.TasksGenerated) != 0 { t.Error("no tasks expected") }
 	})
 

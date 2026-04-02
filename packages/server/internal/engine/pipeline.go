@@ -229,13 +229,44 @@ func (p *Pipeline) Process(ctx context.Context, raw domain.Log) (domain.Ingestio
 	// 2. Mask PII (with policy engine if available)
 	masked := false
 	if p.config.EnableMasking {
+		// Snapshot pre-mask content to detect actual changes
+		preMaskMsg := log.Message
+		preMaskActor := log.ActorID
+		preMaskInput := log.Input
+		preMaskTags := make([]string, len(log.Tags))
+		for i, t := range log.Tags {
+			preMaskTags[i] = t.Category
+		}
+		preMaskDetails := make(map[string]string, len(log.Details))
+		for k, v := range log.Details {
+			preMaskDetails[k] = v
+		}
+
 		if p.maskingPolicy != nil {
 			svc := p.maskingPolicy.CreateMaskingService(log)
 			svc.MaskLog(&log)
 		} else {
 			p.masking.MaskLog(&log)
 		}
-		masked = true
+
+		// masked=true only when content was actually altered
+		masked = log.Message != preMaskMsg || log.ActorID != preMaskActor || log.Input != preMaskInput
+		if !masked {
+			for i, t := range log.Tags {
+				if i < len(preMaskTags) && t.Category != preMaskTags[i] {
+					masked = true
+					break
+				}
+			}
+		}
+		if !masked {
+			for k, v := range log.Details {
+				if preMaskDetails[k] != v {
+					masked = true
+					break
+				}
+			}
+		}
 
 		// 2b. Verification pass (if enabled)
 		if p.verifier != nil {

@@ -67,8 +67,9 @@ func TestNetwork_FullE2E_NormalLog(t *testing.T) {
 	if !resp.HashChainValid {
 		t.Error("hash chain should be valid")
 	}
-	if !resp.Masked {
-		t.Error("should be masked")
+	// No PII in "All systems operational" → masked=false
+	if resp.Masked {
+		t.Error("should not be masked (no PII present)")
 	}
 	if len(resp.TasksGenerated) != 0 {
 		t.Error("normal log should not generate tasks")
